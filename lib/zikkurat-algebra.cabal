@@ -1,0 +1,66 @@
+Cabal-Version:        2.4
+Name:                 zikkurat-algebra
+Version:              0.0.1
+Synopsis:             Algebraic primitives used in zero-knowledge proofs
+
+Description:          Algebraic primitives (finite fields, elliptic curves
+                      and polynomials) used in zero-knowledge proofs.
+
+License:              MIT OR Apache-2.0
+License-files:        LICENSE-MIT
+                      LICENSE-APACHE-2.0
+
+Author:               Balazs Komuves
+Copyright:            (c) 2023 Faulhorn Labs
+Maintainer:           balazs.komuves (at) faulhornlabs (dot) com
+
+Stability:            Experimental
+Category:             Math, Cryptography
+Tested-With:          GHC == 8.6.5, GHC == 9.0.1
+Build-Type:           Custom
+
+--------------------------------------------------------------------------------
+
+custom-setup
+
+  setup-depends:        base  >= 4 && < 5,
+                        filepath  >= 1.2,
+                        directory >= 1.2,
+                        Cabal >= 2.4,
+                        zikkurat-algebra-codegen == 0.0.1
+
+--------------------------------------------------------------------------------
+
+Library
+
+  Build-Depends:        base >= 4 && < 5, 
+                        random >= 1.1
+                        
+  Exposed-Modules:      ZK.Algebra.BigInt.Types
+                        ZK.Algebra.BigInt.BigInt128
+                        ZK.Algebra.BigInt.BigInt192
+                        ZK.Algebra.BigInt.BigInt256
+                        ZK.Algebra.BigInt.BigInt320
+                        ZK.Algebra.BigInt.BigInt384
+                        ZK.Algebra.BigInt.BigInt448
+                        ZK.Algebra.BigInt.BigInt512
+
+  c-sources:            cbits/bigint/bigint128.c
+                        cbits/bigint/bigint192.c
+                        cbits/bigint/bigint256.c
+                        cbits/bigint/bigint320.c
+                        cbits/bigint/bigint384.c
+                        cbits/bigint/bigint448.c
+                        cbits/bigint/bigint512.c
+
+  Default-Language:     Haskell2010
+  Default-Extensions:   CPP, BangPatterns
+
+  Hs-Source-Dirs:       src
+
+  include-dirs:         cbits/bigint
+
+  ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
+
+--------------------------------------------------------------------------------
+

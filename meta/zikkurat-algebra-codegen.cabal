@@ -1,0 +1,64 @@
+Cabal-Version:        2.4
+Name:                 zikkurat-algebra-codegen
+Version:              0.0.1
+Synopsis:             Code generator for algebraic primitives used in zero-knowledge proofs
+
+Description:          Generates C code for algebraic primitives (finite fields, 
+                      elliptic curves and polynomials) used in zero-knowledge proofs
+
+License:              MIT OR Apache-2.0
+License-files:        LICENSE-MIT
+                      LICENSE-APACHE-2.0
+
+Author:               Balazs Komuves
+Copyright:            (c) 2023 Faulhorn Labs
+Maintainer:           balazs.komuves (at) faulhornlabs (dot) com
+
+Stability:            Experimental
+Category:             Math, Cryptography
+Tested-With:          GHC == 8.6.5, GHC == 9.0.1
+Build-Type:           Simple
+
+--------------------------------------------------------------------------------
+
+Library 
+
+  Build-Depends:        base >= 4 && < 5, 
+                        filepath  >= 1.2,
+                        directory >= 1.2
+
+  Exposed-Modules:      Zikkurat.Generate
+                        Zikkurat.CodeGen.BigInt
+                        Zikkurat.CodeGen.FFI
+                        Zikkurat.CodeGen.Misc
+                        Zikkurat.Primes
+
+  Hs-Source-Dirs:       src
+
+  Default-Language:     Haskell2010
+  Default-Extensions:   CPP, BangPatterns
+
+--------------------------------------------------------------------------------
+
+Executable zikkurat-algebra-codegen
+
+  Build-Depends:        base >= 4 && < 5, 
+                        filepath >= 1.2,
+                        zikkurat-algebra-codegen == 0.0.1
+
+  main-is:              Main.hs
+
+--  Other-Modules:        
+--                        Paths_zikkurat_algebra_codegen
+--                        PackageInfo_zikkurat_algebra_codegen
+--
+--  autogen-modules:      Paths_zikkurat_algebra_codegen
+--                        PackageInfo_zikkurat_algebra_codegen
+
+  Hs-Source-Dirs:       cli
+
+  Default-Language:     Haskell2010
+  Default-Extensions:   CPP, BangPatterns
+
+--------------------------------------------------------------------------------
+

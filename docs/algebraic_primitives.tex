@@ -1,0 +1,328 @@
+
+\documentclass[12pt,draft,a4paper,openany,oneside]{amsbook}
+\usepackage{amsfonts,amssymb,latexsym,bbm,hyperref}
+% \usepackage{graphicx}
+
+%\usepackage[style=alphabetic, backend=biber]{biblatex}
+%\addbibresource{iop.bib}
+%\nocite{*}
+
+\addtolength{\oddsidemargin}{-1.5cm}
+\addtolength{\evensidemargin}{-1.5cm} 
+\addtolength{\topmargin}{-1.5cm}     
+\addtolength{\textwidth}{3cm}     
+\addtolength{\textheight}{3cm}     
+
+\let\cleardoublepage\clearpage
+
+% maketitle hack
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\@maketitle}
+  {\ifx\@empty\@dedicatory}
+  {\ifx\@empty\@date \else {\vskip3ex \centering\footnotesize\@date\par\vskip1ex}\fi
+   \ifx\@empty\@dedicatory}
+  {}{}
+\patchcmd{\@adminfootnotes}
+  {\ifx\@empty\@date\else \@footnotetext{\@setdate}\fi}
+  {}{}{}
+\makeatother
+
+\def\qquad{\quad\quad}
+\def\qqquad{\quad\quad\quad}
+\def\qqqquad{\quad\quad\quad\quad}
+
+\def\even{\mathrm{even}}
+\def\odd{\mathrm{odd}}
+
+\def\true{\mathrm{true}}
+\def\false{\mathrm{false}}
+
+\def\lhs{\mathrm{LHS}}
+\def\rhs{\mathrm{RHS}}
+
+\def\low{\mathsf{low}}
+\def\high{\mathsf{high}}
+
+\def\dummy{\mathsf{dummy}}
+
+\def\g{\mathbf{g}}
+\def\h{\mathbf{h}}
+
+\def\input{\mathsf{input}}
+\def\size{\mathsf{size}}
+\def\rot{\mathsf{ror}}
+\def\shr{\mathsf{shr}}
+\def\shiftL{\mathsf{shiftL}}
+\def\shiftR{\mathsf{shiftR}}
+\def\hi{\mathsf{hi}}
+\def\lo{\mathsf{lo}}
+
+\def\MOD{\mathsf{MOD}}
+\def\AND{\mathsf{AND}}
+\def\OR{\mathsf{OR}}
+\def\XOR{\mathsf{XOR}}
+\def\NOT{\mathsf{NOT}}
+\def\ROL{\mathsf{ROL}}
+\def\ROR{\mathsf{ROR}}
+\def\SHL{\mathsf{SHL}}
+\def\SHR{\mathsf{SHR}}
+
+\def\calL{\mathcal{L}}
+\def\calP{\mathcal{P}}
+\def\calA{\mathcal{A}}
+\def\calB{\mathcal{B}}
+\def\calZ{\mathcal{Z}}
+\def\calF{\mathcal{F}}
+\def\calG{\mathcal{G}}
+\def\calH{\mathcal{H}}
+\def\calK{\mathcal{K}}
+\def\calS{\mathcal{S}}
+\def\calR{\mathcal{R}}
+
+\def\vecz{{\underline 0}}
+\def\veco{{\underline 1}}
+
+\def\avec{{\underline a}}
+\def\bvec{{\underline b}}
+\def\cvec{{\underline c}}
+\def\dvec{{\underline d}}
+\def\gvec{{\underline g}}
+\def\hvec{{\underline h}}
+\def\nvec{{\underline n}}
+\def\mvec{{\underline m}}
+\def\kvec{{\underline k}}
+\def\xvec{{\underline x}}
+\def\yvec{{\underline y}}
+\def\zvec{{\underline z}}
+\def\uvec{{\underline u}}
+\def\vvec{{\underline v}}
+\def\qvec{{\underline q}}
+\def\svec{{\underline s}}
+
+\def\deg{\mathrm{deg}} 
+\def\sgn{\mathrm{sgn}} 
+
+\def\iso{\cong}
+\def\eqmod{\equiv}
+  
+\def\phi{\varphi} 
+\def\epsilon{\varepsilon} 
+\def\theta{\vartheta} 
+ 
+\def\F{\mathbb{F}}
+\def\G{\mathbb{G}}
+\def\N{\mathbb{N}} 
+\def\Z{\mathbb{Z}} 
+\def\Q{\mathbb{Q}} 
+\def\R{\mathbb{R}} 
+\def\C{\mathbb{C}} 
+
+\def\d{\mathrm{d}}
+
+\def\tr{\mathrm{tr}} 
+\def\id{\mathrm{id}} 
+
+\def\l{\ell}
+
+\theoremstyle{plain} 
+
+\newtheorem{fact}{Fact}[section] 
+\newtheorem*{conj}{Conjecture} 
+\newtheorem{cor}[fact]{Corollary} 
+\newtheorem{lem}[fact]{Lemma} 
+\newtheorem{prop}[fact]{Proposition} 
+\newtheorem{thm}[fact]{Theorem}
+
+\theoremstyle{definition} 
+
+%-------------------------------------------------------------------------------
+
+\title{Review of algorithms for algebraic primitives (finite fields and elliptic curves)}
+\author{Bal\'azs K\H{o}m\H{u}ves}
+\date{%
+Faulhorn Labs\\%
+\today}
+
+\begin{document}
+
+\maketitle
+
+\setcounter{tocdepth}{2}
+\tableofcontents
+% \newpage
+
+%-------------------------------------------------------------------------------
+
+\section{Introduction}
+
+There are a lot of algorithms and trick used when implementing algebraic primitives
+(primarily: finitie field arithmetic, elliptic curves and polynomials) used in
+zero-knowledge proofs. In this document I try to collect together and describe
+some of these.
+
+\section{Core operations}
+
+Some of the most important operations we will need are listed below.\\
+
+Finite fields:
+\begin{itemize}
+\item negation, addition, subtraction
+\item multiplication, squaring
+\item multiplicative inverse
+\item division
+\item general $n$-th power
+\item for some more complex algorithms: square root
+\item uniformly random field element \\
+\end{itemize}
+
+Elliptic curves:
+\begin{itemize}
+\item checking if a point is actually on the curve
+\item conversion between different representations (affine, projective, weighted projective, etc)
+\item point addition and doubling
+\item point negation and subtraction
+\item mixed addition (adding points in different repr.: an affine and a projective)
+\item scalar multiplication
+\item multi-scalar multiplication (MSM)
+\item for more complex algorithms: pairings
+\item uniformly random curve / subgroup element
+\item hash-to-curve
+\item point compression / decompression \\
+\end{itemize}
+
+Univariate polynomials:
+\begin{itemize}
+\item evaluation at points
+\item evaluation on a multiplicative subgroup (NTT)
+\item negation, addition, subtraction
+\item multiplying by a scalar 
+\item polynomial multiplication
+\item long division; division by special polynomials
+\item Lagrange interpolation 
+\item interpolation on a subgroup (inverse NTT) \\
+\end{itemize}
+
+Multivariate polynomials: TODO
+
+%-------------------------------------------------------------------------------
+
+\chapter{Finite fields}
+
+In this context we mostly deal with large prime fields and their their low-degree
+(usually quadratic or cubic) extensions. Elements of prime fields has at least two common
+representations: the standard form, where (the unique) number $0\le x < p$ represents
+the element $[x]\in \F_p$; and the Montgomery form, where $0Rx \mod p \le p$ represents
+$[x]\in\F_p$, for some fixed $R=2^k>p\in\N$. Since multiplication is faster in the Montgomery
+form, it's almost universally used in ZK-oriented libraries. However the standard
+representation can be still useful in some contexts, or for testing purposes.\\
+
+Since we are targeting 64-bit microprocessors, it seems natural to represent
+field elements by $\ell$ 64-bit words (called ``limbs''), where $\ell=\lceil \log_2(p)/64 \rceil$.
+
+%-------------------------------------------------------------------------------
+
+\section{Operations on finite fields}
+
+Some of the useful operations on finite field elements are:
+\begin{itemize}
+\item equality of elements, equality with zero or one
+\item addition, subtraction, negation (additive inverse)
+\item multiplication, squaring
+\item division, (multiplicative) inverse
+\item raising to the $n$-th power for arbitrary $n\in\Z$
+\item square root, checking if an element is a square (quadratic residue)
+\item conversion between different representation\\
+\end{itemize}
+
+For extension fields, we also have:
+\begin{itemize}
+\item embedding of the base field
+\item Frobenius automorphism
+\end{itemize}
+
+%-------------------------------------------------------------------------------
+
+\section{Prime fields in standard representation}
+
+Addition, subtraction and negation is simple: Since we assume canonical representation
+(though an implementation must take care to actually enforce this!), we can
+just add / subtract big integers and check for overflow / underflow. Note:
+in practice subtraction is a tiny bit faster, because 
+Negation of $[x]$ is $[p-x]$.
+
+\subsection{Multiplication and squaring}
+Multiplication is done by multiplying the representant numbers as non-negative 
+integers, and then taking reduction modulo $p$.
+The latter is normally done using the Barret reduction algorithm.
+It's not clear if using something like Karatsuba multiplication can make
+the first step faster on modern hardware and small $\ell$-s.
+
+\subsection{Power}
+This is normally done using the standard `fast exponentiation algorithm':
+Write the exponent in binary: $n=\sum 2^k e_k$; then 
+\[ a^n = \prod_{k\,:\,e_k=1} a^{2^{k}} \]
+and one can compute the sequence $\{1,a,a^2,a^4,a^8,\dots\}$ using repeated
+squaring.
+
+\subsection{Inverse}
+This can be done (rather inefficiently) using Fermat's litte theorem:
+$a^{-1} = a^{p-2}$, or (more efficiently) using the extended binary 
+Euclidean algorithm.
+
+\subsection{Division}
+This can be done either by multiplying with the inverse, or directly using
+the extended binary Euclidean algorithm.
+
+\subsection{Checking being a square (quadratic resiude)}
+One can compute the Jacobi symbol using a standard algorithm based
+on quadratic reciprocity.
+
+\subsection{Computing square root}
+There are several algorithms for computing the square root modulo a prime $p$, for example:
+\begin{itemize}
+\item the Tonelli-Shanks algorithm (can be deterministic, relatively simple)
+\item Cipolla's algorithm (probabilistic; could be possibly faster for highly 2-adic fields?)
+\item the Berlekamp-Rabin algorithm (probabilistic, complicated)
+\item Pocklington's algorithm (1917, uses case separation and large powers, one case is probabilistic)
+\item Kunerth's algorithm (1878, works for non-prime modulus?)
+\end{itemize}
+
+%-------------------------------------------------------------------------------
+
+\section{Prime fields in Montgomery representation}
+
+The Montgomery representation allows for faster multiplication than the standard
+representation, and since multiplication is probably the operation where most
+time is spent, it makes a lot of sense to use this representation. For the 
+Montgomery multiplier normally $R=2^{64\ell}$ is chosen.\\
+
+This is the representation used in most ZK libraries and file formats (for example
+the powers-of-tau files implicitly use this).\\
+
+Addition, subtraction, negation and scaling by a constant (in standard representation) 
+is the same as with the standard representation.\\
+
+For multiplication, we can use the Montgomery reduction algorithm. Wikipedia
+has reasonable explanation of these.\\
+
+For division and inversion you can reuse the standard representation division and inversion
+algorithm but needs to add a Montgomery reduction step.\\
+
+For conversion between standard form and Montgomery form, again you can use
+the Montgomery reduction algorithm.\\
+
+\subsection{Montgomery reduction}
+This algorithms takes a number $T$ in the the range $T\in[0,Rp)$, and returns
+a number $S\in[0,p)$ such that $R^{-1}T\equiv S \mod p$. It assumes that:
+$\gcd(R,p)=1$ (automatic here), $R=2^{64k}$ (in the multi-precision version), and that we have access
+an inverse $q\in[0,2^{64})$ such that $pq + 1 \equiv 0\mod 2^{64}$ (this can be precalculated).
+In practice we also need $R>p$; so a very natural choice is $R=2^{64\ell}$.
+More general versions of the algorithm exist, but this is the one which looks
+relevant here.
+
+%===============================================================================
+
+% \printbibliography
+
+\end{document}
