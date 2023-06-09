@@ -28,6 +28,7 @@ Library
                         directory >= 1.2
 
   Exposed-Modules:      Zikkurat.Generate
+                        Zikkurat.CodeGen.PrimeField.StdRep
                         Zikkurat.CodeGen.BigInt
                         Zikkurat.CodeGen.FFI
                         Zikkurat.CodeGen.Misc

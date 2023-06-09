@@ -44,6 +44,10 @@ Library
                         ZK.Algebra.BigInt.BigInt384
                         ZK.Algebra.BigInt.BigInt448
                         ZK.Algebra.BigInt.BigInt512
+                        ZK.Algebra.Curves.BN128.Std.Fp
+                        ZK.Algebra.Curves.BN128.Std.Fr
+                        ZK.Algebra.Curves.BLS12_381.Std.Fp
+                        ZK.Algebra.Curves.BLS12_381.Std.Fr
 
   c-sources:            cbits/bigint/bigint128.c
                         cbits/bigint/bigint192.c
@@ -52,6 +56,10 @@ Library
                         cbits/bigint/bigint384.c
                         cbits/bigint/bigint448.c
                         cbits/bigint/bigint512.c
+                        cbits/curves/fields/std/bn128_p_std.c
+                        cbits/curves/fields/std/bn128_r_std.c
+                        cbits/curves/fields/std/bls12_381_p_std.c
+                        cbits/curves/fields/std/bls12_381_r_std.c
 
   Default-Language:     Haskell2010
   Default-Extensions:   CPP, BangPatterns
@@ -59,6 +67,8 @@ Library
   Hs-Source-Dirs:       src
 
   include-dirs:         cbits/bigint
+                        cbits/curves/fields
+--                        cbits/fields
 
   ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
 

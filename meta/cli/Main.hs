@@ -27,17 +27,18 @@ help = putStrLn $ unlines
   , "usage:"
   , "======"
   , ""
-  , "$ zikkurat-algebra-codegen [c|hs] bigint     <tgt_dir>"
-  , "$ zikkurat-algebra-codegen [c|hs] fields     <tgt_dir>"
-  , "$ zikkurat-algebra-codegen [c|hs] curves     <tgt_dir>"
-  , "$ zikkurat-algebra-codegen [c|hs] testfields <tgt_dir>"
+  , "$ zikkurat-algebra-codegen [c|hs] bigint      <tgt_dir>"
+  , "$ zikkurat-algebra-codegen [c|hs] fields      <tgt_dir>"
+  , "$ zikkurat-algebra-codegen [c|hs] curves      <tgt_dir>"
+  , "$ zikkurat-algebra-codegen [c|hs] testfields  <tgt_dir>"
   ]
 
 --------------------------------------------------------------------------------
 
 main1 :: HsOrC -> String -> FilePath -> IO ()
 main1 hsOrC what tgtdir = case map toLower what of
-  "bigint" -> Gen.generate_bigint hsOrC tgtdir 
+  "bigint" -> Gen.generate_bigints         hsOrC tgtdir 
+  "fields" -> Gen.generate_primefields_std hsOrC tgtdir 
   _        -> help
 
 main :: IO ()

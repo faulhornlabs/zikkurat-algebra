@@ -96,6 +96,9 @@ hsBegin (Params{..}) =
   , "newtype " ++ dblTypeName ++ " = Mk" ++ dblTypeName ++ " (ForeignPtr Word64)"
   , "newtype " ++ sclTypeName ++ " = Mk" ++ sclTypeName ++ " (ForeignPtr Word64)"
   , ""
+  , "to" ++ postfix ++ " :: Integer -> " ++ typeName
+  , "to" ++ postfix ++ " = unsafeTo" ++ postfix
+  , ""
   , "zero, one, two :: " ++ typeName
   , "zero = small 0"
   , "one  = small 1"
@@ -181,23 +184,6 @@ hsBegin (Params{..}) =
     dblTypeName = "BigInt" ++ show ((2*64)*nlimbs)
     sclTypeName = "BigInt" ++ show (64*(1+nlimbs))
 
--- TODO: put these in their own modules
-hsMiscTmp :: Code
-hsMiscTmp =
-  [ "fromWord64sLE :: [Word64] -> Integer"
-  , "fromWord64sLE = go where"
-  , "  go []     = 0"
-  , "  go (x:xs) = fromIntegral x + shiftL (go xs) 64"
-  , ""
-  , "toWord64sLE :: Integer -> [Word64]"
-  , "toWord64sLE = go where"
-  , "  go 0 = []"
-  , "  go k = fromInteger (k .&. (2^64-1)) : go (shiftR k 64)"
-  , ""
-  , "toWord64sLE' :: Int -> Integer -> [Word64]"
-  , "toWord64sLE' len what = take len $ toWord64sLE what ++ repeat 0"
-  ]
-
 hsConvert :: Params -> Code
 hsConvert (Params{..}) = ffiMarshal "" typeName nlimbs where
   typeName = "BigInt" ++ show ((64  )*nlimbs)
@@ -214,7 +200,7 @@ hsFFI (Params{..}) = catCode $
   , mkffi "add"         $ cfun "add"              (CTyp [CArgInPtr , CArgInPtr, CArgOutPtr ] CRetVoid)
   , mkffi "sub"         $ cfun "sub"              (CTyp [CArgInPtr , CArgInPtr, CArgOutPtr ] CRetVoid)
     --
-  , mkffi "sqr"         $ cfun "sqr_truncated"    (CTyp [CArgInPtr , CArgInPtr, CArgOutPtr ] CRetVoid)
+  , mkffi "sqr"         $ cfun "sqr_truncated"    (CTyp [CArgInPtr            , CArgOutPtr ] CRetVoid)
   , mkffi "mul"         $ cfun "mul_truncated"    (CTyp [CArgInPtr , CArgInPtr, CArgOutPtr ] CRetVoid)
     --
   , mkffi "shiftLeft1"  $ cfun "shift_left_by_1"  (CTyp [CArgInPtr , CArgOutPtr            ] CRetBool)

@@ -49,6 +49,25 @@ data HsTyDesc = HsTyDesc
 
 --------------------------------------------------------------------------------
 
+-- TODO: put these in their own modules
+hsMiscTmp :: Code
+hsMiscTmp =
+  [ "fromWord64sLE :: [Word64] -> Integer"
+  , "fromWord64sLE = go where"
+  , "  go []     = 0"
+  , "  go (x:xs) = fromIntegral x + shiftL (go xs) 64"
+  , ""
+  , "toWord64sLE :: Integer -> [Word64]"
+  , "toWord64sLE = go where"
+  , "  go 0 = []"
+  , "  go k = fromInteger (k .&. (2^64-1)) : go (shiftR k 64)"
+  , ""
+  , "toWord64sLE' :: Int -> Integer -> [Word64]"
+  , "toWord64sLE' len what = take len $ toWord64sLE what ++ repeat 0"
+  ]
+
+--------------------------------------------------------------------------------
+
 ffiCall :: HsTyDesc -> HsName -> CFun -> Code
 ffiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
 
@@ -114,6 +133,19 @@ ffiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
     , "  return (" ++ hsTyCon ++ " fptr3)"
     ]
 
+  (CTyp [CArgInPtr,CArg64,CArgOutPtr] CRetVoid) ->
+    [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: Ptr Word64 -> Word64 -> Ptr Word64 -> IO ()"
+    , ""
+    , "{-# NOINLINE " ++ hsFunName ++ " #-}"
+    , hsFunName ++ " :: " ++ hsTyName ++ " -> Word64 -> " ++ hsTyName
+    , hsFunName ++ " (" ++ hsTyCon ++ " fptr1) x = unsafePerformIO $ do"
+    , "  fptr2 <- mallocForeignPtrArray " ++ show hsNLimbs
+    , "  cret <- withForeignPtr fptr1 $ \\ptr1 -> do"
+    , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+    , "      c_" ++ cname ++ " ptr1 x ptr2"
+    , "  return (" ++ hsTyCon ++ " fptr2)"
+    ]
+
   CTyp [CArgInPtr, CArgOutPtr] CRetBool -> 
     [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: Ptr Word64 -> Ptr Word64 -> IO Word8"
     , ""
@@ -140,15 +172,15 @@ ffiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
     , "  return (" ++ hsTyCon ++ " fptr2)"
     ]
 
-  _ -> error $ "CodeGen.FFI.ffiCall: C function type not implemented: " ++ show cfunty
+  _ -> error $ "CodeGen.FFI.ffiCall: C function type not implemented:\n    " ++ show cfunty
 
 --------------------------------------------------------------------------------
 
 ffiMarshal :: String -> String -> Int -> Code
 ffiMarshal postfix typeName nlimbs =
-  [ "{-# NOINLINE mk" ++ postfix ++ " #-}"
-  , "mk" ++ postfix ++ " :: Integer -> IO " ++ typeName
-  , "mk" ++ postfix ++ " x = do"
+  [ "{-# NOINLINE unsafeMk" ++ postfix ++ " #-}"
+  , "unsafeMk" ++ postfix ++ " :: Integer -> IO " ++ typeName
+  , "unsafeMk" ++ postfix ++ " x = do"
   , "  fptr <- mallocForeignPtrArray " ++ show nlimbs
   , "  withForeignPtr fptr $ \\ptr -> do"
   , "    pokeArray ptr $ toWord64sLE' " ++ show nlimbs ++ " x"
@@ -160,9 +192,9 @@ ffiMarshal postfix typeName nlimbs =
   , "  ws <- withForeignPtr fptr $ \\ptr -> peekArray " ++ show nlimbs ++ " ptr "
   , "  return (fromWord64sLE ws)"
   , ""
-  , "{-# NOINLINE to" ++ postfix ++ " #-}"
-  , "to" ++ postfix ++ " :: Integer -> " ++ typeName ++ ""
-  , "to" ++ postfix ++ " x = unsafePerformIO (mk" ++ postfix ++ " x)"
+  , "{-# NOINLINE unsafeTo" ++ postfix ++ " #-}"
+  , "unsafeTo" ++ postfix ++ " :: Integer -> " ++ typeName ++ ""
+  , "unsafeTo" ++ postfix ++ " x = unsafePerformIO (unsafeMk" ++ postfix ++ " x)"
   , ""
   , "{-# NOINLINE from" ++ postfix ++ " #-}"
   , "from" ++ postfix ++ " :: " ++ typeName ++ " -> Integer"

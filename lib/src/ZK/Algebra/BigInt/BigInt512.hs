@@ -24,6 +24,9 @@ newtype BigInt512 = MkBigInt512 (ForeignPtr Word64)
 newtype BigInt1024 = MkBigInt1024 (ForeignPtr Word64)
 newtype BigInt576 = MkBigInt576 (ForeignPtr Word64)
 
+to :: Integer -> BigInt512
+to = unsafeTo
+
 zero, one, two :: BigInt512
 zero = small 0
 one  = small 1
@@ -97,9 +100,9 @@ toWord64sLE = go where
 toWord64sLE' :: Int -> Integer -> [Word64]
 toWord64sLE' len what = take len $ toWord64sLE what ++ repeat 0
 
-{-# NOINLINE mk #-}
-mk :: Integer -> IO BigInt512
-mk x = do
+{-# NOINLINE unsafeMk #-}
+unsafeMk :: Integer -> IO BigInt512
+unsafeMk x = do
   fptr <- mallocForeignPtrArray 8
   withForeignPtr fptr $ \ptr -> do
     pokeArray ptr $ toWord64sLE' 8 x
@@ -111,9 +114,9 @@ get (MkBigInt512 fptr) = do
   ws <- withForeignPtr fptr $ \ptr -> peekArray 8 ptr 
   return (fromWord64sLE ws)
 
-{-# NOINLINE to #-}
-to :: Integer -> BigInt512
-to x = unsafePerformIO (mk x)
+{-# NOINLINE unsafeTo #-}
+unsafeTo :: Integer -> BigInt512
+unsafeTo x = unsafePerformIO (unsafeMk x)
 
 {-# NOINLINE from #-}
 from :: BigInt512 -> Integer
@@ -192,17 +195,16 @@ sub (MkBigInt512 fptr1) (MkBigInt512 fptr2) = unsafePerformIO $ do
         c_bigint512_sub ptr1 ptr2 ptr3
   return (MkBigInt512 fptr3)
 
-foreign import ccall unsafe "bigint512_sqr_truncated" c_bigint512_sqr_truncated :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bigint512_sqr_truncated" c_bigint512_sqr_truncated :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sqr #-}
-sqr :: BigInt512 -> BigInt512 -> BigInt512
-sqr (MkBigInt512 fptr1) (MkBigInt512 fptr2) = unsafePerformIO $ do
-  fptr3 <- mallocForeignPtrArray 8
+sqr :: BigInt512 -> BigInt512
+sqr (MkBigInt512 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 8
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      withForeignPtr fptr3 $ \ptr3 -> do
-        c_bigint512_sqr_truncated ptr1 ptr2 ptr3
-  return (MkBigInt512 fptr3)
+      c_bigint512_sqr_truncated ptr1 ptr2
+  return (MkBigInt512 fptr2)
 
 foreign import ccall unsafe "bigint512_mul_truncated" c_bigint512_mul_truncated :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 

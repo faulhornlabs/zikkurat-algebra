@@ -24,6 +24,9 @@ newtype BigInt320 = MkBigInt320 (ForeignPtr Word64)
 newtype BigInt640 = MkBigInt640 (ForeignPtr Word64)
 newtype BigInt384 = MkBigInt384 (ForeignPtr Word64)
 
+to :: Integer -> BigInt320
+to = unsafeTo
+
 zero, one, two :: BigInt320
 zero = small 0
 one  = small 1
@@ -97,9 +100,9 @@ toWord64sLE = go where
 toWord64sLE' :: Int -> Integer -> [Word64]
 toWord64sLE' len what = take len $ toWord64sLE what ++ repeat 0
 
-{-# NOINLINE mk #-}
-mk :: Integer -> IO BigInt320
-mk x = do
+{-# NOINLINE unsafeMk #-}
+unsafeMk :: Integer -> IO BigInt320
+unsafeMk x = do
   fptr <- mallocForeignPtrArray 5
   withForeignPtr fptr $ \ptr -> do
     pokeArray ptr $ toWord64sLE' 5 x
@@ -111,9 +114,9 @@ get (MkBigInt320 fptr) = do
   ws <- withForeignPtr fptr $ \ptr -> peekArray 5 ptr 
   return (fromWord64sLE ws)
 
-{-# NOINLINE to #-}
-to :: Integer -> BigInt320
-to x = unsafePerformIO (mk x)
+{-# NOINLINE unsafeTo #-}
+unsafeTo :: Integer -> BigInt320
+unsafeTo x = unsafePerformIO (unsafeMk x)
 
 {-# NOINLINE from #-}
 from :: BigInt320 -> Integer
@@ -192,17 +195,16 @@ sub (MkBigInt320 fptr1) (MkBigInt320 fptr2) = unsafePerformIO $ do
         c_bigint320_sub ptr1 ptr2 ptr3
   return (MkBigInt320 fptr3)
 
-foreign import ccall unsafe "bigint320_sqr_truncated" c_bigint320_sqr_truncated :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bigint320_sqr_truncated" c_bigint320_sqr_truncated :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sqr #-}
-sqr :: BigInt320 -> BigInt320 -> BigInt320
-sqr (MkBigInt320 fptr1) (MkBigInt320 fptr2) = unsafePerformIO $ do
-  fptr3 <- mallocForeignPtrArray 5
+sqr :: BigInt320 -> BigInt320
+sqr (MkBigInt320 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 5
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      withForeignPtr fptr3 $ \ptr3 -> do
-        c_bigint320_sqr_truncated ptr1 ptr2 ptr3
-  return (MkBigInt320 fptr3)
+      c_bigint320_sqr_truncated ptr1 ptr2
+  return (MkBigInt320 fptr2)
 
 foreign import ccall unsafe "bigint320_mul_truncated" c_bigint320_mul_truncated :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
