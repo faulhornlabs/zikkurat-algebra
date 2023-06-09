@@ -29,6 +29,7 @@ Library
 
   Exposed-Modules:      Zikkurat.Generate
                         Zikkurat.CodeGen.PrimeField.StdRep
+                        Zikkurat.CodeGen.PrimeField.Montgomery
                         Zikkurat.CodeGen.BigInt
                         Zikkurat.CodeGen.FFI
                         Zikkurat.CodeGen.Misc

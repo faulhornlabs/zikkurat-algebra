@@ -3,7 +3,21 @@
 -- NOTE 2: Generated code, do not edit!
 
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
-module ZK.Algebra.BigInt.BigInt384 where
+module ZK.Algebra.BigInt.BigInt384
+  ( BigInt384(..)
+  , to
+  , from
+  , small , zero , one , two
+  , isZero , isOne , isEqual
+  , neg , add , sub
+  , sqr , mul
+  , shiftLeft1 , shiftRight1
+  , shiftLeft  , shiftRight
+  , sqrExt
+  , mulExt
+  , scaleExt
+  )
+  where
 
 --------------------------------------------------------------------------------
 
@@ -18,11 +32,9 @@ import Foreign.ForeignPtr
 import System.Random
 import System.IO.Unsafe
 
---------------------------------------------------------------------------------  
+import ZK.Algebra.BigInt.Types
 
-newtype BigInt384 = MkBigInt384 (ForeignPtr Word64)
-newtype BigInt768 = MkBigInt768 (ForeignPtr Word64)
-newtype BigInt448 = MkBigInt448 (ForeignPtr Word64)
+--------------------------------------------------------------------------------  
 
 to :: Integer -> BigInt384
 to = unsafeTo

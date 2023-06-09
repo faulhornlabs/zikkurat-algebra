@@ -3,6 +3,7 @@ module Zikkurat.Generate
   ( HsOrC(..)
   , generate_bigints
   , generate_primefields_std
+  , generate_primefields_montgomery
   ) 
   where
 
@@ -15,8 +16,9 @@ import System.Environment
 import System.FilePath
 import System.Directory
 
-import qualified Zikkurat.CodeGen.BigInt            as BigInt
-import qualified Zikkurat.CodeGen.PrimeField.StdRep as FpStd
+import qualified Zikkurat.CodeGen.BigInt                as BigInt
+import qualified Zikkurat.CodeGen.PrimeField.StdRep     as FpStd
+import qualified Zikkurat.CodeGen.PrimeField.Montgomery as FpMont
 
 import Zikkurat.CodeGen.Misc ( HsOrC(..) )
 import Zikkurat.Primes
@@ -48,6 +50,38 @@ generate_bigints hsOrC tgtdir = do
           
 --------------------------------------------------------------------------------
 
+data StdOrMont
+  = Std
+  | Mont
+  deriving (Eq,Show)
+
+stdMontStringReplace :: StdOrMont -> String -> String
+stdMontStringReplace stdOrMont = go where
+  high = show stdOrMont
+  low  = map toLower high
+  go ('^':'^':'^':rest) = high ++ go rest
+  go (',':',':',':rest) = low  ++ go rest
+  go (ch:rest)          = ch    : go rest
+  go []                 = []
+
+primefiledListReplace1 :: StdOrMont -> ([String],[String],Integer) -> ([String],[String],Integer)
+primefiledListReplace1 stdOrMont (hpath,cpath,p) = (hpath',cpath',p) where
+  hpath' = map (stdMontStringReplace stdOrMont) hpath
+  cpath' = map (stdMontStringReplace stdOrMont) cpath
+
+primefiledListReplace :: StdOrMont -> [([String],[String],Integer)] -> [([String],[String],Integer)]
+primefiledListReplace stdOrMont = map (primefiledListReplace1 stdOrMont)
+
+-- NOTE: "^^^" denotes "Std" or "Mont", while ",,," denotes "std" or "mont"
+-- (we cannot use ___ for the obvious reasons.....)
+primefield_list = 
+  [ ( ["Curves", "BN128"    , "^^^", "Fp"] , ["curves", "fields", ",,,", "bn128_p_,,,"    ] , bn128_base_p       ) 
+  , ( ["Curves", "BN128"    , "^^^", "Fr"] , ["curves", "fields", ",,,", "bn128_r_,,,"    ] , bn128_scalar_r     )
+  , ( ["Curves", "BLS12_381", "^^^", "Fp"] , ["curves", "fields", ",,,", "bls12_381_p_,,,"] , bls12_381_base_p   ) 
+  , ( ["Curves", "BLS12_381", "^^^", "Fr"] , ["curves", "fields", ",,,", "bls12_381_r_,,,"] , bls12_381_scalar_r )
+  ]
+
+{-
 primefield_list_std = 
   [ ( ["Curves", "BN128"    , "Std", "Fp"] , ["curves", "fields", "std", "bn128_p_std"    ] , bn128_base_p       ) 
   , ( ["Curves", "BN128"    , "Std", "Fr"] , ["curves", "fields", "std", "bn128_r_std"    ] , bn128_scalar_r     )
@@ -55,8 +89,20 @@ primefield_list_std =
   , ( ["Curves", "BLS12_381", "Std", "Fr"] , ["curves", "fields", "std", "bls12_381_r_std"] , bls12_381_scalar_r )
   ]
 
+primefield_list_montgomery = 
+  [ ( ["Curves", "BN128"    , "Mont", "Fp"] , ["curves", "fields", "mont", "bn128_p_mont"    ] , bn128_base_p       ) 
+  , ( ["Curves", "BN128"    , "Mont", "Fr"] , ["curves", "fields", "mont", "bn128_r_mont"    ] , bn128_scalar_r     )
+  , ( ["Curves", "BLS12_381", "Mont", "Fp"] , ["curves", "fields", "mont", "bls12_381_p_mont"] , bls12_381_base_p   ) 
+  , ( ["Curves", "BLS12_381", "Mont", "Fr"] , ["curves", "fields", "mont", "bls12_381_r_mont"] , bls12_381_scalar_r )
+  ]
+-}
+
+----------------------------------------
+
 generate_primefields_std :: HsOrC -> FilePath -> IO ()
 generate_primefields_std hsOrC tgtdir0 = do
+
+  let primefield_list_std = primefiledListReplace Std primefield_list
 
   forM_ primefield_list_std $ \(hpath,cpath,prime) -> do
 
@@ -94,3 +140,53 @@ generate_primefields_std hsOrC tgtdir0 = do
       Hs -> FpStd.primefield_std_hs_codegen tgtdir params
 
 --------------------------------------------------------------------------------
+
+generate_primefields_montgomery :: HsOrC -> FilePath -> IO ()
+generate_primefields_montgomery hsOrC tgtdir0 = do
+
+  let primefield_list_std  = primefiledListReplace Std  primefield_list
+  let primefield_list_mont = primefiledListReplace Mont primefield_list
+
+  forM_ (zip primefield_list_std primefield_list_mont) $ \( (hpath_std,cpath_std,_) , (hpath,cpath,prime) ) -> do
+
+    let ctgtdir = foldl1 (</>) (tgtdir0 : init cpath)
+    let htgtdir = foldl1 (</>) (tgtdir0 : init hpath)
+  
+    let tgtdir = case hsOrC of 
+          C  -> ctgtdir
+          Hs -> htgtdir
+  
+    createDirectoryIfMissing True tgtdir
+  
+    let nlimbs = nlimbsRequired prime
+    let nbits  = 64*nlimbs
+
+    let bigint_    = "bigint" ++ show nbits ++ "_"
+    let bigintType = "BigInt" ++ show nbits 
+    let hs_module      = "ZK.Algebra." ++ (concat $ map (++".") $ init hpath    )
+    let hs_module_std  = "ZK.Algebra." ++ (concat $ map (++".") $ init hpath_std)
+
+    let params = FpMont.Params 
+          { FpMont.prefix         = last cpath     ++ "_"     -- prefix for C names
+          , FpMont.stdPrefix      = last cpath_std ++ "_"     -- prefix for the C names of standard repr. version
+          , FpMont.nlimbs         = nlimbs                    -- number of 64-bit limbs
+          , FpMont.thePrime       = prime                     -- the prime
+          , FpMont.bigint_        = bigint_                   -- the corresponding bigint prefix, like "bigint256_"
+          , FpMont.c_basename     = last cpath                -- name of the @.c@ / @.h@ file (without extension)
+          , FpMont.c_stdBasename  = last cpath_std            -- name of the @.c@ / @.h@ file (without extension)
+          , FpMont.hs_basename    = last hpath                -- the name of the @.hs@ file (without extension) and the type too
+          , FpMont.hs_module      = hs_module                 -- the module path
+          , FpMont.hs_stdModule   = hs_module_std             -- the module path
+          , FpMont.typeName       = last hpath                -- the name of the haskell type
+          , FpMont.bigintType     = bigintType                -- the name of the haskell type of the corresponding BigInt
+          }
+
+    -- print params
+    case hsOrC of 
+      C  -> FpMont.primefield_Montgomery_c_codegen  tgtdir params
+      Hs -> FpMont.primefield_Montgomery_hs_codegen tgtdir params
+
+--------------------------------------------------------------------------------
+
+
+

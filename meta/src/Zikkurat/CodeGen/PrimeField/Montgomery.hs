@@ -1,8 +1,8 @@
 
--- | Prime fields in standard representation
+-- | Prime fields in Montgomery representation
 
 {-# LANGUAGE BangPatterns, NumericUnderscores, RecordWildCards #-}
-module Zikkurat.CodeGen.PrimeField.StdRep where
+module Zikkurat.CodeGen.PrimeField.Montgomery where
 
 --------------------------------------------------------------------------------
 
@@ -20,15 +20,18 @@ import Zikkurat.Primes -- ( integerLog2 )
 --------------------------------------------------------------------------------
 
 data Params = Params 
-  { prefix      :: String       -- ^ prefix for C names
-  , nlimbs      :: Int          -- ^ number of 64-bit limbs
-  , thePrime    :: Integer      -- ^ the prime
-  , bigint_     :: String       -- ^ the corresponding bigint prefix, like "bigint256_"
-  , c_basename  :: FilePath     -- ^ name of the @.c@ / @.h@ file (without extension)
-  , hs_basename :: FilePath     -- ^ the name of the @.hs@ file (without extension) and the type too
-  , hs_module   :: String       -- ^ the module path
-  , typeName    :: String       -- ^ the name of the haskell type
-  , bigintType  :: String       -- ^ the name of the haskell type of the corresponding BigInt
+  { prefix        :: String       -- ^ prefix for C names
+  , stdPrefix     :: String       -- ^ perfix for the C names of standard repr. version
+  , nlimbs        :: Int          -- ^ number of 64-bit limbs
+  , thePrime      :: Integer      -- ^ the prime
+  , bigint_       :: String       -- ^ the corresponding bigint prefix, like "bigint256_"
+  , c_basename    :: FilePath     -- ^ name of the @.c@ / @.h@ file (without extension)
+  , c_stdBasename :: FilePath     -- ^ same but for the standard repr. version
+  , hs_basename   :: FilePath     -- ^ the name of the @.hs@ file (without extension) and the type too
+  , hs_module     :: String       -- ^ the module path
+  , hs_stdModule  :: String       -- ^ the module path of the std. repr. version
+  , typeName      :: String       -- ^ the name of the haskell type
+  , bigintType    :: String       -- ^ the name of the haskell type of the corresponding BigInt
   }
   deriving Show
 
@@ -38,32 +41,29 @@ c_header :: Params -> Code
 c_header (Params{..}) =
   [ "#include <stdint.h>"
   , ""
-  , "extern void " ++ prefix ++ "neg( const uint64_t *src , uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "sqr( const uint64_t *src , uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "inv( const uint64_t *src1, uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "div( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "from_std   ( const uint64_t *src ,       uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "to_std     ( const uint64_t *src ,       uint64_t *tgt );"
   , ""
-  , "extern void " ++ prefix ++ "neg_inplace( uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "add_inplace( uint64_t *tgt, const uint64_t *src2 );"
-  , "extern void " ++ prefix ++ "sub_inplace( uint64_t *tgt, const uint64_t *src2 );"
-  , "extern void " ++ prefix ++ "sqr_inplace( uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "mul_inplace( uint64_t *tgt, const uint64_t *src2 );"
-  , "extern void " ++ prefix ++ "inv_inplace( uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "div_inplace( uint64_t *tgt, const uint64_t *src2 );"
+  , "extern void " ++ prefix ++ "neg        ( const uint64_t *src ,       uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "add        ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "sub        ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "sqr        ( const uint64_t *src ,       uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "mul        ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "inv        ( const uint64_t *src ,       uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "div        ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , ""
-  , "extern void " ++ prefix ++ "sub_inplace_reverse( uint64_t *tgt, const uint64_t *src1 );"
+  , "extern void " ++ prefix ++ "neg_inplace(       uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "sub_inplace(       uint64_t *tgt , const uint64_t *src2 );"
+  , "extern void " ++ prefix ++ "add_inplace(       uint64_t *tgt , const uint64_t *src2 );"
+  , "extern void " ++ prefix ++ "sqr_inplace(       uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "mul_inplace(       uint64_t *tgt , const uint64_t *src2);"
+  , "extern void " ++ prefix ++ "inv_inplace(       uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "div_inplace(       uint64_t *tgt , const uint64_t *src2 );"
   , ""
-  , "extern void " ++ prefix ++ "div_by_2           ( const uint64_t *src , uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "div_by_2_inplace   ( uint64_t *tgt );"
-  , ""
-  , "extern void " ++ prefix ++ "reduce_modp     ( const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "sub_inplace_reverse ( uint64_t *tgt , const uint64_t *src1 );"
   , ""
   , "extern void " ++ prefix ++ "pow_uint64( const uint64_t *src,       uint64_t  exponent, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "pow_gen   ( const uint64_t *src, const uint64_t *expo    , uint64_t *tgt, int expo_len );"
-  , ""
   ]
 
 hsBegin :: Params -> Code
@@ -72,19 +72,19 @@ hsBegin (Params{..}) =
   , "-- NOTE 2: Generated code, do not edit!"
   , ""
   , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}"
-  , "module " ++ hs_module ++ hs_basename  
+  , "module " ++ hs_module ++ hs_basename 
   , "  ( " ++ typeName ++ "(..)"
   , "  , prime"
-  , "  , to" ++ postfix 
-  , "  , from" ++ postfix 
-  , "  , small , zero , one , two"
+  , "  , to"    ++ postfix ++ " , from"    ++ postfix 
+  , "  , toStd" ++ postfix ++ " , fromStd" ++ postfix
+  , "  , zero , one , two"
   , "  , isZero , isOne , isEqual"
   , "  , neg , add , sub"
   , "  , sqr , mul"
-  , "  , inv , div , div_by_2"
+  , "  , inv , div"
   , "  , pow , pow_"
   , "  )"  
-  , "  where"
+  , "  where"  
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -103,6 +103,7 @@ hsBegin (Params{..}) =
   , "import System.IO.Unsafe"
   , ""
   , "import ZK.Algebra.BigInt." ++ bigintType ++ "( " ++ bigintType ++ "(..) )"
+  , "import qualified " ++ hs_stdModule ++ hs_basename ++ " as Std"
   , ""
   , "--------------------------------------------------------------------------------  "
   , ""
@@ -112,12 +113,15 @@ hsBegin (Params{..}) =
   , "prime = " ++ show thePrime
   , ""
   , "to" ++ postfix ++ " :: Integer -> " ++ typeName
-  , "to" ++ postfix ++ " x = unsafeTo" ++ postfix ++ " (mod x prime)"
+  , "to" ++ postfix ++ " = fromStd" ++ postfix ++ " . Std.to" ++ postfix 
+  , ""
+  , "from" ++ postfix ++ " :: " ++ typeName ++ " -> Integer"
+  , "from" ++ postfix ++ " = Std.from" ++ postfix ++ " . toStd" ++ postfix
   , ""
   , "zero, one, two :: " ++ typeName
-  , "zero = small 0"
-  , "one  = small 1"
-  , "two  = small 2"
+  , "zero = to" ++ postfix ++ " 0"
+  , "one  = to" ++ postfix ++ " 1"
+  , "two  = to" ++ postfix ++ " 2"
   , ""
   , "instance Eq " ++ typeName ++ " where"
   , "  (==) = isEqual"
@@ -141,6 +145,28 @@ hsBegin (Params{..}) =
   , ""
   , "----------------------------------------"
   , ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "from_std\" c_" ++ prefix ++ "from_std :: Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "{-# NOINLINE fromStd" ++ postfix ++ "#-}"
+  , "fromStd" ++ postfix ++ " :: Std." ++ typeName ++ " -> " ++ typeName 
+  , "fromStd" ++ postfix ++ " (Std.Mk" ++ typeName ++ " fptr1) = unsafePerformIO $ do"
+  , "  fptr2 <- mallocForeignPtrArray " ++ show (nlimbs)
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      c_" ++ prefix ++ "from_std ptr1 ptr2"
+  , "  return (Mk" ++ typeName ++ " fptr2)"
+  , ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "to_std\" c_" ++ prefix ++ "to_std :: Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "{-# NOINLINE toStd" ++ postfix ++ "#-}"
+  , "toStd" ++ postfix ++ " :: " ++ typeName ++ " -> Std." ++ typeName 
+  , "toStd" ++ postfix ++ " (Mk" ++ typeName ++ " fptr1) = unsafePerformIO $ do"
+  , "  fptr2 <- mallocForeignPtrArray " ++ show (nlimbs)
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      c_" ++ prefix ++ "to_std ptr1 ptr2"
+  , "  return (Std.Mk" ++ typeName ++ " fptr2)"
+  , ""
   , "foreign import ccall unsafe \"" ++ prefix ++ "pow_gen\" c_" ++ prefix ++ "pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
   , ""
   , "{-# NOINLINE pow #-}"
@@ -160,8 +186,8 @@ hsBegin (Params{..}) =
 
 ------------------------------
 
-hsConvert :: Params -> Code
-hsConvert (Params{..}) = ffiMarshal "" typeName nlimbs 
+-- hsConvert :: Params -> Code
+-- hsConvert (Params{..}) = ffiMarshal "" typeName nlimbs 
 
 hsFFI :: Params -> Code
 hsFFI (Params{..}) = catCode $ 
@@ -169,8 +195,9 @@ hsFFI (Params{..}) = catCode $
   , mkffi "isOne"       $ cfun_ "is_one"          (CTyp [CArgInPtr                          ] CRetBool)
   , mkffi "isEqual"     $ cfun_ "is_equal"        (CTyp [CArgInPtr , CArgInPtr              ] CRetBool)
     --
-  , mkffi "small"       $ cfun_ "set_small"       (CTyp [CArgOutPtr, CArg64                 ] CRetVoid)
-    -- 
+--  , mkffi "fromStd"     $ cfun "from_std"         (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
+--  , mkffi "toStd"       $ cfun "to_std"           (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
+    --
   , mkffi "neg"         $ cfun "neg"              (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
   , mkffi "add"         $ cfun "add"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
   , mkffi "sub"         $ cfun "sub"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
@@ -179,7 +206,6 @@ hsFFI (Params{..}) = catCode $
   , mkffi "inv"         $ cfun "inv"              (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
   , mkffi "div"         $ cfun "div"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
     --
-  , mkffi "div_by_2"    $ cfun "div_by_2"         (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
   , mkffi "pow_"        $ cfun "pow_uint64"       (CTyp [CArgInPtr , CArg64    , CArgOutPtr ] CRetVoid)
   ]
   where
@@ -196,7 +222,7 @@ hsFFI (Params{..}) = catCode $
 
 c_begin :: Params -> Code
 c_begin (Params{..}) =
-  [ "// finite field arithmetic (standard representation) in the prime field with "
+  [ "// finite field arithmetic in Montgomery representation, in the prime field with "
   , "//"
   , "//   p = " ++ show thePrime
   , "//"
@@ -205,27 +231,34 @@ c_begin (Params{..}) =
   , "#include <string.h>"
   , "#include <stdint.h>"
   , "#include <x86intrin.h>"
-  , "#include \"" ++ c_basename ++ ".h\""
+  , "#include \"" ++ c_basename    ++ ".h\""
+  , "#include \"" ++ c_stdBasename ++ ".h\""
   , "#include \"bigint" ++ show (64*nlimbs) ++ ".h\""
   , ""
   , "#define NLIMBS " ++ show nlimbs
   , ""
   , mkConst nlimbs (prefix ++ "prime") thePrime
   , ""
+  , "inline uint8_t addcarry_u128_inplace(  uint64_t *tgt_lo, uint64_t *tgt_hi, uint64_t arg_lo, uint64_t arg_hi) {"
+  , "  uint8_t c;"
+  , "  c = _addcarry_u64( 0, *tgt_lo, arg_lo, tgt_lo );"
+  , "  c = _addcarry_u64( c, *tgt_hi, arg_hi, tgt_hi );"
+  , "  return c;"
+  , "}"
+  , ""
   , "//------------------------------------------------------------------------------"
   ] 
 
 --------------------------------------------------------------------------------
--- * addition / subtraction
+-- * addition / subtraction 
+
+-- these are the same as the standard representation
+-- but replicated here for possibly better optimization opportunities 
+-- after all Montgomery repr. operations are most of the operations
 
 addPrime :: Params -> Code
 addPrime Params{..} = 
-  [ "// adds the prime p to a bigint"
-  , "uint8_t " ++ prefix ++ "" ++ bigint_ ++ "add_prime( const uint64_t *src, uint64_t *tgt ) {"
-  , "  return " ++ bigint_ ++ "add( src, " ++ prefix ++ "prime, tgt );"
-  , "}"
-  , ""
-  , "// adds the prime p to a bigint, inplace"
+  [ "// adds the prime p to a bigint, inplace"
   , "uint8_t " ++ prefix ++ "" ++ bigint_ ++ "add_prime_inplace( uint64_t *tgt ) {"
   , "  return " ++ bigint_ ++ "add_inplace( tgt, " ++ prefix ++ "prime);"
   , "}"
@@ -241,12 +274,7 @@ addPrime Params{..} =
 
 subPrime :: Params -> Code
 subPrime Params{..} = 
-  [ "// subtracts the prime p from a bigint"
-  , "uint8_t " ++ prefix ++ "" ++ bigint_ ++ "sub_prime( const uint64_t *src, uint64_t *tgt ) {"
-  , "  return " ++ bigint_ ++ "sub( src, " ++ prefix ++ "prime, tgt );"
-  , "}"
-  , ""
-  , "// subtracts the prime p from a bigint, inplace"
+  [ "// subtracts the prime p from a bigint, inplace"
   , "uint8_t " ++ prefix ++ "" ++ bigint_ ++ "sub_prime_inplace( uint64_t *tgt ) {"
   , "  return " ++ bigint_ ++ "sub_inplace( tgt, " ++ prefix ++ "prime);"
   , "}"
@@ -344,97 +372,209 @@ subField Params{..} =
   , "}"
   ]
 
-
-mulField :: Params -> Code
-mulField Params{..} = 
-  [ "// squares a field elements"
-  , "void " ++ prefix ++ "sqr( const uint64_t *src, uint64_t *tgt ) {"
-  , "  uint64_t prod[" ++ show (2*nlimbs) ++ "];"
-  , "  " ++ bigint_ ++ "sqr( src, prod );"
-  , "  " ++ prefix ++ "reduce_modp( prod, tgt );"
-  , "}"
-  , ""
-  , "void f" ++ prefix ++ "sqr_inplace( uint64_t *tgt ) {"
-  , "  uint64_t prod[" ++ show (2*nlimbs) ++ "];"
-  , "  " ++ bigint_ ++ "sqr( tgt, prod );"
-  , "  " ++ prefix ++ "reduce_modp( prod, tgt );"
-  , "}"
-  , ""
-  , "// multiplies two field elements"
-  , "void " ++ prefix ++ "mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
-  , "  uint64_t prod[" ++ show (2*nlimbs) ++ "];"
-  , "  " ++ bigint_ ++ "mul( src1, src2, prod );"
-  , "  " ++ prefix ++ "reduce_modp( prod, tgt );"
-  , "}"
-  , ""
-  , "void " ++ prefix ++ "mul_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
-  , "  uint64_t prod[" ++ show (2*nlimbs) ++ "];"
-  , "  " ++ bigint_ ++ "mul( tgt, src2, prod );"
-  , "  " ++ prefix ++ "reduce_modp( prod, tgt );"
-  , "}"
-  ]
-
 --------------------------------------------------------------------------------
--- * reduction mod p
 
-reduceBigInt :: Params -> Code
-reduceBigInt Params{..} = the_constants ++
-  [ " // reduces a number of size " ++ show (2*nlimbs) ++ " limbs modulo p"
-  , " // similar the Barret reduction (?)"
-  , "void " ++ prefix ++ "reduce_modp( const uint64_t *src, uint64_t *tgt ) {"
-  , "  uint64_t tmp1[" ++ show (nlimbs+1) ++ "];"
-  , "  uint64_t tmp2[" ++ show (nlimbs+1) ++ "];"
-  , "  for(int k=0; k<" ++ show safe  ++ "; k++) { tgt[k] = src[k]; }"
-  , "  for(int k=" ++ show safe ++ "; k<" ++ show    nlimbs  ++ "; k++) { tgt[k] = 0; }"
-  , "  for(int m=" ++ show safe ++ "; m<" ++ show (2*nlimbs) ++ "; m++) {"
-  , "    " ++ bigint_ ++ "scale( src[m], " ++ prefix ++ "mps_table + " ++ show nlimbs ++ "*m, tmp1 );"
-  , "    __uint128_t q = src[m];"
-  , "    q = q * " ++ prefix ++ "qps_table[m];    // this is `2^(64m) * src[m] / p` in 64-bit fixed-point form"
-  , "    " ++ bigint_ ++ "scale( (uint64_t)(q>>64), " ++ prefix ++ "prime, tmp2 );"
-  , "    uint8_t b = " ++ bigint_ ++ "sub_inplace_gen( tmp1, tmp2, " ++ show (nlimbs+1) ++ " );"
-  , "    if (b) { " ++ bigint_ ++ "add_prime_inplace( tmp1 ); }"
-  , "    " ++ prefix ++ "add_inplace( tgt , tmp1);"
+data Montgomery = Montgomery 
+  { montP  :: Integer         -- the prime
+  , montR  :: Integer         -- eg. 2^192
+  , montB  :: Integer         -- always 2^64
+  , montQ  :: Word64          -- Q*P+1 mod B == 0
+  , montR1 :: Integer         -- R   mod P
+  , montR2 :: Integer         -- R^2 mod P
+  , montR3 :: Integer         -- R^3 mod P
+  }
+  deriving Show
+
+powMod :: Integer -> Integer -> Prime -> Integer
+powMod base expo p 
+  | expo >= 0  = go 1 (mod base p) expo 
+  | otherwise  = error "powMod: expecting non-negative exponent"
+  where
+    go !acc !t  0 = acc
+    go !acc !t !e = case e .&. 1 of
+      0 -> go       acc       (mod (t*t) p) (shiftR e 1)
+      1 -> go (mod (acc*t) p) (mod (t*t) p) (shiftR e 1)
+
+precalcMontgomery :: Prime -> Montgomery
+precalcMontgomery p
+  | ok         = final
+  | otherwise  = error "precalcMontgomery: sanity check failed!"
+  where
+    k = nlimbsRequired p
+    r = 2^(64*k)
+    b = 2^64
+    
+    -- we assume b is a power of two and p is odd
+    -- EulerPhi[2^64] == 2^63
+    q = powMod (mod (-p) b) (div b 2 - 1) b   
+
+    ok = mod (q*p + 1) b == 0
+
+    r1 = mod  r      p
+    r2 = mod (r*r)   p 
+    r3 = mod (r*r*r) p
+
+    final = Montgomery
+      { montP  = p
+      , montR  = r
+      , montB  = b
+      , montQ  = fromInteger q
+      , montR1 = r1
+      , montR2 = r2 
+      , montR3 = r3
+      }
+
+montREDC :: Params -> Code
+montREDC Params{..} = 
+  [ "// Montgomery constants R, R^2, R^3 mod P"
+  , mkConst nlimbs (prefix ++ "R_modp"   ) (montR1 mont)
+  , mkConst nlimbs (prefix ++ "R_squared") (montR2 mont)
+  , mkConst nlimbs (prefix ++ "R_cubed"  ) (montR3 mont)
+  , ""
+  , "// Montgomery reduction REDC algorithm"
+  , "// based on <https://en.wikipedia.org/wiki/Montgomery_modular_multiplication>"
+  , "// T is " ++ show (2*nlimbs+1) ++ " sized bigint in Montgomery representation,"
+  , "// and assumed to be < 2^" ++ show (64*nlimbs) ++ "*p"
+  , "// WARNING: the value in T which will be overwritten!"
+  , "//"
+  , "void " ++ prefix ++ "REDC_unsafe( uint64_t *T, uint64_t *tgt ) {"
+  , "  T[" ++ show (2*nlimbs) ++ "] = 0;"
+  , "  for(int i=0; i<" ++ show nlimbs ++ "; i++) {"
+  , "    __uint128_t x;"
+  , "    uint64_t c;"
+  , "    uint64_t m = T[i] * " ++ showHex64 (montQ mont) ++ ";"
+  ] ++ concat
+  [ [ "    // j = " ++ show j
+    , "    x = ((__uint128_t)m) * " ++ prefix ++ "prime[" ++ show j ++ "] + T[i+" ++ show j ++ "]" ++ (if (j>0) then " + c" else "") ++ ";    // note: cannot overflow in 128 bits"
+    , "    c = x >> 64;"
+    , "    T[i+" ++ show j ++ "] = (uint64_t) x;"
+    ]
+  | j <- [0..nlimbs-1]
+  ] ++
+  [ "    uint8_t d = _addcarry_u64( 0 , T[i+" ++ show nlimbs ++ "] , c , T+i+" ++ show nlimbs ++ " );"
+  , "    for(int j=" ++ show (nlimbs+1) ++ "; (d>0) && (j<=" ++ show (2*nlimbs) ++ "-i); j++) {"
+  , "      d = _addcarry_u64( d , T[i+j] , 0 , T+i+j );"
+  , "    }"
   , "  }"
+  , "  memcpy( tgt, T+" ++ show nlimbs ++ ", " ++ show (nlimbs*8) ++ ");"
+  , "  " ++ prefix ++ "" ++ bigint_ ++ "sub_prime_if_above_inplace(tgt);"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "REDC( const uint64_t *src, uint64_t *tgt ) {"
+  , "  uint64_t T[" ++ show (2*nlimbs+1) ++ "];"
+  , "  memcpy( T, src, " ++ show (8*2*nlimbs) ++ " );"
+  , "  " ++ prefix ++ "REDC_unsafe ( T, tgt );"
   , "}"
   ]
   where
-    p  = thePrime
-    ws = toWord64sLE p
+    mont = precalcMontgomery thePrime
 
-    -- the number of limbs which, even multiplied by 2^64 are still strictly less than p
-    -- we write the input as a sum `(2^(64m)*z_m)`, we don't have to do anything with
-    -- the lowest `safe` limbs 
-    safe = div (integerLog2 (p-1) - 64) 64
+--------------------------------------------------------------------------------
 
-    mps = [ 2^(64*m) `mod` p  | m<-[0..2*nlimbs-1] ]     -- mp = 2^(64m) modulo p 
-    qps = [ (2^64*mp + p-1) `div` p | mp <- mps ]        -- qp = mp/p in 64-bit fixpont representations (ceil)
+{-
+montAddSub :: Params -> Code
+montAddSub p =
+  [ "void " ++ prefix ++ "neg( const uint64_t *src, uint64_t *tgt ) {"
+  , "  field_neg( src, tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "neg_inplace( uint64_t *tgt ) {"
+  , "  field_neg_inplace( tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  field_add( src1, src2, tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "add_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
+  , "  field_add_inplace( tgt, src2 );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  field_sub( src1, src2, tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "sub_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
+  , "  field_sub_inplace( tgt, src2 );"
+  , "}"
+  ]
+-}
 
-    the_constants = 
-      [ "// table of `ceil(2^64 * (2^(64*m) mod p) / p)`"
-      , "static const uint64_t " ++ prefix ++ "qps_table[" ++ show (2*nlimbs) ++ "] = { " 
-          ++ intercalate ", " (map (showHex64 . fromInteger) qps) ++ " };"
-      , ""
-      , "// table of `2^(64*m) mod p`"
-      , "static const uint64_t " ++ prefix ++ "mps_table[" ++ show (nlimbs*(2*nlimbs)) ++ "] = { " 
-      ] ++
-      [ intercalate ", " (map showHex64 $ toWord64sLE' nlimbs mp) ++ ","
-      | mp <- mps 
-      ] ++
-      [ "};"
-      , "" 
-      ]
+montMul :: Params -> Code
+montMul Params{..} =
+  [ "void " ++ prefix ++ "sqr( const uint64_t *src, uint64_t *tgt) {"
+  , "  uint64_t T[" ++ show (2*nlimbs+1) ++ "];"
+  , "  " ++ bigint_ ++ "sqr( src, T );"
+  , "  " ++ prefix ++ "REDC_unsafe( T, tgt );"
+  , "};"
+  , ""
+  , "void " ++ prefix ++ "sqr_inplace( uint64_t *tgt ) {"
+  , "  uint64_t T[" ++ show (2*nlimbs+1) ++ "];"
+  , "  " ++ bigint_ ++ "sqr( tgt, T );"
+  , "  " ++ prefix ++ "REDC_unsafe( T, tgt );"
+  , "};"
+  , ""
+  , "void " ++ prefix ++ "mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt) {"
+  , "  uint64_t T[" ++ show (2*nlimbs+1) ++ "];"
+  , "  " ++ bigint_ ++ "mul( src1, src2, T );"
+  , "  " ++ prefix ++ "REDC_unsafe( T, tgt );"
+  , "};"
+  , ""
+  , "void " ++ prefix ++ "mul_inplace( uint64_t *tgt, const uint64_t *src2) {"
+  , "  uint64_t T[" ++ show (2*nlimbs+1) ++ "];"
+  , "  " ++ bigint_ ++ "mul( tgt, src2, T );"
+  , "  " ++ prefix ++ "REDC_unsafe( T, tgt );"
+  , "};"
+  ]
+
+montInv :: Params -> Code
+montInv Params{..} =
+  [ "void " ++ prefix ++ "inv( const uint64_t *src, uint64_t *tgt) {"
+  , "  " ++ stdPrefix ++ "inv( src, tgt );"
+  , "  " ++ prefix ++ "mul_inplace( tgt, " ++ prefix ++ "R_cubed );"
+  , "};"
+  , ""
+  , "void " ++ prefix ++ "inv_inplace( uint64_t *tgt ) {"
+  , "  " ++ stdPrefix ++ "inv_inplace( tgt );"
+  , "  " ++ prefix ++ "mul_inplace( tgt, " ++ prefix ++ "R_cubed );"
+  , "};"
+  , ""
+  , "void " ++ prefix ++ "div( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt) {"
+  , "  " ++ stdPrefix ++ "div( src1, src2, tgt );"
+  , "  " ++ prefix ++ "mul_inplace( tgt, " ++ prefix ++ "R_squared );"
+  , "};"
+  , ""
+  , "void " ++ prefix ++ "div_inplace( uint64_t *tgt, const uint64_t *src2) {"
+  , "  " ++ stdPrefix ++ "div_inplace( tgt, src2 );"
+  , "  " ++ prefix ++ "mul_inplace( tgt, " ++ prefix ++ "R_squared );"
+  , "};"
+  ]
+
+montConvert :: Params -> Code
+montConvert Params{..} =
+  [ "void " ++ prefix ++ "from_std( const uint64_t *src, uint64_t *tgt) {"
+  , "  " ++ prefix ++ "mul( src, " ++ prefix ++ "R_squared, tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "to_std( const uint64_t *src, uint64_t *tgt) {"
+  , "  uint64_t T[" ++ show (2*nlimbs+1) ++ "];"
+  , "  memcpy( T, src, " ++ show (8*nlimbs) ++ ");"
+  , "  memset( T+" ++ show nlimbs ++ ", 0, " ++ show (8*nlimbs) ++ ");"
+  , "  " ++ prefix ++ "REDC_unsafe( T, tgt );"
+  , "};"
+  ]
 
 --------------------------------------------------------------------------------
 -- * exponentiation
 
-powField :: Params -> Code
-powField Params{..} = 
+montPow :: Params -> Code
+montPow Params{..} = 
   [ "// computes `x^e mod p`"
   , "void " ++ prefix ++ "pow_uint64( const uint64_t *src, uint64_t exponent, uint64_t *tgt ) {"
   , "  uint64_t e = exponent;"
   , "  uint64_t sqr[" ++ show nlimbs ++ "];"
   , "  " ++ bigint_ ++ "copy( src, sqr );             // sqr := src"
-  , "  " ++ bigint_ ++ "set_one( tgt );                     // tgt := 1"
+  , "  " ++ bigint_ ++ "copy( " ++ prefix ++ "R_modp, tgt );          // tgt := 1"
   , "  while(e!=0) {"
   , "    if (e & 1) { " ++ prefix ++ "mul_inplace(tgt, sqr); }"
   , "    " ++ prefix ++ "mul_inplace(sqr, sqr);"
@@ -446,7 +586,7 @@ powField Params{..} =
   , "void " ++ prefix ++ "pow_gen( const uint64_t *src, const uint64_t *expo, uint64_t *tgt, int expo_len ) {"
   , "  uint64_t sqr[" ++ show nlimbs ++ "];"
   , "  " ++ bigint_ ++ "copy( src, sqr );             // sqr := src"
-  , "  " ++ bigint_ ++ "set_one( tgt );                     // tgt := 1"
+  , "  " ++ bigint_ ++ "copy( " ++ prefix ++ "R_modp, tgt );        // tgt := 1"
   , "  int s = expo_len - 1;"
   , "  while (expo[s] == 0) { s--; }          // skip the unneeded largest powers"
   , "  for(int i=0; i<=s; i++) {"
@@ -460,124 +600,6 @@ powField Params{..} =
   , "}"
   ]
  
---------------------------------------------------------------------------------
--- * modular inverse
-
-invField :: Params -> Code
-invField Params{..} = 
-  [ "// `(p+1) / 2 = (div p 2) + 1`"
-  , mkConst nlimbs (prefix ++ "half_p_plus_1") (div (thePrime+1) 2)
-  , ""
-  , "// multiply by the inverse of 2"
-  , "// if the input is of the form `2k` then we just shift right"
-  , "// if the input is of the form `2k+1`, then:"
-  , "//   (2k+1)/2 = (2k+1+p)/2 = (2k+(p+1))/2 = k + (p+1)/2"
-  , "// also the latter addition will never overflow."
-  , "//"
-  , "void " ++ prefix ++ "div_by_2( const uint64_t *src, uint64_t *tgt ) {"
-  , "  uint8_t odd = " ++ bigint_ ++ "shift_right_by_1(src, tgt);"
-  , "  if (odd) { " ++ bigint_ ++ "add_inplace(tgt, " ++ prefix ++ "half_p_plus_1); }"
-  , "}"
-  , ""
-  , "void " ++ prefix ++ "div_by_2_inplace( uint64_t *tgt ) {"
-  , "  uint8_t odd = " ++ bigint_ ++ "shift_right_by_1(tgt, tgt);"
-  , "  if (odd) { " ++ bigint_ ++ "add_inplace(tgt, " ++ prefix ++ "half_p_plus_1); }"
-  , "}"
-  , ""
-  , "// extended binary euclidean algorithm"
-  , "void " ++ prefix ++ "euclid( uint64_t *x1, uint64_t *x2, uint64_t *u, uint64_t *v, uint64_t *tgt ) {"
-  , ""
-  , "  while( ( (!" ++ bigint_ ++ "is_one(u)) && (!" ++ bigint_ ++ "is_one(v)) ) ) {"
-  , ""
-  , "    // note: x1 < p"
-  , "    // if x1 is odd, it can't be p-1, hence, it's at most p-2"
-  , "    // then we divide by two: (p-2)/2 = (p-3)/2"
-  , "    // (p-3)/2 + (p+1)/2 = (2p-2)/2 = (p-1)"
-  , "    // so the addition x1 + (p+1)/2 = (x1+p)/2 will never overflow"
-  , ""
-  , "    while (!(u[0] & 1)) {"
-  , "      " ++ bigint_ ++ "shift_right_by_1(u,u);"
-  , "      uint8_t odd = " ++ bigint_ ++ "shift_right_by_1(x1,x1);"
-  , "      if (odd) { " ++ bigint_ ++ "add_inplace(x1, " ++ prefix ++ "half_p_plus_1); }"
-  , "    }"
-  , ""
-  , "    while (!(v[0] & 1)) {"
-  , "      " ++ bigint_ ++ "shift_right_by_1(v,v);"
-  , "      uint8_t odd = " ++ bigint_ ++ "shift_right_by_1(x2,x2);"
-  , "      if (odd) { " ++ bigint_ ++ "add_inplace(x2, " ++ prefix ++ "half_p_plus_1); }"
-  , "    }"
-  , ""
-  , "    uint64_t w[" ++ show nlimbs ++ "];"
-  , "    uint8_t b = " ++ bigint_ ++ "sub(u,v,w);  // w = u - v "
-  , "    if (b) {"
-  , "      // u-v < 0, that is, u < v"
-  , "      " ++ bigint_ ++ "neg(w,v);              // v  := v  - u"
-  , "      " ++ prefix ++ "sub_inplace(x2,x1);     // x2 := x2 - x1"
-  , "    }"
-  , "    else {"
-  , "      // u-v >= 0, that is, u >= v"
-  , "      " ++ bigint_ ++ "copy(w,u);             // u  := u  - v"
-  , "      " ++ prefix ++ "sub_inplace(x1,x2);     // x1 := x1 - x2"
-  , "    }"
-  , "  "
-  , "  }"
-  , ""
-  , "  if (" ++ bigint_ ++ "is_one(u)) { "
-  , "    " ++ bigint_ ++ "copy( x1, tgt ); "
-  , "  } "
-  , "  else { "
-  , "    " ++ bigint_ ++ "copy( x2, tgt ); "
-  , "  }"
-  , "}"
-  , ""
-  , "// inverse of a field element"
-  , "void " ++ prefix ++ "inv( const uint64_t *src, uint64_t *tgt ) {"
-  , "  if (" ++ bigint_ ++ "is_zero(src)) { "
-  , "    " ++ bigint_ ++ "set_zero(tgt); "
-  , "  } "
-  , "  else {"
-  , "    uint64_t x1[" ++ show nlimbs ++ "];"
-  , "    uint64_t x2[" ++ show nlimbs ++ "];"
-  , "    uint64_t u [" ++ show nlimbs ++ "];"
-  , "    uint64_t v [" ++ show nlimbs ++ "];"
-  , ""
-  , "    " ++ bigint_ ++ "set_one   ( x1 );               // x1 := 1     "
-  , "    " ++ bigint_ ++ "set_zero  ( x2 );               // x2 := 0     "
-  , "    " ++ bigint_ ++ "copy( src       , u );    // u  := src    "
-  , "    " ++ bigint_ ++ "copy( " ++ prefix ++ "prime , v );    // v  := p      "
-  , "    "
-  , "    " ++ prefix ++ "euclid(x1,x2,u,v,tgt);"
-  , "  }"
-  , "}"
-  , ""
-  , "void " ++ prefix ++ "inv_inplace( uint64_t *tgt ) {"
-  , "  " ++ prefix ++ "inv(tgt,tgt);"
-  , "}"
-  , ""
-  , "// division in the field"
-  , "void " ++ prefix ++ "div( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
-  , "  if (" ++ bigint_ ++ "is_zero(src2)) { "
-  , "    " ++ bigint_ ++ "set_zero(tgt); "
-  , "  } "
-  , "  else {"
-  , "    uint64_t x1[" ++ show nlimbs ++ "];"
-  , "    uint64_t x2[" ++ show nlimbs ++ "];"
-  , "    uint64_t u [" ++ show nlimbs ++ "];"
-  , "    uint64_t v [" ++ show nlimbs ++ "];"
-  , ""
-  , "    " ++ bigint_ ++ "copy( src1 , x1 );         // x1 := src1  "
-  , "    " ++ bigint_ ++ "set_zero  ( x2 );                // x2 := 0     "
-  , "    " ++ bigint_ ++ "copy( src2      , u );     // u  := src2  "
-  , "    " ++ bigint_ ++ "copy( " ++ prefix ++ "prime , v );     // v  := p     "
-  , "    "
-  , "    " ++ prefix ++ "euclid(x1,x2,u,v,tgt);"
-  , "  }"
-  , "}"
-  , ""
-  , "void " ++ prefix ++ "div_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
-  , "  " ++ prefix ++ "div(tgt,src2,tgt);"
-  , "}"
-  ]
 
 --------------------------------------------------------------------------------
 
@@ -592,25 +614,25 @@ c_code params = concat $ map ("":)
   , addField  params
   , subField  params
     --
-  , mulField     params
-  , reduceBigInt params
+  , montREDC  params
+  , montMul   params
+  , montPow   params
+  , montInv   params
     --
-  , powField   params
-  , invField   params
+  , montConvert params
   ]
 
 hs_code :: Params -> Code
 hs_code params@(Params{..}) = concat $ map ("":)
   [ hsBegin      params
   , hsMiscTmp
-  , hsConvert    params
   , hsFFI        params
   ]
 
 --------------------------------------------------------------------------------
 
-primefield_std_c_codegen :: FilePath -> Params -> IO ()
-primefield_std_c_codegen tgtdir params@(Params{..}) = do
+primefield_Montgomery_c_codegen :: FilePath -> Params -> IO ()
+primefield_Montgomery_c_codegen tgtdir params@(Params{..}) = do
 
   let fn_h = tgtdir </> (c_basename <.> "h")
   let fn_c = tgtdir </> (c_basename <.> "c")
@@ -621,8 +643,8 @@ primefield_std_c_codegen tgtdir params@(Params{..}) = do
   putStrLn $ "writing `" ++ fn_c ++ "`" 
   writeFile fn_c $ unlines $ c_code params
 
-primefield_std_hs_codegen :: FilePath -> Params -> IO ()
-primefield_std_hs_codegen tgtdir params@(Params{..}) = do
+primefield_Montgomery_hs_codegen :: FilePath -> Params -> IO ()
+primefield_Montgomery_hs_codegen tgtdir params@(Params{..}) = do
 
   let fn_hs = tgtdir </> (hs_basename <.> "hs")
 

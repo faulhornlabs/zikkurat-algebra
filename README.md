@@ -8,7 +8,7 @@ and related technologies.
 
 Project goals:
 
-- nice, clean Haskell API with good documentation
+- nice, clean Haskell API, hopefully with good documentation
 - portable among at least the commonly used 64-bit platforms
 - performance within a 4x (preferably 2x) slowdown compared to state-of-the-art implementations
 - multithreading support in Haskell (but not in C)
@@ -16,7 +16,8 @@ Project goals:
 - no external dependencies
 - comprehensive testing
 - the code should stay simple enough (and documented enough) so that auditing 
-  the correctness wouldn't be a daunting task
+  the correctness wouldn't be a nightmarishly daunting task 
+  (very much not satisfied at the moment)
 
 
 Metadata
@@ -37,9 +38,10 @@ Sub-projects:
 - `meta` - the code generator
 - `lib` - the Haskell library
 - `test` - testing
+- `examples` - examples for using the library
 
 The essential parts of the code are written in (generated) C, maybe with some assembly.
-This C code can be also used without the Haskell bindings.
+This C code is self-contained, and can be also used without the Haskell bindings.
 
 There is specialized code for each individual field and curve, and also
 a generic Haskell reference implementation for testing purposes.
@@ -68,7 +70,7 @@ Currently, we have the following ones.
 
 All the base and scalar fields of the curves, plus:
 
-- prime fields selected specifically for testing purposes
+- some prime fields selected specifically for testing purposes
 - TODO:
     - the field extensions required for pairing
     - Goldilocks: `p = 2^64 - 2^32 + 1`
@@ -79,7 +81,7 @@ TODO
 ----
 
 - [x] implement bigints
-- [ ] implement prime fields
+- [x] implement prime fields
 - [ ] implement curves
 - [ ] implement polynomials
 - [ ] add pure Haskell reference implementations
@@ -87,6 +89,7 @@ TODO
 - [ ] benchmarking
 - [ ] figure out a better meta-programming story
 - [ ] try to optimize a bit more
+- [ ] add an explicit discrete logarithm type (integers modulo `p-1`)
 - [ ] implement field extensions
 - [ ] implement pairings
 - [ ] implement multivariate polynomials

@@ -37,9 +37,15 @@ help = putStrLn $ unlines
 
 main1 :: HsOrC -> String -> FilePath -> IO ()
 main1 hsOrC what tgtdir = case map toLower what of
-  "bigint" -> Gen.generate_bigints         hsOrC tgtdir 
-  "fields" -> Gen.generate_primefields_std hsOrC tgtdir 
-  _        -> help
+
+  "bigint" ->    Gen.generate_bigints                hsOrC tgtdir 
+
+  "fields" -> do Gen.generate_primefields_std        hsOrC tgtdir 
+                 Gen.generate_primefields_montgomery hsOrC tgtdir 
+
+  _        ->    help
+
+----------------------------------------
 
 main :: IO ()
 main = do

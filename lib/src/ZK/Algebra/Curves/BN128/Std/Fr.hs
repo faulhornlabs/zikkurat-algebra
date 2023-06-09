@@ -3,7 +3,19 @@
 -- NOTE 2: Generated code, do not edit!
 
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
-module ZK.Algebra.Curves.BN128.Std.Fr where
+module ZK.Algebra.Curves.BN128.Std.Fr
+  ( Fr(..)
+  , prime
+  , to
+  , from
+  , small , zero , one , two
+  , isZero , isOne , isEqual
+  , neg , add , sub
+  , sqr , mul
+  , inv , div , div_by_2
+  , pow , pow_
+  )
+  where
 
 --------------------------------------------------------------------------------
 
