@@ -58,6 +58,8 @@
 \def\hi{\mathsf{hi}}
 \def\lo{\mathsf{lo}}
 
+\def\nbits{\mathsf{nbits}}
+
 \def\MOD{\mathsf{MOD}}
 \def\AND{\mathsf{AND}}
 \def\OR{\mathsf{OR}}
@@ -72,6 +74,7 @@
 \def\calP{\mathcal{P}}
 \def\calA{\mathcal{A}}
 \def\calB{\mathcal{B}}
+\def\calC{\mathcal{C}}
 \def\calZ{\mathcal{Z}}
 \def\calF{\mathcal{F}}
 \def\calG{\mathcal{G}}
@@ -111,6 +114,7 @@
 \def\theta{\vartheta} 
  
 \def\F{\mathbb{F}}
+\def\P{\mathbb{P}}
 \def\G{\mathbb{G}}
 \def\N{\mathbb{N}} 
 \def\Z{\mathbb{Z}} 
@@ -187,6 +191,7 @@ Elliptic curves:
 \item multi-scalar multiplication (MSM)
 \item for more complex algorithms: pairings
 \item uniformly random curve / subgroup element
+\item subgroup check
 \item hash-to-curve
 \item point compression / decompression \\
 \end{itemize}
@@ -205,14 +210,14 @@ Univariate polynomials:
 
 Multivariate polynomials: TODO
 
-%-------------------------------------------------------------------------------
+%===============================================================================
 
 \chapter{Finite fields}
 
 In this context we mostly deal with large prime fields and their their low-degree
 (usually quadratic or cubic) extensions. Elements of prime fields has at least two common
 representations: the standard form, where (the unique) number $0\le x < p$ represents
-the element $[x]\in \F_p$; and the Montgomery form, where $0Rx \mod p \le p$ represents
+the element $[x]\in \F_p$; and the Montgomery form, where $0 \le (Rx \mod p) \le p$ represents
 $[x]\in\F_p$, for some fixed $R=2^k>p\in\N$. Since multiplication is faster in the Montgomery
 form, it's almost universally used in ZK-oriented libraries. However the standard
 representation can be still useful in some contexts, or for testing purposes.\\
@@ -320,6 +325,387 @@ an inverse $q\in[0,2^{64})$ such that $pq + 1 \equiv 0\mod 2^{64}$ (this can be 
 In practice we also need $R>p$; so a very natural choice is $R=2^{64\ell}$.
 More general versions of the algorithm exist, but this is the one which looks
 relevant here.
+
+%-------------------------------------------------------------------------------
+
+\section{Field extensions}
+
+TODO
+
+%===============================================================================
+
+\chapter{Elliptic curves}
+
+Elliptic curves, defined over a field $\F$ (to avoid technical difficulties, assume that $\mathrm{char}(\F)\neq 2,3$)
+are most commonly presented in the so-called ``short Weierstrass form'',
+as the set of solutions $(x,y)\in\F^2$ of the equation
+\[ y^2 = x^3 + Ax + B \]
+where $A,B\in\F$ are parameters, such that $4 A^3 + 27 B^2 \neq 0$. 
+All elliptic curves can be written in this form.\\
+
+There is one more point on the curve, the point at infinity $O=[0:1:0]\in\P^2:=\P\F^3$,
+which can be recovered using projective coordinates:
+\[ y^2z = x^3 + Axz^2 + Bz^3 \]
+
+\section{The group law}
+
+The most important property of elliptic curves is that the points of a curve form a group.
+A possible intuition behind this is that if you intersect a line with a degree 3 curve,
+then you get 3 intersections $P,Q,R$, so you can define an operation $+$ for example
+such that $P+Q+R=0$. The point at infinity $O$ will play the role of $0$. Of course
+you have to prove that this operation satisfy the required properties of a group.\\
+
+Note that the case $U=P+P=2P$ is special: The natural thing is to use the tangent line at
+that point. This is called ``doubling''. In affine Weierstrass coordinates, one can
+derive the following formulas for point addition and doubling:\\
+\[
+\begin{array}{rclcrcl}
+\multicolumn{3}{c}{\textrm{addition}} &
+\multicolumn{1}{c}{\qquad} &
+\multicolumn{3}{c}{\textrm{doubling}} \\[5pt]
+\multicolumn{3}{c}{R=P+Q}  &
+\multicolumn{1}{c}{\qquad} &
+\multicolumn{3}{c}{U=2P}   \\[10pt]
+ s   &=& \frac{y_Q-y_P}{x_Q-x_P}  & \quad\quad\quad &  t   &=& \frac{3x_P^2+A}{2 y_P}  \\[5pt]
+ x_R &=&  s^2 - x_P - x_Q         & \quad\quad\quad &  x_U &=&  t^2 - 2x_P             \\[2pt]
+ y_R &=& -y_P - s(x_R - x_P)      & \quad\quad\quad &  y_U &=& - y_P - s(x_U - x_P)    \\[5pt]
+\end{array}
+\]
+Here $s$ and $t$ are the slopes of the secant resp.~tangent lines through $P,Q$
+(resp.~at $P$). Note that the special point $O$ must be handled separately!
+Finally, negating a point is very simple: Just flip the $y$ coordinate, so 
+\[ -(x,y) = (x,-y) \]
+
+\section{Different representations}
+
+Elliptic curves can have many different representations. We've already seen
+affine and projective coordinates, but there are many more.\\
+
+The web database \url{https://hyperelliptic.org/EFD/g1p/auto-shortw.html} 
+contains many explicit addition and doubling formulas for different representations.
+
+\subsection{Mixed addition}
+Sometimes we have to add two points in (possibly weighted) projective coordinates,
+but one of them is normalized to have $z=1$. This happens for example when doing MSM 
+with group elements stored in affine form (for example when doing KZG commitments).
+In this case we can have a faster algorithm.
+
+\subsection{Projective coordinates} 
+Projective coordinates have the big advantage
+that you can implement addition and doubling without division, which is good
+because division in finite fields is very slow to compute compared to multiplication.\\
+
+For explicit formulas, see:
+
+\noindent
+\url{https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html}
+
+\noindent
+Summary: 12M for addition; 5M+6S=$\sim$11M for doubling,
+11M for mixed addition (M=multiplication, S=squaring).
+
+\subsection{Weighted projective coordinates} 
+A next interesting one is weighted projective
+coordinates with weights $(2,3,1)$. That is, $[x:y:z] = [\lambda^2x:\lambda^3y:\lambda z]$
+for $\lambda\neq0$. This is often called ``Jacobian coordinates'' (not to be confused
+with Jacobian curves!). In this form doubling becomes cheaper but addition more expensive.\\
+
+\noindent 
+$A=0$:    \url{https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html}
+
+\noindent
+$A\neq0$: \url{https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html} \\
+
+Summary: For $A=0$, 11M+5S=$\sim$16M for addition, 2M+5S=$\sim$7M for doubling,
+7M+4S=$\sim$11M for mixed addition.
+For the case of general $A$ it's the same but doubling is 9M instead.
+
+\subsection{Montgomery form}
+Montgomory curves have the most efficient scalar multiplication formula (?), but
+not all curve can be written in Montgomery form. Wikipedia claims that an 
+elliptic curve in Weierstrass form can be written in Montgomery form if and only if
+\begin{itemize}
+\item the equation $z^3 + Az + B=0$ has at least one root $\alpha\in F$;
+\item and for that $\alpha$ the field element $3\alpha^2 + A$ is a quadratic residue in $\F$.
+\end{itemize}
+
+%-------------------------------------------------------------------------------
+
+\section{Scalar multiplication}
+
+For an integer $k\in Z$ and a group element $g\in\G$ we can define
+\[ k*g := \left\{\begin{array}{llll}
+g+g+g+\cdots +g  &(k   \textrm{ times}&\textrm{if}& k > 0 \\
+-g-g-g-\cdots -g &(|k| \textrm{ times}&\textrm{if}& k < 0 \\
+O                &                    &\textrm{if}& k = 0
+\end{array}
+\right.
+\]
+In applications $k$ is typically very big, say on the order of $2^{256}$.\\
+
+The basic algorithm is essentially the same as the ``fast exponentiation''
+algorithm: Compute the sequence $g,2g,4g,8g,\dots$ using repeated doubling,
+then if the binary decomposition of $k$ is $k=\sum b_i2^i$, then compute
+\[ k*g = \sum_{i\,:\,b_i=1} (2^i g) \]
+
+A review of some of the ideas can be found in Daniel J.~Bernstein's paper:
+
+\noindent
+\url{https://cr.yp.to/papers/pippenger-20020118-retypeset20220327.pdf}
+
+%--------------
+
+\subsection{Non-adjacent form (NAF)}.
+In the simplest form, the idea is to write $n$ in \emph{signed binary} form
+instead, that, using digits $1,0,-1$. With three digits, it's always
+possible to ensure that there are no consecutive $\pm 1$ digits; this ensures
+that there will be at most $n/2$ terms in the (signed analogue of the) 
+above sum, where $n=\log_2(k)$ is the number of digits.
+
+%--------------
+
+\subsection{Simple windowed form}
+The ``windowed method'', in the simplest form (apparently invented by Brauer around 1939)
+writes 
+\[ k = \sum_{j=0}^{d-1} 2^{cj} a_j \]
+where $0\le a_j < 2^c$, then precalculates the table $h_{i}:=i*g$ for
+$1\le i < 2^c$, finally expresses
+\[ k*g = \sum 2^{cj} h_{a_j} = h_{a_0} + 2^c\Big( h_{a_1} + 2^c\Big(h_{a_2} + \cdots + 2^c\Big( h_{a_{d-2}} + 2^c\Big(h_{a_{d-1}} + 2^c h_{a_d} \Big)\Big)\cdots \Big)\Big) \]
+One has to balance the size of the precalculation and the reduction in number of additions
+(we still have the same amount of doublings). For example for 256 bits one may choose
+$c=4$. Note that the table can be calculated using special ``addition chains'',
+for example:
+\[\begin{array}{c|ccccccc}
+j   &   1 &   2 &   3 &   4 &   5 &   6 &   7 \\ \hline
+h_j & h_1 & h_2 & h_3 & h_4 & h_5 & h_6 & h_7 \\
+h_j & g & 2g & g+h_2 & 2h_2 & g+h_4 & 2h_3 & g+h_6\\
+\end{array}
+\]
+
+Observation (Thurber): one can leave out the even entries of the table $h_{2i}$,
+by changing $\cdots+h_{2i}+2^c(\cdots$ to $\cdots+2(h_{i}+2^{c-1}(\cdots$.
+
+%--------------
+
+\subsection{Sliding window}
+This is kind-of similar to, but an improvement compared to the previous.
+Precompute $d*g$ for $d=2^{c-1}\dots 2^c-1$, that is, where the most significant digit is 1.
+Start from the topmost digit of $k$, going down. If the given digit 0, just double
+the running sum; if it's 1, extract $(c-1)$ more digits (or less at the very end),
+multiply by $2^c$ by doubling, add the corresponding precomputed value, and continue.
+
+\url{https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Sliding-window_method}
+
+%--------------
+
+\subsection{GLV optimization}
+This is a trick described by Gallant-Lambert-Vanstone. It used to be
+patented (which is seriously WTF), but the patent expired in 2020.
+The idea is that in some curves we can find parameters
+$\beta\in\F_p$ and $\lambda\in\F_r$ such that 
+\begin{itemize}
+\item $\lambda$ is a third root of unity: $\lambda^3 =1 \in\F_r$ 
+\item $\beta$ is a third root of unity: $\beta^3=1\in \F_p$ 
+\item $\lambda * (x,y) = (\beta x, y)$
+\item $\lambda$ has few bits, say about $\log_2(r)/2$
+\end{itemize}
+In this case we have $k\in \F_r$ ($r$ being the size of the subgroup
+of the curve we are interested in), and we can write $k = k_0 + \lambda k_1$
+with $k_0,k_1$ approximately half the size as $k$ was.
+Then we have
+\[ k*(x,y) = (k_0 + \lambda k_1)*(x,y) = k_0*(x,y) + (k_1\lambda)*(x,y)
+= k_0*(x,y) + k_1*(\beta x,y) 
+\]
+The final expression on the right can be then computed 
+using the ``parallel windowed scalar exponentiation'' below.\\
+
+For example, the curve BLS12-381 curve's 256-bit \emph{subgroup} allows to do this
+with $\lambda\sim 2^{128}$.\\
+
+But maybe the size of $\lambda$ is not that important, because
+we are in $\F_r$ and not in $\Z$? See the paper
+``Analysis of the Gallant-Lambert-Vanstone
+Method based on Efficient Endomorphisms''
+by Sica, Ciet and Quisquater.
+
+%--------------
+
+\subsection{Parallel windowed form}
+Apparently this is by Straus (sometimes called Shamir-Straus). The idea is to 
+compute $k*P + l*Q$ by doing the same decomposition 
+\[ k=\sum_{i=0}^d 2^{ci}k_i \quad\quad \textrm{ and } \quad\quad 
+   l=\sum_{i=0}^d 2^{ci}l_i
+\]
+precaculate 2 tables (one for $P$ and one for $Q$), and do the add-then-double
+loop at the same time for the two (so all the doublings are shared).
+
+Of course one can generalize for more points.
+
+%--------------
+
+\subsection{Multiple exponents at the same time}
+For the situations when we want to compute $g^{k_1},\dots, g^{k_2}$ at the same
+time, we can do better. See Pippenger's algorithm in Bernstein's review articel 
+
+%-------------------------------------------------------------------------------
+
+\section{Multi-scalar multiplication (MSM)}
+
+Here the task is to compute the ``linear combination''
+\[ \sum_{j=1}^N k_j*g_j := k_1 * g_1 + k_2 * g_2 + \cdots + k_N * g_N \]
+where $k_j\in\Z$ are numbers and $g_j\in\G$ are group elements.
+Often $N$ is very big, say $10^5$ or even bigger.
+Somewhat surprisingly, this can be done faster than just naively doing $N$
+scalar multiplications and summing the results!\\
+
+Optimizing this operation is very important because it's the bottleneck
+in many constructions of SNARKs (for example Groth16 or KZG-based ones).\\
+
+Another review paper is ``Algorithms for Multi-exponentiation'' by Bodo M\"oller:
+
+\noindent
+\url{https://www.bmoeller.de/pdf/multiexp-sac2001.pdf}
+
+\subsection{The bucketing method}
+This is usually attributed to Pippenger. However Pippenger's full algorithm
+is much more complex. 
+The idea is that as above, write coefficients $k_j$ as
+\[ k_j = \sum 2^{ci} a^{(j)}_i \]
+with $0 \le a^{(j)} < 2^c$.
+Then, for a given window $i$, collect together all the $g_j$-s with the same
+$a^{(j)}_i$:
+\[ \sum_{j=1}^N a^{(j)}_i * g_j = \sum_{b=1}^{2^c-1} b * 
+\underbrace{ \bigg[\sum_{j\,:\,a^{(j)}_i=b} g_j \bigg]}_{S^{(i)}_b}  = \sum_{b=1}^{2^c-1} b * S^{(i)}_b
+\]
+Then the sum on the RHS can be rewritten as 
+\[ \sum_{b=1}^{2^c-1} b * S_b = 1*S_1 + 2*S_2 + 3*S_3 + \dots + (2^c-1)*S_{2^c-1} =
+T_1 + T_2 + \dots + T_{2^c-1} \]
+where 
+\begin{align*}
+T_{2^c-1} &= S_{2^c-1}  \\
+T_{2^c-2} &= S_{2^c-2} + T_{2^c-1}  \\
+T_{2^c-3} &= S_{2^c-3} + T_{2^c-2}  \\
+\vdots & & \vdots \\
+T_{2} &= S_{2} + T_{3}  \\
+T_{1} &= S_{1} + T_{2}  \\
+\end{align*}
+Finally we can handle the sum over the windows as usual.\\
+
+Note that if $g_j$ are given in affine coordinates (which is the case for
+trusted setups like KZG), then when computing $S_b^{(i)}$ we can always use
+mixed additions! Since for large $N$ that dominates, this is important.\\
+
+Let's count the costs. For a window size of $2^c$, there are $m=\lceil\nbits/c\rceil$
+windows. 
+\begin{itemize}
+\item on average, $\frac{2^c-1}{2^c}N$, but at most $N$ mixed additions per window 
+      (each $g_j$ can belong to only 1 bucket)
+\item $2(2^c-2)$ additions per window for computing first $T_i$-s and then $\sum T_i$
+\item $\nbits$ doublings and $m$ additions for the final sum
+\end{itemize}
+In total, about
+\[ \nbits + \lceil\nbits/c\rceil\cdot\left\{1 + 2(2^c-2) + \frac{2^c-1}{2^c}N \right\} \]
+operations (mostly additions).\\
+
+For $\nbits =256$, we can summarize choosing the best $c$ as 
+\[
+\begin{array}{c||c|c|c|c|c|c}
+N            & 10  & 100 & 1,000 & 10,000 & 100,000 & 1,000,000 \\ \hline
+c            & 1   & 4   &  7    & 10     &  13     &  16       \\
+\textsf{ops} & 189 & 81  &  46   & 31     &  23     &  18       \\
+\end{array}
+\]
+where $\textsf{ops}$ means the number of operation divided by $N$. 
+Note that we can do this whole thing in constant memory! \\
+
+%----
+\subsection{Precalculation + Straus}
+We can also do the ``parallel windowed'' thing for arbitrary N.
+For a window size of $2^c$, we need about $(2^c-2)N$ operations (and memory!) to
+precalculate the first $(2^c-1)$ multiples of each $g_j$; then for each
+window we have at most $N$ additions.
+In total, about
+\[ \nbits + (2^c-2)N + \lceil\nbits/c\rceil\cdot\left\{1 + \frac{2^c-1}{2^c}N \right\} \]
+operations. This can be summarized as
+\[
+\begin{array}{c||c|c|c|c|c|c}
+N            & 10  & 100 & 1,000 & 10,000 & 100,000 & 1,000,000 \\ \hline
+c            & 4   & 4   &  4   &  4    &  4     &    4     \\
+\textsf{ops} & 106 & 77  &  74  &  74   &  74    &    74    \\
+\end{array}
+\]
+So this can be faster than the bucket method for $N<100$, but for larger $N$-s
+it will be significantly slower.
+
+%===============================================================================
+
+\chapter{Appendix}
+
+\section{BN128 curve}
+
+Also called: alt-bn128, BN256, BN254.
+See \url{https://hackmd.io/@jpw/bn254} for some more details. \\
+
+Note: this has reduced security of around 100 bits because of the number field sieve
+algorithm. However Ethereum currently only supports this curve, via precompiles.\\
+
+The curve is defined by the equation $y^2 = x^3 + 3$ on $\F_p$.
+\begin{align*}
+A &= 0 \\
+B &= 3 \\
+p &= 21888242871839275222246405745257275088696311157297823662689037894645226208583 \\
+r &= 21888242871839275222246405745257275088548364400416034343698204186575808495617 \\
+h &= 1 \\
+\end{align*}
+
+The 2-adicity is 28, that is $2^{28} | (r-1)$. The canonical generator is
+\begin{align*}
+G_1 &= (1,2)\in\G_1  \\
+\end{align*}
+
+We can kind-of use the GLV trick $\lambda*(x,y)=(\beta x,y)$, but $\lambda$ is too big
+(or maybe that's not such a big deal because the exponent is in $\F_r$ ???):
+\begin{align*}
+\beta   &= 2203960485148121921418603742825762020974279258880205651966 \\
+\lambda &= 4407920970296243842393367215006156084916469457145843978461 \\
+\log_2(\lambda) &\approx 192 \\
+\end{align*}
+
+%-------------------------------------------------------------------------------
+
+\section{BLS12-381 curve}
+
+See \url{https://hackmd.io/@benjaminion/bls12-381#About-curve-BLS12-381} for 
+some more details.\\
+
+The curve is defined by the equation $y^2 = x^3 + 4$ on $\F_p$.
+
+\begin{align*}
+A &= 0 \\
+B &= 4 \\
+p &= 40024095552216673934177898257359041565568828199390078853320 \dots \\
+  &\quad   \dots 58136124031650490837864442687629129015664037894272559787 \\ 
+r &= 52435875175126190479447740508185965837690552500527637822603658699938581184513 \\
+h &= 76329603384216526031706109802092473003 \\
+\end{align*}
+
+The 2-adicity is 32, that is $2^{32} | (r-1)$. 
+
+The canonical generator in $\G_1$ (see the above link on how this was determined) is:
+\begin{align*}
+G_1 &= (\;3685416753713387016781088315183077757961620795782546409894578378\dots \\
+    &   \quad\dots 688607592378376318836054947676345821548104185464507  \\ 
+    &\;\;  ,\;1339506544944476473020471379941921221584933875938349620426543736\dots \\
+    &   \quad\dots 416511423956333506472724655353366534992391756441569\;) \in G_1\\
+\end{align*}
+
+We can use the GLV trick $\lambda*(x,y)=(\beta x,y)$:
+\begin{align*}
+\beta &= 40024095552216673926243104350066886439355031183055864382711 \dots \\
+      &\quad \dots 71395842971157480381377015405980053539358417135540939436\\
+\lambda &= 228988810152649578064853576960394133503 \\
+\log_2(\lambda) &\approx 128 \\
+\end{align*}
 
 %===============================================================================
 
