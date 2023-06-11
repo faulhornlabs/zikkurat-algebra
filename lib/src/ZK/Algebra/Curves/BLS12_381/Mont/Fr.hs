@@ -9,11 +9,12 @@ module ZK.Algebra.Curves.BLS12_381.Mont.Fr
   , to , from
   , toStd , fromStd
   , zero , one , two
-  , isZero , isOne , isEqual
+  , isValid , isZero , isOne , isEqual
   , neg , add , sub
   , sqr , mul
   , inv , div
   , pow , pow_
+  , rnd
   )
   where
 
@@ -34,7 +35,9 @@ import System.Random
 import System.IO.Unsafe
 
 import ZK.Algebra.BigInt.BigInt256( BigInt256(..) )
+import qualified ZK.Algebra.BigInt.BigInt256 as B
 import qualified ZK.Algebra.Curves.BLS12_381.Std.Fr as Std
+import qualified ZK.Algebra.Class.Field as C
 
 --------------------------------------------------------------------------------  
 
@@ -53,6 +56,9 @@ zero, one, two :: Fr
 zero = to 0
 one  = to 1
 two  = to 2
+
+primGen :: Fr
+primGen = to 7
 
 instance Eq Fr where
   (==) = isEqual
@@ -73,6 +79,28 @@ instance Fractional Fr where
 
 instance Show Fr where
   show = show . from
+
+rnd :: IO Fr
+rnd = do
+  x <- randomRIO (0,prime-1)
+  return (unsafeTo x)
+
+instance C.Rnd Fr where
+  rndIO = rnd
+
+instance C.Ring Fr where
+  ringNamePxy _ = "BLS12-381/Fr (Montgomery repr.)"
+  ringSizePxy _ = prime
+  isZero = isZero
+  isOne  = isOne
+  zero   = zero
+  one    = one
+  power x e = pow x (B.to (mod e (prime-1)))
+
+instance C.Field Fr where
+  charPxy    _ = prime
+  dimPxy     _ = 1
+  primGenPxy _ = primGen
 
 ----------------------------------------
 
@@ -98,7 +126,7 @@ toStd (MkFr fptr1) = unsafePerformIO $ do
       c_bls12_381_r_mont_to_std ptr1 ptr2
   return (Std.MkFr fptr2)
 
-foreign import ccall unsafe "bls12_381_r_mont_pow_gen" c_bls12_381_r_mont_pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_r_mont_pow_gen" c_bls12_381_r_mont_pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
 
 {-# NOINLINE pow #-}
 pow :: Fr -> BigInt256 -> Fr
@@ -107,7 +135,7 @@ pow (MkFr fptr1) (MkBigInt256 fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_r_mont_pow_gen ptr1 ptr2 ptr3
+        c_bls12_381_r_mont_pow_gen ptr1 ptr2 ptr3 4
   return (MkFr fptr3)
 
 ----------------------------------------
@@ -125,6 +153,37 @@ toWord64sLE = go where
 toWord64sLE' :: Int -> Integer -> [Word64]
 toWord64sLE' len what = take len $ toWord64sLE what ++ repeat 0
 
+{-# NOINLINE unsafeMk #-}
+unsafeMk :: Integer -> IO Fr
+unsafeMk x = do
+  fptr <- mallocForeignPtrArray 4
+  withForeignPtr fptr $ \ptr -> do
+    pokeArray ptr $ toWord64sLE' 4 x
+  return $ MkFr fptr
+
+{-# NOINLINE unsafeGet #-}
+unsafeGet :: Fr -> IO Integer
+unsafeGet (MkFr fptr) = do
+  ws <- withForeignPtr fptr $ \ptr -> peekArray 4 ptr 
+  return (fromWord64sLE ws)
+
+{-# NOINLINE unsafeTo #-}
+unsafeTo :: Integer -> Fr
+unsafeTo x = unsafePerformIO (unsafeMk x)
+
+{-# NOINLINE unsafeFrom #-}
+unsafeFrom :: Fr -> Integer
+unsafeFrom f = unsafePerformIO (unsafeGet f)
+
+foreign import ccall unsafe "bls12_381_r_std_is_valid" c_bls12_381_r_std_is_valid :: Ptr Word64 -> IO Word8
+
+{-# NOINLINE isValid #-}
+isValid :: Fr -> Bool
+isValid (MkFr fptr) = unsafePerformIO $ do
+  cret <- withForeignPtr fptr $ \ptr -> do
+    c_bls12_381_r_std_is_valid ptr
+  return (cret /= 0)
+
 foreign import ccall unsafe "bigint256_is_zero" c_bigint256_is_zero :: Ptr Word64 -> IO Word8
 
 {-# NOINLINE isZero #-}
@@ -134,13 +193,13 @@ isZero (MkFr fptr) = unsafePerformIO $ do
     c_bigint256_is_zero ptr
   return (cret /= 0)
 
-foreign import ccall unsafe "bigint256_is_one" c_bigint256_is_one :: Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_r_mont_is_one" c_bls12_381_r_mont_is_one :: Ptr Word64 -> IO Word8
 
 {-# NOINLINE isOne #-}
 isOne :: Fr -> Bool
 isOne (MkFr fptr) = unsafePerformIO $ do
   cret <- withForeignPtr fptr $ \ptr -> do
-    c_bigint256_is_one ptr
+    c_bls12_381_r_mont_is_one ptr
   return (cret /= 0)
 
 foreign import ccall unsafe "bigint256_is_equal" c_bigint256_is_equal :: Ptr Word64 -> Ptr Word64 -> IO Word8
@@ -149,7 +208,7 @@ foreign import ccall unsafe "bigint256_is_equal" c_bigint256_is_equal :: Ptr Wor
 isEqual :: Fr -> Fr -> Bool
 isEqual (MkFr fptr1) (MkFr fptr2) = unsafePerformIO $ do
   cret <- withForeignPtr fptr1 $ \ptr1 -> do
-    withForeignPtr fptr1 $ \ptr2 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
       c_bigint256_is_equal ptr1 ptr2
   return (cret /= 0)
 

@@ -72,7 +72,20 @@ void bn128_r_std_neg_inplace( uint64_t *tgt ) {
   }
 }
 
-// if (x > prime) then (x - prime) else x
+// checks if (x < prime)
+uint8_t bn128_r_std_is_valid( const uint64_t *src ) {
+  if (src[3] <  0x30644e72e131a029) return 1;
+  if (src[3] >  0x30644e72e131a029) return 0;
+  if (src[2] <  0xb85045b68181585d) return 1;
+  if (src[2] >  0xb85045b68181585d) return 0;
+  if (src[1] <  0x2833e84879b97091) return 1;
+  if (src[1] >  0x2833e84879b97091) return 0;
+  if (src[0] <  0x43e1f593f0000001) return 1;
+  if (src[0] >= 0x43e1f593f0000001) return 0;
+return 1;
+}
+
+// if (x >= prime) then (x - prime) else x
 void bn128_r_std_bigint256_sub_prime_if_above_inplace( uint64_t *tgt ) {
   if (tgt[3] <  0x30644e72e131a029) return;
   if (tgt[3] >  0x30644e72e131a029) { bn128_r_std_bigint256_sub_prime_inplace( tgt ); return; }
@@ -160,6 +173,15 @@ static const uint64_t bn128_r_std_mps_table[32] = {
 0x5665c3b5c177f51a, 0x00e7f02ade75c713, 0xb09192e52f747168, 0x0621c0bbcccdc65d,
 };
 
+// subtracts two big integers made up from `nlimbs+1` limbs
+uint8_t bn128_r_std_bigint_sub_inplace_larger( uint64_t *tgt, const uint64_t *src2 ) {
+  uint8_t b = 0;
+  for(int j=0; j<5; j++) {
+    b = _subborrow_u64( b, tgt[j], src2[j], tgt+j );
+  }
+  return b;
+}
+
  // reduces a number of size 8 limbs modulo p
  // similar the Barret reduction (?)
 void bn128_r_std_reduce_modp( const uint64_t *src, uint64_t *tgt ) {
@@ -172,8 +194,8 @@ void bn128_r_std_reduce_modp( const uint64_t *src, uint64_t *tgt ) {
     __uint128_t q = src[m];
     q = q * bn128_r_std_qps_table[m];    // this is `2^(64m) * src[m] / p` in 64-bit fixed-point form
     bigint256_scale( (uint64_t)(q>>64), bn128_r_std_prime, tmp2 );
-    uint8_t b = bigint256_sub_inplace_gen( tmp1, tmp2, 5 );
-    if (b) { bigint256_add_prime_inplace( tmp1 ); }
+    uint8_t b = bn128_r_std_bigint_sub_inplace_larger( tmp1, tmp2 );
+    if (b) { bn128_r_std_bigint256_add_prime_inplace( tmp1 ); }
     bn128_r_std_add_inplace( tgt , tmp1);
   }
 }
@@ -197,7 +219,7 @@ void bn128_r_std_pow_gen( const uint64_t *src, const uint64_t *expo, uint64_t *t
   bigint256_copy( src, sqr );             // sqr := src
   bigint256_set_one( tgt );                     // tgt := 1
   int s = expo_len - 1;
-  while (expo[s] == 0) { s--; }          // skip the unneeded largest powers
+  while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers
   for(int i=0; i<=s; i++) {
     uint64_t e = expo[i];
     for(int j=0; j<64; j++) {

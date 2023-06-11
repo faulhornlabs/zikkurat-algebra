@@ -74,7 +74,24 @@ void bls12_381_p_std_neg_inplace( uint64_t *tgt ) {
   }
 }
 
-// if (x > prime) then (x - prime) else x
+// checks if (x < prime)
+uint8_t bls12_381_p_std_is_valid( const uint64_t *src ) {
+  if (src[5] <  0x1a0111ea397fe69a) return 1;
+  if (src[5] >  0x1a0111ea397fe69a) return 0;
+  if (src[4] <  0x4b1ba7b6434bacd7) return 1;
+  if (src[4] >  0x4b1ba7b6434bacd7) return 0;
+  if (src[3] <  0x64774b84f38512bf) return 1;
+  if (src[3] >  0x64774b84f38512bf) return 0;
+  if (src[2] <  0x6730d2a0f6b0f624) return 1;
+  if (src[2] >  0x6730d2a0f6b0f624) return 0;
+  if (src[1] <  0x1eabfffeb153ffff) return 1;
+  if (src[1] >  0x1eabfffeb153ffff) return 0;
+  if (src[0] <  0xb9feffffffffaaab) return 1;
+  if (src[0] >= 0xb9feffffffffaaab) return 0;
+return 1;
+}
+
+// if (x >= prime) then (x - prime) else x
 void bls12_381_p_std_bigint384_sub_prime_if_above_inplace( uint64_t *tgt ) {
   if (tgt[5] <  0x1a0111ea397fe69a) return;
   if (tgt[5] >  0x1a0111ea397fe69a) { bls12_381_p_std_bigint384_sub_prime_inplace( tgt ); return; }
@@ -170,6 +187,15 @@ static const uint64_t bls12_381_p_std_mps_table[72] = {
 0xfc8aa5c5cd2dbfd7, 0x4874042cd26528c7, 0xd01b07fd232a8e28, 0x23d6a1069b97e001, 0xa1a742c38b4c65b3, 0x02050a1527e00758,
 };
 
+// subtracts two big integers made up from `nlimbs+1` limbs
+uint8_t bls12_381_p_std_bigint_sub_inplace_larger( uint64_t *tgt, const uint64_t *src2 ) {
+  uint8_t b = 0;
+  for(int j=0; j<7; j++) {
+    b = _subborrow_u64( b, tgt[j], src2[j], tgt+j );
+  }
+  return b;
+}
+
  // reduces a number of size 12 limbs modulo p
  // similar the Barret reduction (?)
 void bls12_381_p_std_reduce_modp( const uint64_t *src, uint64_t *tgt ) {
@@ -182,8 +208,8 @@ void bls12_381_p_std_reduce_modp( const uint64_t *src, uint64_t *tgt ) {
     __uint128_t q = src[m];
     q = q * bls12_381_p_std_qps_table[m];    // this is `2^(64m) * src[m] / p` in 64-bit fixed-point form
     bigint384_scale( (uint64_t)(q>>64), bls12_381_p_std_prime, tmp2 );
-    uint8_t b = bigint384_sub_inplace_gen( tmp1, tmp2, 7 );
-    if (b) { bigint384_add_prime_inplace( tmp1 ); }
+    uint8_t b = bls12_381_p_std_bigint_sub_inplace_larger( tmp1, tmp2 );
+    if (b) { bls12_381_p_std_bigint384_add_prime_inplace( tmp1 ); }
     bls12_381_p_std_add_inplace( tgt , tmp1);
   }
 }
@@ -207,7 +233,7 @@ void bls12_381_p_std_pow_gen( const uint64_t *src, const uint64_t *expo, uint64_
   bigint384_copy( src, sqr );             // sqr := src
   bigint384_set_one( tgt );                     // tgt := 1
   int s = expo_len - 1;
-  while (expo[s] == 0) { s--; }          // skip the unneeded largest powers
+  while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers
   for(int i=0; i<=s; i++) {
     uint64_t e = expo[i];
     for(int j=0; j<64; j++) {

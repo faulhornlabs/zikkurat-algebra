@@ -72,7 +72,20 @@ void bls12_381_r_std_neg_inplace( uint64_t *tgt ) {
   }
 }
 
-// if (x > prime) then (x - prime) else x
+// checks if (x < prime)
+uint8_t bls12_381_r_std_is_valid( const uint64_t *src ) {
+  if (src[3] <  0x73eda753299d7d48) return 1;
+  if (src[3] >  0x73eda753299d7d48) return 0;
+  if (src[2] <  0x3339d80809a1d805) return 1;
+  if (src[2] >  0x3339d80809a1d805) return 0;
+  if (src[1] <  0x53bda402fffe5bfe) return 1;
+  if (src[1] >  0x53bda402fffe5bfe) return 0;
+  if (src[0] <  0xffffffff00000001) return 1;
+  if (src[0] >= 0xffffffff00000001) return 0;
+return 1;
+}
+
+// if (x >= prime) then (x - prime) else x
 void bls12_381_r_std_bigint256_sub_prime_if_above_inplace( uint64_t *tgt ) {
   if (tgt[3] <  0x73eda753299d7d48) return;
   if (tgt[3] >  0x73eda753299d7d48) { bls12_381_r_std_bigint256_sub_prime_inplace( tgt ); return; }
@@ -160,6 +173,15 @@ static const uint64_t bls12_381_r_std_mps_table[32] = {
 0x59476ebc41b4528f, 0xc5a30cb243fcc152, 0x2b34e63940ccbd72, 0x1e179025ca247088,
 };
 
+// subtracts two big integers made up from `nlimbs+1` limbs
+uint8_t bls12_381_r_std_bigint_sub_inplace_larger( uint64_t *tgt, const uint64_t *src2 ) {
+  uint8_t b = 0;
+  for(int j=0; j<5; j++) {
+    b = _subborrow_u64( b, tgt[j], src2[j], tgt+j );
+  }
+  return b;
+}
+
  // reduces a number of size 8 limbs modulo p
  // similar the Barret reduction (?)
 void bls12_381_r_std_reduce_modp( const uint64_t *src, uint64_t *tgt ) {
@@ -172,8 +194,8 @@ void bls12_381_r_std_reduce_modp( const uint64_t *src, uint64_t *tgt ) {
     __uint128_t q = src[m];
     q = q * bls12_381_r_std_qps_table[m];    // this is `2^(64m) * src[m] / p` in 64-bit fixed-point form
     bigint256_scale( (uint64_t)(q>>64), bls12_381_r_std_prime, tmp2 );
-    uint8_t b = bigint256_sub_inplace_gen( tmp1, tmp2, 5 );
-    if (b) { bigint256_add_prime_inplace( tmp1 ); }
+    uint8_t b = bls12_381_r_std_bigint_sub_inplace_larger( tmp1, tmp2 );
+    if (b) { bls12_381_r_std_bigint256_add_prime_inplace( tmp1 ); }
     bls12_381_r_std_add_inplace( tgt , tmp1);
   }
 }
@@ -197,7 +219,7 @@ void bls12_381_r_std_pow_gen( const uint64_t *src, const uint64_t *expo, uint64_
   bigint256_copy( src, sqr );             // sqr := src
   bigint256_set_one( tgt );                     // tgt := 1
   int s = expo_len - 1;
-  while (expo[s] == 0) { s--; }          // skip the unneeded largest powers
+  while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers
   for(int i=0; i<=s; i++) {
     uint64_t e = expo[i];
     for(int j=0; j<64; j++) {

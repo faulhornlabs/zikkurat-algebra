@@ -32,6 +32,8 @@ data Params = Params
   , hs_stdModule  :: String       -- ^ the module path of the std. repr. version
   , typeName      :: String       -- ^ the name of the haskell type
   , bigintType    :: String       -- ^ the name of the haskell type of the corresponding BigInt
+  , fieldName     :: String       -- ^ name of the field
+  , primGen       :: Integer      -- ^ the primitive generator
   }
   deriving Show
 
@@ -78,11 +80,12 @@ hsBegin (Params{..}) =
   , "  , to"    ++ postfix ++ " , from"    ++ postfix 
   , "  , toStd" ++ postfix ++ " , fromStd" ++ postfix
   , "  , zero , one , two"
-  , "  , isZero , isOne , isEqual"
+  , "  , isValid , isZero , isOne , isEqual"
   , "  , neg , add , sub"
   , "  , sqr , mul"
   , "  , inv , div"
   , "  , pow , pow_"
+  , "  , rnd"
   , "  )"  
   , "  where"  
   , ""
@@ -103,7 +106,9 @@ hsBegin (Params{..}) =
   , "import System.IO.Unsafe"
   , ""
   , "import ZK.Algebra.BigInt." ++ bigintType ++ "( " ++ bigintType ++ "(..) )"
+  , "import qualified ZK.Algebra.BigInt." ++ bigintType ++ " as B"
   , "import qualified " ++ hs_stdModule ++ hs_basename ++ " as Std"
+  , "import qualified ZK.Algebra.Class.Field as C"
   , ""
   , "--------------------------------------------------------------------------------  "
   , ""
@@ -122,6 +127,9 @@ hsBegin (Params{..}) =
   , "zero = to" ++ postfix ++ " 0"
   , "one  = to" ++ postfix ++ " 1"
   , "two  = to" ++ postfix ++ " 2"
+  , ""
+  , "primGen :: " ++ typeName
+  , "primGen = to" ++ postfix ++ " " ++ show primGen
   , ""
   , "instance Eq " ++ typeName ++ " where"
   , "  (==) = isEqual"
@@ -142,6 +150,28 @@ hsBegin (Params{..}) =
   , ""
   , "instance Show " ++ typeName ++ " where"
   , "  show = show . from" ++ postfix
+  , ""
+  , "rnd :: IO " ++ typeName
+  , "rnd = do"
+  , "  x <- randomRIO (0,prime-1)"
+  , "  return (unsafeTo" ++ postfix ++ " x)"
+  , ""
+  , "instance C.Rnd " ++ typeName ++ " where"
+  , "  rndIO = rnd"
+  , ""
+  , "instance C.Ring " ++ typeName ++ " where"
+  , "  ringNamePxy _ = \"" ++ fieldName ++ " (Montgomery repr.)\""
+  , "  ringSizePxy _ = prime"
+  , "  isZero = isZero"
+  , "  isOne  = isOne"
+  , "  zero   = zero"
+  , "  one    = one"
+  , "  power x e = pow x (B.to (mod e (prime-1)))"
+  , ""
+  , "instance C.Field " ++ typeName ++ " where"
+  , "  charPxy    _ = prime"
+  , "  dimPxy     _ = 1"  
+  , "  primGenPxy _ = primGen"
   , ""
   , "----------------------------------------"
   , ""
@@ -167,7 +197,7 @@ hsBegin (Params{..}) =
   , "      c_" ++ prefix ++ "to_std ptr1 ptr2"
   , "  return (Std.Mk" ++ typeName ++ " fptr2)"
   , ""
-  , "foreign import ccall unsafe \"" ++ prefix ++ "pow_gen\" c_" ++ prefix ++ "pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "pow_gen\" c_" ++ prefix ++ "pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()"
   , ""
   , "{-# NOINLINE pow #-}"
   , "pow :: " ++ typeName ++ " -> " ++ bigintType ++ " -> " ++ typeName 
@@ -176,7 +206,7 @@ hsBegin (Params{..}) =
   , "  withForeignPtr fptr1 $ \\ptr1 -> do"
   , "    withForeignPtr fptr2 $ \\ptr2 -> do"
   , "      withForeignPtr fptr3 $ \\ptr3 -> do"
-  , "        c_" ++ prefix ++ "pow_gen ptr1 ptr2 ptr3"
+  , "        c_" ++ prefix ++ "pow_gen ptr1 ptr2 ptr3 " ++ show nlimbs
   , "  return (Mk" ++ typeName ++ " fptr3)"
   , ""
   , "----------------------------------------"
@@ -186,13 +216,14 @@ hsBegin (Params{..}) =
 
 ------------------------------
 
--- hsConvert :: Params -> Code
--- hsConvert (Params{..}) = ffiMarshal "" typeName nlimbs 
+hsConvert :: Params -> Code
+hsConvert (Params{..}) = ffiMarshal "" typeName nlimbs 
 
 hsFFI :: Params -> Code
 hsFFI (Params{..}) = catCode $ 
-  [ mkffi "isZero"      $ cfun_ "is_zero"         (CTyp [CArgInPtr                          ] CRetBool)
-  , mkffi "isOne"       $ cfun_ "is_one"          (CTyp [CArgInPtr                          ] CRetBool)
+  [ mkffi "isValid"     $ cfun' "is_valid"        (CTyp [CArgInPtr                          ] CRetBool)
+  , mkffi "isZero"      $ cfun_ "is_zero"         (CTyp [CArgInPtr                          ] CRetBool)
+  , mkffi "isOne"       $ cfun  "is_one"          (CTyp [CArgInPtr                          ] CRetBool)
   , mkffi "isEqual"     $ cfun_ "is_equal"        (CTyp [CArgInPtr , CArgInPtr              ] CRetBool)
     --
 --  , mkffi "fromStd"     $ cfun "from_std"         (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
@@ -209,8 +240,9 @@ hsFFI (Params{..}) = catCode $
   , mkffi "pow_"        $ cfun "pow_uint64"       (CTyp [CArgInPtr , CArg64    , CArgOutPtr ] CRetVoid)
   ]
   where
-    cfun_ cname = CFun (bigint_ ++ cname)
-    cfun  cname = CFun (prefix  ++ cname)
+    cfun_ cname = CFun (bigint_   ++ cname)
+    cfun  cname = CFun (prefix    ++ cname)
+    cfun' cname = CFun (stdPrefix ++ cname)
     mkffi = ffiCall hsTyDesc
     hsTyDesc = HsTyDesc 
       { hsTyName =         typeName
@@ -469,6 +501,13 @@ montREDC Params{..} =
   where
     mont = precalcMontgomery thePrime
 
+montIsOne :: Params -> Code
+montIsOne Params{..} = 
+  [ "uint8_t " ++ prefix ++ "is_one( const uint64_t *src ) {"
+  , "  " ++ bigint_ ++ "is_equal( src, " ++ prefix ++ "R_modp );"
+  , "}"
+  ]
+
 --------------------------------------------------------------------------------
 
 {-
@@ -588,7 +627,7 @@ montPow Params{..} =
   , "  " ++ bigint_ ++ "copy( src, sqr );             // sqr := src"
   , "  " ++ bigint_ ++ "copy( " ++ prefix ++ "R_modp, tgt );        // tgt := 1"
   , "  int s = expo_len - 1;"
-  , "  while (expo[s] == 0) { s--; }          // skip the unneeded largest powers"
+  , "  while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers"
   , "  for(int i=0; i<=s; i++) {"
   , "    uint64_t e = expo[i];"
   , "    for(int j=0; j<64; j++) {"
@@ -619,6 +658,7 @@ c_code params = concat $ map ("":)
   , montPow   params
   , montInv   params
     --
+  , montIsOne   params
   , montConvert params
   ]
 
@@ -626,6 +666,7 @@ hs_code :: Params -> Code
 hs_code params@(Params{..}) = concat $ map ("":)
   [ hsBegin      params
   , hsMiscTmp
+  , hsConvert    params
   , hsFFI        params
   ]
 

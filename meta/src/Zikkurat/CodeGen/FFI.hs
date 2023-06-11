@@ -89,7 +89,7 @@ ffiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
     , hsFunName ++ " :: " ++ hsTyName ++ " -> " ++ hsTyName ++ " -> Bool" 
     , hsFunName ++ " (" ++ hsTyCon ++ " fptr1) (" ++ hsTyCon ++ " fptr2) = unsafePerformIO $ do"
     , "  cret <- withForeignPtr fptr1 $ \\ptr1 -> do"
-    , "    withForeignPtr fptr1 $ \\ptr2 -> do"
+    , "    withForeignPtr fptr2 $ \\ptr2 -> do"
     , "      c_" ++ cname ++ " ptr1 ptr2"
     , "  return (cret /= 0)"
     ]
@@ -186,9 +186,9 @@ ffiMarshal postfix typeName nlimbs =
   , "    pokeArray ptr $ toWord64sLE' " ++ show nlimbs ++ " x"
   , "  return $ Mk" ++ typeName ++ " fptr"
   , ""
-  , "{-# NOINLINE get" ++ postfix ++ " #-}"
-  , "get" ++ postfix ++ " :: " ++ typeName ++ " -> IO Integer"
-  , "get" ++ postfix ++ " (Mk" ++ typeName ++ " fptr) = do"
+  , "{-# NOINLINE unsafeGet" ++ postfix ++ " #-}"
+  , "unsafeGet" ++ postfix ++ " :: " ++ typeName ++ " -> IO Integer"
+  , "unsafeGet" ++ postfix ++ " (Mk" ++ typeName ++ " fptr) = do"
   , "  ws <- withForeignPtr fptr $ \\ptr -> peekArray " ++ show nlimbs ++ " ptr "
   , "  return (fromWord64sLE ws)"
   , ""
@@ -196,9 +196,9 @@ ffiMarshal postfix typeName nlimbs =
   , "unsafeTo" ++ postfix ++ " :: Integer -> " ++ typeName ++ ""
   , "unsafeTo" ++ postfix ++ " x = unsafePerformIO (unsafeMk" ++ postfix ++ " x)"
   , ""
-  , "{-# NOINLINE from" ++ postfix ++ " #-}"
-  , "from" ++ postfix ++ " :: " ++ typeName ++ " -> Integer"
-  , "from" ++ postfix ++ " f = unsafePerformIO (get" ++ postfix ++ " f)"
+  , "{-# NOINLINE unsafeFrom" ++ postfix ++ " #-}"
+  , "unsafeFrom" ++ postfix ++ " :: " ++ typeName ++ " -> Integer"
+  , "unsafeFrom" ++ postfix ++ " f = unsafePerformIO (unsafeGet" ++ postfix ++ " f)"
   ]
 
 --------------------------------------------------------------------------------

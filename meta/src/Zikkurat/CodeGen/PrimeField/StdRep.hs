@@ -29,6 +29,8 @@ data Params = Params
   , hs_module   :: String       -- ^ the module path
   , typeName    :: String       -- ^ the name of the haskell type
   , bigintType  :: String       -- ^ the name of the haskell type of the corresponding BigInt
+  , fieldName   :: String       -- ^ name of the field
+  , primGen     :: Integer      -- ^ the primitive generator
   }
   deriving Show
 
@@ -38,6 +40,9 @@ c_header :: Params -> Code
 c_header (Params{..}) =
   [ "#include <stdint.h>"
   , ""
+  , "extern uint8_t " ++ prefix ++ "is_valid( const uint64_t *src );"
+  , ""
+  , "extern void " ++ prefix ++ "neg( const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "neg( const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
@@ -77,12 +82,13 @@ hsBegin (Params{..}) =
   , "  , prime"
   , "  , to" ++ postfix 
   , "  , from" ++ postfix 
-  , "  , small , zero , one , two"
-  , "  , isZero , isOne , isEqual"
+  , "  , small , zero , one , two , primGen"
+  , "  , isValid , isZero , isOne , isEqual"
   , "  , neg , add , sub"
   , "  , sqr , mul"
   , "  , inv , div , div_by_2"
   , "  , pow , pow_"
+  , "  , rnd"
   , "  )"  
   , "  where"
   , ""
@@ -103,6 +109,8 @@ hsBegin (Params{..}) =
   , "import System.IO.Unsafe"
   , ""
   , "import ZK.Algebra.BigInt." ++ bigintType ++ "( " ++ bigintType ++ "(..) )"
+  , "import qualified ZK.Algebra.BigInt." ++ bigintType ++ " as B"
+  , "import qualified ZK.Algebra.Class.Field as C"
   , ""
   , "--------------------------------------------------------------------------------  "
   , ""
@@ -114,10 +122,16 @@ hsBegin (Params{..}) =
   , "to" ++ postfix ++ " :: Integer -> " ++ typeName
   , "to" ++ postfix ++ " x = unsafeTo" ++ postfix ++ " (mod x prime)"
   , ""
+  , "from" ++ postfix ++ " :: " ++ typeName ++ " -> Integer"
+  , "from" ++ postfix ++ " = unsafeFrom" ++ postfix 
+  , ""
   , "zero, one, two :: " ++ typeName
   , "zero = small 0"
   , "one  = small 1"
   , "two  = small 2"
+  , ""
+  , "primGen :: " ++ typeName
+  , "primGen = small " ++ show primGen
   , ""
   , "instance Eq " ++ typeName ++ " where"
   , "  (==) = isEqual"
@@ -139,9 +153,31 @@ hsBegin (Params{..}) =
   , "instance Show " ++ typeName ++ " where"
   , "  show = show . from" ++ postfix
   , ""
+  , "rnd :: IO " ++ typeName
+  , "rnd = do"
+  , "  x <- randomRIO (0,prime-1)"
+  , "  return (unsafeTo" ++ postfix ++ " x)"
+  , ""
+  , "instance C.Rnd " ++ typeName ++ " where"
+  , "  rndIO = rnd"
+  , ""
+  , "instance C.Ring " ++ typeName ++ " where"
+  , "  ringNamePxy _ = \"" ++ fieldName ++ " (standard repr.)\""
+  , "  ringSizePxy _ = prime"
+  , "  isZero = isZero"
+  , "  isOne  = isOne"
+  , "  zero   = zero"
+  , "  one    = one"
+  , "  power x e = pow x (B.to (mod e (prime-1)))"
+  , ""
+  , "instance C.Field " ++ typeName ++ " where"
+  , "  charPxy    _ = prime"
+  , "  dimPxy     _ = 1"  
+  , "  primGenPxy _ = primGen"
+  , ""
   , "----------------------------------------"
   , ""
-  , "foreign import ccall unsafe \"" ++ prefix ++ "pow_gen\" c_" ++ prefix ++ "pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "pow_gen\" c_" ++ prefix ++ "pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()"
   , ""
   , "{-# NOINLINE pow #-}"
   , "pow :: " ++ typeName ++ " -> " ++ bigintType ++ " -> " ++ typeName 
@@ -150,7 +186,7 @@ hsBegin (Params{..}) =
   , "  withForeignPtr fptr1 $ \\ptr1 -> do"
   , "    withForeignPtr fptr2 $ \\ptr2 -> do"
   , "      withForeignPtr fptr3 $ \\ptr3 -> do"
-  , "        c_" ++ prefix ++ "pow_gen ptr1 ptr2 ptr3"
+  , "        c_" ++ prefix ++ "pow_gen ptr1 ptr2 ptr3 " ++ show (nlimbs)
   , "  return (Mk" ++ typeName ++ " fptr3)"
   , ""
   , "----------------------------------------"
@@ -165,7 +201,8 @@ hsConvert (Params{..}) = ffiMarshal "" typeName nlimbs
 
 hsFFI :: Params -> Code
 hsFFI (Params{..}) = catCode $ 
-  [ mkffi "isZero"      $ cfun_ "is_zero"         (CTyp [CArgInPtr                          ] CRetBool)
+  [ mkffi "isValid"     $ cfun  "is_valid"        (CTyp [CArgInPtr                          ] CRetBool)
+  , mkffi "isZero"      $ cfun_ "is_zero"         (CTyp [CArgInPtr                          ] CRetBool)
   , mkffi "isOne"       $ cfun_ "is_one"          (CTyp [CArgInPtr                          ] CRetBool)
   , mkffi "isEqual"     $ cfun_ "is_equal"        (CTyp [CArgInPtr , CArgInPtr              ] CRetBool)
     --
@@ -284,7 +321,17 @@ negField Params{..} =
 
 addField :: Params -> Code
 addField Params{..} = 
-  [ "// if (x > prime) then (x - prime) else x"
+  [ "// checks if (x < prime)"
+  , "uint8_t " ++ prefix ++ "is_valid( const uint64_t *src ) {"
+  ] ++ 
+  [ "  if (" ++ index (nlimbs-j-1) "src" ++ " <  " ++ showHex64 (ws!!(nlimbs-j-1)) ++ ") return 1;" ++ "\n" ++
+    "  if (" ++ index (nlimbs-j-1) "src" ++ gt j   ++ showHex64 (ws!!(nlimbs-j-1)) ++ ") return 0;"
+  | j<-[0..nlimbs-1]
+  ] ++ 
+  [ "return 1;"
+  , "}"
+  , ""
+  , "// if (x >= prime) then (x - prime) else x"
   , "void " ++ prefix ++ "" ++ bigint_ ++ "sub_prime_if_above_inplace( uint64_t *tgt ) {"
   ] ++ 
   [ "  if (" ++ index (nlimbs-j-1) "tgt" ++ " <  " ++ showHex64 (ws!!(nlimbs-j-1)) ++ ") return;" ++ "\n" ++
@@ -379,7 +426,16 @@ mulField Params{..} =
 
 reduceBigInt :: Params -> Code
 reduceBigInt Params{..} = the_constants ++
-  [ " // reduces a number of size " ++ show (2*nlimbs) ++ " limbs modulo p"
+  [ "// subtracts two big integers made up from `nlimbs+1` limbs"
+  , "uint8_t " ++ prefix ++ "bigint_sub_inplace_larger( uint64_t *tgt, const uint64_t *src2 ) {"
+  , "  uint8_t b = 0;" 
+  , "  for(int j=0; j<" ++ show (nlimbs+1) ++ "; j++) {"
+  , "    b = _subborrow_u64( b, tgt[j], src2[j], tgt+j );"
+  , "  }"
+  , "  return b;"
+  , "}"
+  , ""
+  , " // reduces a number of size " ++ show (2*nlimbs) ++ " limbs modulo p"
   , " // similar the Barret reduction (?)"
   , "void " ++ prefix ++ "reduce_modp( const uint64_t *src, uint64_t *tgt ) {"
   , "  uint64_t tmp1[" ++ show (nlimbs+1) ++ "];"
@@ -391,8 +447,8 @@ reduceBigInt Params{..} = the_constants ++
   , "    __uint128_t q = src[m];"
   , "    q = q * " ++ prefix ++ "qps_table[m];    // this is `2^(64m) * src[m] / p` in 64-bit fixed-point form"
   , "    " ++ bigint_ ++ "scale( (uint64_t)(q>>64), " ++ prefix ++ "prime, tmp2 );"
-  , "    uint8_t b = " ++ bigint_ ++ "sub_inplace_gen( tmp1, tmp2, " ++ show (nlimbs+1) ++ " );"
-  , "    if (b) { " ++ bigint_ ++ "add_prime_inplace( tmp1 ); }"
+  , "    uint8_t b = " ++ prefix ++ "bigint_sub_inplace_larger( tmp1, tmp2 );"
+  , "    if (b) { " ++ prefix ++ bigint_ ++ "add_prime_inplace( tmp1 ); }"
   , "    " ++ prefix ++ "add_inplace( tgt , tmp1);"
   , "  }"
   , "}"
@@ -448,7 +504,7 @@ powField Params{..} =
   , "  " ++ bigint_ ++ "copy( src, sqr );             // sqr := src"
   , "  " ++ bigint_ ++ "set_one( tgt );                     // tgt := 1"
   , "  int s = expo_len - 1;"
-  , "  while (expo[s] == 0) { s--; }          // skip the unneeded largest powers"
+  , "  while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers"
   , "  for(int i=0; i<=s; i++) {"
   , "    uint64_t e = expo[i];"
   , "    for(int j=0; j<64; j++) {"

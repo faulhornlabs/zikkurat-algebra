@@ -1,0 +1,60 @@
+Cabal-Version:        2.4
+Name:                 zikkurat-algebra-tests
+Version:              0.0.1
+Synopsis:             Tests for the algebraic primitives
+
+Description:          Tests for the algebraic primitives (finite fields, elliptic 
+                      curves and polynomials) implemented in zikkurat-algebra
+
+License:              MIT OR Apache-2.0
+License-files:        LICENSE-MIT
+                      LICENSE-APACHE-2.0
+
+Author:               Balazs Komuves
+Copyright:            (c) 2023 Faulhorn Labs
+Maintainer:           balazs.komuves (at) faulhornlabs (dot) com
+
+Stability:            Experimental
+Category:             Math, Cryptography
+Tested-With:          GHC == 8.6.5, GHC == 9.0.1
+Build-Type:           Simple
+
+--------------------------------------------------------------------------------
+
+Library
+
+  Build-Depends:        base >= 4 && < 5, 
+                        random >= 1.1,
+                        zikkurat-algebra == 0.0.1
+                        
+  Exposed-Modules:      ZK.Test.Run
+                        ZK.Test.Field.Properties
+
+  Default-Language:     Haskell2010
+  Default-Extensions:   CPP, BangPatterns
+
+  Hs-Source-Dirs:       src
+
+--  include-dirs:         cbits/bigint
+--                        cbits/curves/fields/std
+--                        cbits/curves/fields/mont
+
+  ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
+
+--------------------------------------------------------------------------------
+
+Executable zikkurat-algebra-tests
+
+  Build-Depends:        base >= 4 && < 5, 
+                        random >= 1.1,
+                        zikkurat-algebra-tests == 0.0.1
+
+  main-is:              TestMain.hs
+
+  Hs-Source-Dirs:       cli
+
+  Default-Language:     Haskell2010
+  Default-Extensions:   CPP, BangPatterns
+
+  ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
+

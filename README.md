@@ -2,9 +2,9 @@
 zikkurat-algebra
 ================
 
-This is a Haskell / C library implementing algebraic primitives (finite fields, 
-elliptic curves, polynomials) commonly used in zero-knowledge proofs
-and related technologies.
+This is (will be) a Haskell / C library implementing algebraic primitives 
+(finite fields, elliptic curves, polynomials) commonly used in zero-knowledge 
+proof systems and related technologies.
 
 Project goals:
 
@@ -12,7 +12,7 @@ Project goals:
 - portable among at least the commonly used 64-bit platforms
 - performance within a 4x (preferably 2x) slowdown compared to state-of-the-art implementations
 - multithreading support in Haskell (but not in C)
-- standalone C library for easy interop with other languages too
+- standalone C library for easy interop with other languages
 - no external dependencies
 - comprehensive testing
 - the code should stay simple enough (and documented enough) so that auditing 
@@ -26,7 +26,9 @@ Metadata
 copyright: (c) 2023 Faulhorn Labs  
 author: Balazs Komuves  
 license: MIT or Apache-2.0 (at your choice)  
-disclaimer: Experimental software, use at your own risk!  
+disclaimer: Extremely preliminary software
+
+You are very welcome to experiment with this, but don't _yet_ use it for anything serious!
 
 
 Project organization
@@ -38,10 +40,10 @@ Sub-projects:
 - `meta` - the code generator
 - `lib` - the Haskell library
 - `test` - testing
-- `examples` - examples for using the library
+- `examples` - examples of using the library
 
 The essential parts of the code are written in (generated) C, maybe with some assembly.
-This C code is self-contained, and can be also used without the Haskell bindings.
+This C code (under `lib/cbits`) is self-contained, and can be also used without the Haskell bindings.
 
 There is specialized code for each individual field and curve, and also
 a generic Haskell reference implementation for testing purposes.

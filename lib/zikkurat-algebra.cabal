@@ -36,7 +36,8 @@ Library
   Build-Depends:        base >= 4 && < 5, 
                         random >= 1.1
                         
-  Exposed-Modules:      ZK.Algebra.BigInt.Types
+  Exposed-Modules:      ZK.Algebra.Class.Field
+                        ZK.Algebra.BigInt.Types        
                         ZK.Algebra.BigInt.BigInt128
                         ZK.Algebra.BigInt.BigInt192
                         ZK.Algebra.BigInt.BigInt256

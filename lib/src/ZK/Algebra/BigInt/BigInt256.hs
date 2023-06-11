@@ -16,6 +16,7 @@ module ZK.Algebra.BigInt.BigInt256
   , sqrExt
   , mulExt
   , scaleExt
+  , rnd
   )
   where
 
@@ -24,20 +25,26 @@ module ZK.Algebra.BigInt.BigInt256
 import Data.Bits
 import Data.Word
 
+import Control.Monad
+
 import Foreign.C
 import Foreign.Ptr
-import Foreign.Marshal
 import Foreign.ForeignPtr
+import Foreign.Marshal
 
 import System.Random
 import System.IO.Unsafe
 
 import ZK.Algebra.BigInt.Types
+import qualified ZK.Algebra.Class.Field as C
 
 --------------------------------------------------------------------------------  
 
 to :: Integer -> BigInt256
 to = unsafeTo
+
+from :: BigInt256 -> Integer
+from = unsafeFrom
 
 zero, one, two :: BigInt256
 zero = small 0
@@ -59,6 +66,25 @@ instance Num BigInt256 where
 instance Show BigInt256 where
   show = show . from
 
+rnd :: IO BigInt256
+rnd = do
+  fptr <- mallocForeignPtrArray 4
+  withForeignPtr fptr $ \ptr -> do
+    xs <- replicateM 4 (randomIO :: IO Word64)
+    pokeArray ptr xs
+  return (MkBigInt256 fptr)
+
+instance C.Rnd BigInt256 where
+  rndIO = rnd
+
+instance C.Ring BigInt256 where
+  ringNamePxy _ = "BigInt256"
+  ringSizePxy _ = 115792089237316195423570985008687907853269984665640564039457584007913129639936
+  isZero = isZero
+  isOne  = isOne
+  zero   = zero
+  one    = one
+  power  = C.ringPowerDefault
 
 ----------------------------------------
 
@@ -120,9 +146,9 @@ unsafeMk x = do
     pokeArray ptr $ toWord64sLE' 4 x
   return $ MkBigInt256 fptr
 
-{-# NOINLINE get #-}
-get :: BigInt256 -> IO Integer
-get (MkBigInt256 fptr) = do
+{-# NOINLINE unsafeGet #-}
+unsafeGet :: BigInt256 -> IO Integer
+unsafeGet (MkBigInt256 fptr) = do
   ws <- withForeignPtr fptr $ \ptr -> peekArray 4 ptr 
   return (fromWord64sLE ws)
 
@@ -130,9 +156,9 @@ get (MkBigInt256 fptr) = do
 unsafeTo :: Integer -> BigInt256
 unsafeTo x = unsafePerformIO (unsafeMk x)
 
-{-# NOINLINE from #-}
-from :: BigInt256 -> Integer
-from f = unsafePerformIO (get f)
+{-# NOINLINE unsafeFrom #-}
+unsafeFrom :: BigInt256 -> Integer
+unsafeFrom f = unsafePerformIO (unsafeGet f)
 
 foreign import ccall unsafe "bigint256_is_zero" c_bigint256_is_zero :: Ptr Word64 -> IO Word8
 
@@ -158,7 +184,7 @@ foreign import ccall unsafe "bigint256_is_equal" c_bigint256_is_equal :: Ptr Wor
 isEqual :: BigInt256 -> BigInt256 -> Bool
 isEqual (MkBigInt256 fptr1) (MkBigInt256 fptr2) = unsafePerformIO $ do
   cret <- withForeignPtr fptr1 $ \ptr1 -> do
-    withForeignPtr fptr1 $ \ptr2 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
       c_bigint256_is_equal ptr1 ptr2
   return (cret /= 0)
 

@@ -1,5 +1,8 @@
 #include <stdint.h>
 
+extern uint8_t bn128_r_std_is_valid( const uint64_t *src );
+
+extern void bn128_r_std_neg( const uint64_t *src , uint64_t *tgt );
 extern void bn128_r_std_neg( const uint64_t *src , uint64_t *tgt );
 extern void bn128_r_std_add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 extern void bn128_r_std_sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );

@@ -222,7 +222,7 @@ void bls12_381_p_mont_pow_gen( const uint64_t *src, const uint64_t *expo, uint64
   bigint384_copy( src, sqr );             // sqr := src
   bigint384_copy( bls12_381_p_mont_R_modp, tgt );        // tgt := 1
   int s = expo_len - 1;
-  while (expo[s] == 0) { s--; }          // skip the unneeded largest powers
+  while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers
   for(int i=0; i<=s; i++) {
     uint64_t e = expo[i];
     for(int j=0; j<64; j++) {
@@ -252,6 +252,10 @@ void bls12_381_p_mont_div_inplace( uint64_t *tgt, const uint64_t *src2) {
   bls12_381_p_std_div_inplace( tgt, src2 );
   bls12_381_p_mont_mul_inplace( tgt, bls12_381_p_mont_R_squared );
 };
+
+uint8_t bls12_381_p_mont_is_one( const uint64_t *src ) {
+  bigint384_is_equal( src, bls12_381_p_mont_R_modp );
+}
 
 void bls12_381_p_mont_from_std( const uint64_t *src, uint64_t *tgt) {
   bls12_381_p_mont_mul( src, bls12_381_p_mont_R_squared, tgt );

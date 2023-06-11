@@ -64,21 +64,25 @@ stdMontStringReplace stdOrMont = go where
   go (ch:rest)          = ch    : go rest
   go []                 = []
 
-primefiledListReplace1 :: StdOrMont -> ([String],[String],Integer) -> ([String],[String],Integer)
-primefiledListReplace1 stdOrMont (hpath,cpath,p) = (hpath',cpath',p) where
+newtype PrimGen = PrimGen Integer
+type FieldDesc  = (String,PrimGen,[String],[String],Integer) 
+
+primefiledListReplace1 :: StdOrMont -> FieldDesc -> FieldDesc
+primefiledListReplace1 stdOrMont (name,primgen,hpath,cpath,p) = (name,primgen,hpath',cpath',p) where
   hpath' = map (stdMontStringReplace stdOrMont) hpath
   cpath' = map (stdMontStringReplace stdOrMont) cpath
 
-primefiledListReplace :: StdOrMont -> [([String],[String],Integer)] -> [([String],[String],Integer)]
+primefiledListReplace :: StdOrMont -> [FieldDesc] -> [FieldDesc]
 primefiledListReplace stdOrMont = map (primefiledListReplace1 stdOrMont)
 
 -- NOTE: "^^^" denotes "Std" or "Mont", while ",,," denotes "std" or "mont"
 -- (we cannot use ___ for the obvious reasons.....)
+primefield_list :: [FieldDesc]
 primefield_list = 
-  [ ( ["Curves", "BN128"    , "^^^", "Fp"] , ["curves", "fields", ",,,", "bn128_p_,,,"    ] , bn128_base_p       ) 
-  , ( ["Curves", "BN128"    , "^^^", "Fr"] , ["curves", "fields", ",,,", "bn128_r_,,,"    ] , bn128_scalar_r     )
-  , ( ["Curves", "BLS12_381", "^^^", "Fp"] , ["curves", "fields", ",,,", "bls12_381_p_,,,"] , bls12_381_base_p   ) 
-  , ( ["Curves", "BLS12_381", "^^^", "Fr"] , ["curves", "fields", ",,,", "bls12_381_r_,,,"] , bls12_381_scalar_r )
+  [ ( "BN128/Fp"     , PrimGen 3 , ["Curves", "BN128"    , "^^^", "Fp"] , ["curves", "fields", ",,,", "bn128_p_,,,"    ] , bn128_base_p       ) 
+  , ( "BN128/Fr"     , PrimGen 5 , ["Curves", "BN128"    , "^^^", "Fr"] , ["curves", "fields", ",,,", "bn128_r_,,,"    ] , bn128_scalar_r     )
+  , ( "BLS12-381/Fp" , PrimGen 2 , ["Curves", "BLS12_381", "^^^", "Fp"] , ["curves", "fields", ",,,", "bls12_381_p_,,,"] , bls12_381_base_p   ) 
+  , ( "BLS12-381/Fr" , PrimGen 7 , ["Curves", "BLS12_381", "^^^", "Fr"] , ["curves", "fields", ",,,", "bls12_381_r_,,,"] , bls12_381_scalar_r )
   ]
 
 {-
@@ -104,7 +108,7 @@ generate_primefields_std hsOrC tgtdir0 = do
 
   let primefield_list_std = primefiledListReplace Std primefield_list
 
-  forM_ primefield_list_std $ \(hpath,cpath,prime) -> do
+  forM_ primefield_list_std $ \(name, PrimGen primgen, hpath, cpath, prime) -> do
 
     let ctgtdir = foldl1 (</>) (tgtdir0 : init cpath)
     let htgtdir = foldl1 (</>) (tgtdir0 : init hpath)
@@ -132,6 +136,8 @@ generate_primefields_std hsOrC tgtdir0 = do
           , FpStd.hs_module   = hs_module           -- the module path
           , FpStd.typeName    = last hpath          -- the name of the haskell type
           , FpStd.bigintType  = bigintType          -- the name of the haskell type of the corresponding BigInt
+          , FpStd.fieldName   = name
+          , FpStd.primGen     = primgen
           }
 
     -- print params
@@ -147,7 +153,7 @@ generate_primefields_montgomery hsOrC tgtdir0 = do
   let primefield_list_std  = primefiledListReplace Std  primefield_list
   let primefield_list_mont = primefiledListReplace Mont primefield_list
 
-  forM_ (zip primefield_list_std primefield_list_mont) $ \( (hpath_std,cpath_std,_) , (hpath,cpath,prime) ) -> do
+  forM_ (zip primefield_list_std primefield_list_mont) $ \( (_,PrimGen primgen,hpath_std,cpath_std,_) , (name,_,hpath,cpath,prime) ) -> do
 
     let ctgtdir = foldl1 (</>) (tgtdir0 : init cpath)
     let htgtdir = foldl1 (</>) (tgtdir0 : init hpath)
@@ -179,6 +185,8 @@ generate_primefields_montgomery hsOrC tgtdir0 = do
           , FpMont.hs_stdModule   = hs_module_std             -- the module path
           , FpMont.typeName       = last hpath                -- the name of the haskell type
           , FpMont.bigintType     = bigintType                -- the name of the haskell type of the corresponding BigInt
+          , FpMont.fieldName      = name
+          , FpMont.primGen        = primgen
           }
 
     -- print params
