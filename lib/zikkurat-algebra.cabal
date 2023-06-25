@@ -54,6 +54,7 @@ Library
                         ZK.Algebra.Curves.BLS12_381.Std.Fr
                         ZK.Algebra.Curves.BLS12_381.Mont.Fp
                         ZK.Algebra.Curves.BLS12_381.Mont.Fr
+                        ZK.Algebra.Curves.BN128.G1.Proj
                         ZK.Algebra.Curves.BLS12_381.G1.Proj
  
   c-sources:            cbits/bigint/bigint128.c
@@ -71,6 +72,7 @@ Library
                         cbits/curves/fields/mont/bn128_r_mont.c
                         cbits/curves/fields/mont/bls12_381_p_mont.c
                         cbits/curves/fields/mont/bls12_381_r_mont.c
+                        cbits/curves/g1/proj/bn128_G1_proj.c
                         cbits/curves/g1/proj/bls12_381_G1_proj.c
 
   Default-Language:     Haskell2010

@@ -199,6 +199,23 @@ generate_primefields_montgomery hsOrC tgtdir0 = do
 
 --------------------------------------------------------------------------------
 
+bn128_cgParams :: CodeGenParams
+bn128_cgParams = CodeGenParams
+  { prefix        = "bn128_G1_"                                                 -- prefix for C names
+  , prefix_p      = "bn128_p_mont_"                                             -- prefix for C names for Fp
+  , prefix_r      = "bn128_q_mont_"                                             -- prefix for C names for Fq
+  , nlimbs_p      = 4                                                           -- number of 64-bit limbs in p
+  , nlimbs_r      = 4                                                           -- number of 64-bit limbs in r
+  , c_path        = Path ["curves","g1","proj","bn128_G1_proj"]                 -- path of the C file
+  , hs_path       = Path ["ZK","Algebra","Curves","BN128","G1","Proj"]          -- path of the Haskell module
+  , hs_path_p     = Path ["ZK","Algebra","Curves","BN128","Mont","Fp"]          -- path of the Haskell module for Fp
+  , hs_path_r     = Path ["ZK","Algebra","Curves","BN128","Mont","Fr"]          -- path of the Haskell module for Fr
+  , hs_path_big_p = Path ["ZK","Algebra","BigInt","BigInt256"]                  
+  , c_basename_p  = "bn128_p_mont"                                              -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_r  = "bn128_r_mont"                                              -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , typeName      = "G1"                                                        -- the name of the haskell type for curve points
+  }
+
 bls12_381_cgParams :: CodeGenParams
 bls12_381_cgParams = CodeGenParams
   { prefix        = "bls12_381_G1_"                                             -- prefix for C names
@@ -210,6 +227,7 @@ bls12_381_cgParams = CodeGenParams
   , hs_path       = Path ["ZK","Algebra","Curves","BLS12_381","G1","Proj"]      -- path of the Haskell module
   , hs_path_p     = Path ["ZK","Algebra","Curves","BLS12_381","Mont","Fp"]      -- path of the Haskell module for Fp
   , hs_path_r     = Path ["ZK","Algebra","Curves","BLS12_381","Mont","Fr"]      -- path of the Haskell module for Fr
+  , hs_path_big_p = Path ["ZK","Algebra","BigInt","BigInt384"]                  
   , c_basename_p  = "bls12_381_p_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
   , c_basename_r  = "bls12_381_r_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
   , typeName      = "G1"                                                        -- the name of the haskell type for curve points
@@ -217,7 +235,8 @@ bls12_381_cgParams = CodeGenParams
 
 curveList :: [(Curve,CodeGenParams)]
 curveList = 
-  [ ( bls12_381_curve  , bls12_381_cgParams  )
+  [ ( bn128_curve      , bn128_cgParams      )
+  , ( bls12_381_curve  , bls12_381_cgParams  )
   ]
 
 generate_curves_proj :: HsOrC -> FilePath -> IO ()

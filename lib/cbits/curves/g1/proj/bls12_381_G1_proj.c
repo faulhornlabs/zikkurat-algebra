@@ -36,11 +36,11 @@ const uint64_t bls12_381_G1_cofactor[6] = { 0x8c00aaab0000aaab, 0x396c8c005555e1
 
 // scale a field element by A = 0
 void bls12_381_G1_scale_by_A(const uint64_t *src, uint64_t *tgt ) {
-  memset( tgt, 0, 144 );
+  memset( tgt, 0, 48 );
 }
 
 void bls12_381_G1_scale_by_A_inplace( uint64_t *tgt ) {
-  memset( tgt, 0, 144 );
+  memset( tgt, 0, 48 );
 }
 
 // scale a field element by B = 4
@@ -56,13 +56,13 @@ void bls12_381_G1_scale_by_B_inplace( uint64_t *tgt ) {
   bls12_381_p_mont_add( tmp, tmp, tgt );
 }
 
-// scale a field element by B = 4
+// scale a field element by (3*B) = 12
 void bls12_381_G1_scale_by_3B(const uint64_t *src, uint64_t *tgt ) {
-  uint64_t tmp[NLIMBS_P];
+  uint64_t tmp [NLIMBS_P];
   uint64_t tmp2[NLIMBS_P];
   bls12_381_p_mont_add( src, src, tmp );       // 2*B
   bls12_381_p_mont_add_inplace( tmp, tmp );    // 4*B
-  bls12_381_p_mont_inplace( tmp, tmp, tmp2);   // 8*B
+  bls12_381_p_mont_add( tmp, tmp, tmp2);       // 8*B
   bls12_381_p_mont_add( tmp, tmp2, tgt );      // 12*B
 }
 
@@ -78,15 +78,37 @@ void bls12_381_G1_normalize( const uint64_t *src1, uint64_t *tgt ) {
     bls12_381_p_mont_set_one( Y3 );
   }
   else {
-    bls12_381_p_mont_inv( Z1, zinv );
-    bls12_381_p_mont_mul( X1, zinv, X3 );
-    bls12_381_p_mont_mul( Y1, zinv, Y3 );
-    bls12_381_p_mont_set_one( Z3 );
+    if (bls12_381_p_mont_is_one( Z1 )) {
+      // already normalized
+      if (tgt != src1) { memcpy( tgt, src1, 144 ); }
+    }
+    else {
+      bls12_381_p_mont_inv( Z1, zinv );
+      bls12_381_p_mont_mul( X1, zinv, X3 );
+      bls12_381_p_mont_mul( Y1, zinv, Y3 );
+      bls12_381_p_mont_set_one( Z3 );
+    }
   }
 }
 
 void bls12_381_G1_normalize_inplace( uint64_t *tgt ) {
   bls12_381_G1_normalize( tgt, tgt );
+}
+
+// checks whether the underlying representation (projective coordinates) are the same
+uint8_t bls12_381_G1_is_same( const uint64_t *src1, const uint64_t *src2 ) {
+  return ( bls12_381_p_mont_is_equal( X1, X2 ) &&
+           bls12_381_p_mont_is_equal( Y1, Y2 ) &&
+           bls12_381_p_mont_is_equal( Z1, Z2 ) );
+}
+
+// checks whether two curve points are equal
+uint8_t bls12_381_G1_is_equal( const uint64_t *src1, const uint64_t *src2 ) {
+  uint64_t tmp1[18];
+  uint64_t tmp2[18];
+  bls12_381_G1_normalize( src1, tmp1 );
+  bls12_381_G1_normalize( src2, tmp2 );
+  return bls12_381_G1_is_same( tmp1, tmp2 );
 }
 
 // converts from affine coordinates
@@ -397,18 +419,26 @@ void bls12_381_G1_scl_windowed(const uint64_t *expo, const uint64_t *grp, uint64
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
 // where `grp` is a group element in G1, and `expo` is in Fr
-void bls12_381_G1_scl_reference(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
-  bls12_381_G1_scl_naive(expo, grp, tgt, NLIMBS_R);
+void bls12_381_G1_scl_generic(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt, int nlimbs) {
+  bls12_381_G1_scl_windowed(expo, grp, tgt, nlimbs);
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
 // where `grp` is a group element in G1, and `expo` is in Fr
 void bls12_381_G1_scl_Fr(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
-  bls12_381_G1_scl_windowed(expo, grp, tgt, NLIMBS_R);
+  bls12_381_G1_scl_generic(expo, grp, tgt, NLIMBS_R);
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
 // where `grp` is a group element in G1, and `expo` is the same size as Fp
-void bls12_381_G1_scl_Fp(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
-  bls12_381_G1_scl_windowed(expo, grp, tgt, NLIMBS_P);
+void bls12_381_G1_scl_big(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
+  bls12_381_G1_scl_generic(expo, grp, tgt, NLIMBS_P);
+}
+
+// computes `expo*grp` (or `grp^expo` in multiplicative notation)
+// where `grp` is a group element in G1, and `expo` is a 64 bit (unsigned!) word
+void bls12_381_G1_scl_small(uint64_t expo, const uint64_t *grp, uint64_t *tgt) {
+  uint64_t expo_vec[1];
+  expo_vec[0] = expo;
+  bls12_381_G1_scl_generic(expo_vec, grp, tgt, 1);
 }

@@ -24,8 +24,10 @@ data CRet
 
 data CArg
   = CArgInt           -- ^ C integer
+  | CArgInBigIntP     -- ^ input ptr to a bigint of size the same as Fp
   | CArgInScalarP     -- ^ input ptr to a scalar in Fp
   | CArgInScalarR     -- ^ input ptr to a scalar in Fr
+  | CArgOutScalarP    -- ^ output ptr to a scalar in Fp
   | CArgInAffine      -- ^ input ptr to an affine point (2 coordinates)
   | CArgInProj        -- ^ input ptr to a projective point (3 coordinates, doesn't matter if weighted)
   | CArgOutAffine     -- ^ output ptr to an affine point
@@ -165,10 +167,11 @@ curveFfiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
     , "  withForeignPtr fptr1 $ \\ptr1 -> do"
     , "    withForeignPtr fptr2 $ \\ptr2 -> do"
     , "      withForeignPtr fptr3 $ \\ptr3 -> do"
-    , "        c_" ++ cname ++ " ptr1 ptr2 ptr3 " -- ++ show hsNLimbsR
+    , "        c_" ++ cname ++ " ptr1 ptr2 ptr3"
     , "  return (" ++ hsTyCon ++ " fptr3)"
     ]
 
+{-
   CTyp [CArgInScalarP, CArgInProj, CArgOutProj] CRetVoid -> 
     [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
     , ""
@@ -179,11 +182,52 @@ curveFfiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
     , "  withForeignPtr fptr1 $ \\ptr1 -> do"
     , "    withForeignPtr fptr2 $ \\ptr2 -> do"
     , "      withForeignPtr fptr3 $ \\ptr3 -> do"
-    , "        c_" ++ cname ++ " ptr1 ptr2 ptr3 " -- ++ show hsNLimbsP
+    , "        c_" ++ cname ++ " ptr1 ptr2 ptr3"
+    , "  return (" ++ hsTyCon ++ " fptr3)"
+    ]
+-}
+
+  CTyp [CArgInBigIntP, CArgInProj, CArgOutProj] CRetVoid -> 
+    [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+    , ""
+    , "{-# NOINLINE " ++ hsFunName ++ " #-}"
+    , hsFunName ++ " :: BigP.BigInt" ++ show (64*hsNLimbsP) ++ " -> " ++ hsTyName ++ " -> " ++ hsTyName
+    , hsFunName ++ " (BigP.MkBigInt" ++ show (64*hsNLimbsP) ++ " fptr1) (" ++ hsTyCon ++ " fptr2) = unsafePerformIO $ do"
+    , "  fptr3 <- mallocForeignPtrArray " ++ show (3*hsNLimbsP)
+    , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+    , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+    , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+    , "        c_" ++ cname ++ " ptr1 ptr2 ptr3"
     , "  return (" ++ hsTyCon ++ " fptr3)"
     ]
 
-  _ -> error $ "Zikkurat.CodeGen.Curve.CurveFFI.ffiCall: C function type not implemented:\n    " ++ show cfunty
+  CTyp [CArgInt, CArgInProj, CArgOutProj] CRetVoid -> 
+    [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()"
+    , ""
+    , "{-# NOINLINE " ++ hsFunName ++ " #-}"
+    , hsFunName ++ " :: Int -> " ++ hsTyName ++ " -> " ++ hsTyName
+    , hsFunName ++ " k1 (" ++ hsTyCon ++ " fptr2) = unsafePerformIO $ do"
+    , "  fptr3 <- mallocForeignPtrArray " ++ show (3*hsNLimbsP)
+    , "  withForeignPtr fptr2 $ \\ptr2 -> do"
+    , "    withForeignPtr fptr3 $ \\ptr3 -> do"
+    , "      c_" ++ cname ++ " (fromIntegral k1) ptr2 ptr3" 
+    , "  return (" ++ hsTyCon ++ " fptr3)"
+    ]
+
+  CTyp [CArgInScalarP, CArgOutScalarP] CRetVoid -> 
+    [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: Ptr Word64 -> Ptr Word64 -> IO ()"
+    , ""
+    , "{-# NOINLINE " ++ hsFunName ++ " #-}"
+    , hsFunName ++ " :: Fp -> Fp"
+    , hsFunName ++ " (MkFp fptr1) = unsafePerformIO $ do"
+    , "  fptr2 <- mallocForeignPtrArray " ++ show (1*hsNLimbsP)
+    , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+    , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+    , "      c_" ++ cname ++ " ptr1 ptr2"
+    , "  return (MkFp fptr2)"
+    ]
+
+  _ -> error $ "Zikkurat.CodeGen.Curve.CurveFFI.curveFfiCall: C function type not implemented:\n    " ++ show cfunty
 
 --------------------------------------------------------------------------------
 

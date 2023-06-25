@@ -32,6 +32,7 @@ data CodeGenParams = CodeGenParams
   , hs_path       :: Path         -- ^ path of the Haskell module
   , hs_path_p     :: Path         -- ^ path of the Haskell module for Fp
   , hs_path_r     :: Path         -- ^ path of the Haskell module for Fr
+  , hs_path_big_p :: Path         -- ^ path fot the Fp-sized BigInt module
   , c_basename_p  :: String       -- ^ name of the @.c@ / @.h@ file for Fr (without extension)
   , c_basename_r  :: String       -- ^ name of the @.c@ / @.h@ file for Fr (without extension)
   , typeName      :: String       -- ^ the name of the haskell type for curve points

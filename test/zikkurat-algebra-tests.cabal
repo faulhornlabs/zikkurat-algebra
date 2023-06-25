@@ -29,6 +29,7 @@ Library
                         
   Exposed-Modules:      ZK.Test.Run
                         ZK.Test.Field.Properties
+                        ZK.Test.Curve.Properties
 
   Default-Language:     Haskell2010
   Default-Extensions:   CPP, BangPatterns

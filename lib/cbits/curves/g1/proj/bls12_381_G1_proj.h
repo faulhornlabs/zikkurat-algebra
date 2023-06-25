@@ -12,6 +12,9 @@ extern uint8_t bls12_381_G1_is_infinity   ( const uint64_t *src );
 extern void    bls12_381_G1_set_infinity  (       uint64_t *tgt );
 extern uint8_t bls12_381_G1_is_in_subgroup( const uint64_t *src );
 
+extern uint8_t bls12_381_G1_is_equal( const uint64_t *src1, const uint64_t *src2 );
+extern uint8_t bls12_381_G1_is_same ( const uint64_t *src1, const uint64_t *src2 );
+
 extern void bls12_381_G1_neg        ( const uint64_t *src ,       uint64_t *tgt );
 extern void bls12_381_G1_dbl        ( const uint64_t *src ,       uint64_t *tgt );
 extern void bls12_381_G1_add        ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
@@ -26,8 +29,10 @@ extern void bls12_381_G1_madd_proj_aff ( const uint64_t *src1, const uint64_t *s
 extern void bls12_381_G1_madd_aff_proj ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 extern void bls12_381_G1_madd_inplace(         uint64_t *tgt , const uint64_t *src2 );
 
-extern void bls12_381_G1_scl_Fp     ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
+extern void bls12_381_G1_scl_generic( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );
 extern void bls12_381_G1_scl_Fr     ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
+extern void bls12_381_G1_scl_big    ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
+extern void bls12_381_G1_scl_small  (       uint64_t  kst , const uint64_t *src , uint64_t *tgt );
 
 extern void bls12_381_G1_scl_naive   ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );
 extern void bls12_381_G1_scl_windowed( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );

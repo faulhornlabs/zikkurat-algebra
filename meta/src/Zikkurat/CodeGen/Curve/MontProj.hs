@@ -37,6 +37,9 @@ c_header (Curve{..}) (CodeGenParams{..}) =
   , "extern void    " ++ prefix ++ "set_infinity  (       uint64_t *tgt );"
   , "extern uint8_t " ++ prefix ++ "is_in_subgroup( const uint64_t *src );"
   , ""
+  , "extern uint8_t " ++ prefix ++ "is_equal( const uint64_t *src1, const uint64_t *src2 );"
+  , "extern uint8_t " ++ prefix ++ "is_same ( const uint64_t *src1, const uint64_t *src2 );"
+  , ""
   , "extern void " ++ prefix ++ "neg        ( const uint64_t *src ,       uint64_t *tgt );"
   , "extern void " ++ prefix ++ "dbl        ( const uint64_t *src ,       uint64_t *tgt );"
   , "extern void " ++ prefix ++ "add        ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
@@ -51,8 +54,10 @@ c_header (Curve{..}) (CodeGenParams{..}) =
   , "extern void " ++ prefix ++ "madd_aff_proj ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "madd_inplace(         uint64_t *tgt , const uint64_t *src2 );"
   , ""
-  , "extern void " ++ prefix ++ "scl_Fp     ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "scl_generic( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
   , "extern void " ++ prefix ++ "scl_Fr     ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "scl_big    ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "scl_small  (       uint64_t  kst , const uint64_t *src , uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "scl_naive   ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
   , "extern void " ++ prefix ++ "scl_windowed( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
@@ -65,20 +70,27 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
   [ mkffi "isOnCurve"   $ cfun "is_on_curve"     (CTyp [CArgInProj] CRetBool)
   , mkffi "isInfinity"  $ cfun "is_infinity"     (CTyp [CArgInProj] CRetBool)
     --
-  , mkffi "normalize"   $ cfun "normalize"        (CTyp [CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "isEqual"     $ cfun "is_equal"        (CTyp [CArgInProj, CArgInProj ] CRetBool)
+  , mkffi "isSame"      $ cfun "is_same"         (CTyp [CArgInProj, CArgInProj ] CRetBool)
+    --
+  , mkffi "normalize"   $ cfun "normalize"       (CTyp [CArgInProj , CArgOutProj ] CRetVoid)
     --
 -- TODO: we need an affine type first 
 --  , mkffi "fromAffine"  $ cfun "from_aff"         (CTyp [CArgInAffine , CArgOutProj   ] CRetVoid)
 --  , mkffi "toAffine"    $ cfun "to_aff"           (CTyp [CArgInProj   , CArgOutAffine ] CRetVoid)
     --
-  , mkffi "neg"         $ cfun "neg"              (CTyp [CArgInProj                 , CArgOutProj ] CRetVoid)
-  , mkffi "dbl"         $ cfun "dbl"              (CTyp [CArgInProj                 , CArgOutProj ] CRetVoid)
-  , mkffi "add"         $ cfun "add"              (CTyp [CArgInProj    , CArgInProj , CArgOutProj ] CRetVoid)
-  , mkffi "sub"         $ cfun "sub"              (CTyp [CArgInProj    , CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "neg"         $ cfun "neg"              (CTyp [CArgInProj              , CArgOutProj ] CRetVoid)
+  , mkffi "dbl"         $ cfun "dbl"              (CTyp [CArgInProj              , CArgOutProj ] CRetVoid)
+  , mkffi "add"         $ cfun "add"              (CTyp [CArgInProj , CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "sub"         $ cfun "sub"              (CTyp [CArgInProj , CArgInProj , CArgOutProj ] CRetVoid)
     --
-  , mkffi "sclRef"      $ cfun "scl_reference"    (CTyp [CArgInScalarR , CArgInProj , CArgOutProj ] CRetVoid)
---  , mkffi "sclFp"       $ cfun "scl_Fp"           (CTyp [CArgInScalarP , CArgInProj , CArgOutProj ] CRetVoid)
-  , mkffi "sclFr"       $ cfun "scl_Fr"           (CTyp [CArgInScalarR , CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "sclFr"          $ cfun "scl_Fr"           (CTyp [CArgInScalarR , CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "sclBigNonNeg"   $ cfun "scl_big"          (CTyp [CArgInBigIntP , CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "sclSmallNonNeg" $ cfun "scl_small"        (CTyp [CArgInt       , CArgInProj , CArgOutProj ] CRetVoid)
+   --
+  , mkffi "scaleByA"  $ cfun "scale_by_A"  (CTyp [CArgInScalarP , CArgOutScalarP ] CRetVoid)
+  , mkffi "scaleByB"  $ cfun "scale_by_B"  (CTyp [CArgInScalarP , CArgOutScalarP ] CRetVoid)
+  , mkffi "scaleBy3B" $ cfun "scale_by_3B" (CTyp [CArgInScalarP , CArgOutScalarP ] CRetVoid)
   ]
   where
     -- cfun_ cname = CFun (bigint_   ++ cname)
@@ -99,17 +111,19 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   [ "-- NOTE 1: This module is intented to be imported qualified"
   , "-- NOTE 2: Generated code, do not edit!"
   , ""
-  , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}"
+  , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}"
   , "module " ++ hsModule hs_path
   , "  ( " ++ typeName ++ "(..)"
   , "  , primeP , primeR , cofactor , curveA , curveB"
   , "  , genG1 , infinity"
   , "  , coords , mkPoint , mkPointMaybe , unsafeMkPoint"
+  , "  , isEqual , isSame"
   , "  , isOnCurve , isInfinity"
   , "  , normalize"
   , "  , neg , add , dbl , sub"
-  , "  , sclRef , sclFr" -- , sclFp"
+  , "  , sclFr , sclBig , sclSmall"
   , "  , rndG1 , rndG1_naive"
+  , "  , scaleByA , scaleByB , scaleBy3B    -- temp for debugging"
   , "  )"  
   , "  where"  
   , ""
@@ -132,7 +146,10 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "import " ++ hsModule hs_path_r ++ " ( Fr(..) )"
   , "import qualified " ++ hsModule hs_path_p ++ " as Fp"
   , "import qualified " ++ hsModule hs_path_r ++ " as Fr"
-  , "-- import qualified ZK.Algebra.Class.Curve as C"
+  , "import qualified " ++ hsModule hs_path_big_p ++ " as BigP"
+  , ""
+  , "import qualified ZK.Algebra.Class.Field as F"
+  , "import qualified ZK.Algebra.Class.Curve as C"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -177,8 +194,8 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  fptr4 <- mallocForeignPtrArray " ++ show (3*nlimbs_p)
   , "  withForeignPtr fptr1 $ \\ptr1 -> do"
   , "    withForeignPtr fptr2 $ \\ptr2 -> do"
-  , "      withForeignPtr fptr2 $ \\ptr3 -> do"
-  , "        withForeignPtr fptr2 $ \\ptr4 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        withForeignPtr fptr4 $ \\ptr4 -> do"
   , "          copyBytes (        ptr4 " ++                      "  ) ptr1 " ++ show (8*nlimbs_p)
   , "          copyBytes (plusPtr ptr4 " ++ show (  8*nlimbs_p) ++ ") ptr2 " ++ show (8*nlimbs_p)
   , "          copyBytes (plusPtr ptr4 " ++ show (2*8*nlimbs_p) ++ ") ptr3 " ++ show (8*nlimbs_p)
@@ -192,8 +209,8 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  fptr3 <- mallocForeignPtrArray " ++ show (nlimbs_p)
   , "  withForeignPtr fptr1 $ \\ptr1 -> do"
   , "    withForeignPtr fptr2 $ \\ptr2 -> do"
-  , "      withForeignPtr fptr2 $ \\ptr3 -> do"
-  , "        withForeignPtr fptr2 $ \\ptr4 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        withForeignPtr fptr4 $ \\ptr4 -> do"
   , "          copyBytes ptr1 (        ptr4 " ++                      "  ) " ++ show (8*nlimbs_p)
   , "          copyBytes ptr2 (plusPtr ptr4 " ++ show (  8*nlimbs_p) ++ ") " ++ show (8*nlimbs_p)
   , "          copyBytes ptr3 (plusPtr ptr4 " ++ show (2*8*nlimbs_p) ++ ") " ++ show (8*nlimbs_p)
@@ -209,6 +226,58 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "-- | Returns a uniformly random element /in the subgroup G1/"
   , "rndG1 :: IO " ++ typeName
   , "rndG1 = rndG1_naive"
+  , ""
+  , "--------------------------------------------------------------------------------"
+  , ""
+  , "instance C.StrictEq " ++ typeName ++ " where"
+  , "  (===) = isSame"
+  , ""
+  , "instance Eq " ++ typeName ++ " where"
+  , "  (==) = isEqual"
+  , "  -- p == q  =  coords (normalize p) == coords (normalize q)"
+  , ""
+  , "instance Show " ++ typeName ++ " where"
+  , "  show pt = case coords pt of"
+  , "     (x,y,z) -> \"[ \" ++ show x ++ \" : \" ++ show y ++ \" : \" ++ show z ++ \"] \""
+  , ""
+  , "instance F.Rnd " ++ typeName ++ " where"
+  , "  rndIO = rndG1"
+  , ""
+  , "instance C.Group " ++ typeName ++ " where"
+  , "  grpName _    = \"" ++ curveName ++ " / G1\""
+  , "  grpIsUnit    = " ++ hsModule hs_path ++ ".isInfinity"
+  , "  grpUnit      = " ++ hsModule hs_path ++ ".infinity"
+  , "  grpNormalize = normalize"
+  , "  grpNeg       = neg"
+  , "  grpDbl       = dbl"
+  , "  grpAdd       = add"
+  , "  grpSub       = sub"
+  , "  grpScale_    = sclSmall"
+  , "  grpScale     = sclBig"
+  , ""
+  , "instance C.Curve " ++ typeName ++ " where"
+  , "  curveNamePxy _ = \"" ++ curveName ++ " ( Fp )\""
+  , "  type BaseField   " ++ typeName ++ " = Fp"
+  , "  type ScalarField " ++ typeName ++ " = Fr"
+  , "  isOnCurve   = " ++ hsModule hs_path ++ ".isOnCurve"
+  , "  isInifinity = " ++ hsModule hs_path ++ ".isInfinity"
+  , "  infinity    = " ++ hsModule hs_path ++ ".infinity"
+  , "  subgroupGen = " ++ hsModule hs_path ++ ".genG1"
+  , "  scalarMul   = " ++ hsModule hs_path ++ ".sclFr"
+  , ""
+  , "--------------------------------------------------------------------------------"
+  , ""
+  , "sclSmall :: Int -> G1 -> G1"
+  , "sclSmall k pt"
+  , "  | k == 0    = infinity"
+  , "  | k < 0     = neg $ sclSmallNonNeg (negate k) pt"
+  , "  | otherwise =       sclSmallNonNeg (       k) pt"
+  , ""
+  , "sclBig :: Integer -> G1 -> G1"
+  , "sclBig k pt"
+  , "  | k == 0    = infinity"
+  , "  | k < 0     = neg $ sclBigNonNeg (fromInteger $ negate k) pt"
+  , "  | otherwise =       sclBigNonNeg (fromInteger $        k) pt"
   , ""
   , "--------------------------------------------------------------------------------"
   ]
@@ -262,17 +331,17 @@ scale_by_A (Curve{..}) (CodeGenParams{..}) = case curveA of
 
   0 -> [ "// scale a field element by A = " ++ show curveA
        , "void " ++ prefix ++ "scale_by_A(const uint64_t *src, uint64_t *tgt ) {"
-       , "  memset( tgt, 0, " ++ show (8*3*nlimbs_p) ++ " );"
+       , "  memset( tgt, 0, " ++ show (8*nlimbs_p) ++ " );"
        , "}"
        , ""
        , "void " ++ prefix ++ "scale_by_A_inplace( uint64_t *tgt ) {"
-       , "  memset( tgt, 0, " ++ show (8*3*nlimbs_p) ++ " );"
+       , "  memset( tgt, 0, " ++ show (8*nlimbs_p) ++ " );"
        , "}"
        ]
 
   1 -> [ "// scale a field element by A = " ++ show curveA
        , "void " ++ prefix ++ "scale_by_A(const uint64_t *src, uint64_t *tgt ) {"
-       , "  memcpy( tgt, src, " ++ show (8*3*nlimbs_p) ++ " );"
+       , "  memcpy( tgt, src, " ++ show (8*nlimbs_p) ++ " );"
        , "}"
        , ""
        , "void " ++ prefix ++ "scale_by_A_inplace( uint64_t *tgt ) {"
@@ -307,17 +376,17 @@ scale_by_B (Curve{..}) (CodeGenParams{..}) = case curveB of
 
   0 -> [ "// scale a field element by B = " ++ show curveB
        , "void " ++ prefix ++ "scale_by_B(const uint64_t *src, uint64_t *tgt ) {"
-       , "  memset( tgt, 0, " ++ show (8*3*nlimbs_p) ++ " );"
+       , "  memset( tgt, 0, " ++ show (8*nlimbs_p) ++ " );"
        , "}"
        , ""
        , "void " ++ prefix ++ "scale_by_B_inplace( uint64_t *tgt ) {"
-       , "  memset( tgt, 0, " ++ show (8*3*nlimbs_p) ++ " );"
+       , "  memset( tgt, 0, " ++ show (8*nlimbs_p) ++ " );"
        , "}"
        ]
 
   1 -> [ "// scale a field element by B = " ++ show curveB
        , "void " ++ prefix ++ "scale_by_B(const uint64_t *src, uint64_t *tgt ) {"
-       , "  memcpy( tgt, src, " ++ show (8*3*nlimbs_p) ++ " );"
+       , "  memcpy( tgt, src, " ++ show (8*nlimbs_p) ++ " );"
        , "}"
        , ""
        , "void " ++ prefix ++ "scale_by_B_inplace( uint64_t *tgt ) {"
@@ -378,17 +447,17 @@ scale_by_B (Curve{..}) (CodeGenParams{..}) = case curveB of
 scale_by_3B ::  Curve -> CodeGenParams -> Code
 scale_by_3B (Curve{..}) (CodeGenParams{..}) = case curveB of
 
-  0 -> [ "// scale a field element by B = " ++ show curveB
+  0 -> [ "// scale a field element by (3*B) = " ++ show (3*curveB)
        , "void " ++ prefix ++ "scale_by_3B(const uint64_t *src, uint64_t *tgt ) {"
-       , "  memset( tgt, 0, " ++ show (8*3*nlimbs_p) ++ " );"
+       , "  memset( tgt, 0, " ++ show (8*nlimbs_p) ++ " );"
        , "}"
        , ""
        , "void " ++ prefix ++ "scale_by_3B_inplace( uint64_t *tgt ) {"
-       , "  memset( tgt, 0, " ++ show (8*3*nlimbs_p) ++ " );"
+       , "  memset( tgt, 0, " ++ show (8*nlimbs_p) ++ " );"
        , "}"
        ]
 
-  3 -> [ "// scale a field element by B = " ++ show curveB
+  3 -> [ "// scale a field element by (3*B) = " ++ show (3*curveB)
        , "void " ++ prefix ++ "scale_by_3B(const uint64_t *src, uint64_t *tgt ) {"
        , "  uint64_t tmp[NLIMBS_P];"
        , "  " ++ prefix_p ++ "add( src, src, tmp );       // 2*B"
@@ -402,13 +471,13 @@ scale_by_3B (Curve{..}) (CodeGenParams{..}) = case curveB of
        , "}"
        ]
 
-  4  ->[ "// scale a field element by B = " ++ show curveB
+  4  ->[ "// scale a field element by (3*B) = " ++ show (3*curveB)
        , "void " ++ prefix ++ "scale_by_3B(const uint64_t *src, uint64_t *tgt ) {"
-       , "  uint64_t tmp[NLIMBS_P];"
+       , "  uint64_t tmp [NLIMBS_P];"
        , "  uint64_t tmp2[NLIMBS_P];"
        , "  " ++ prefix_p ++ "add( src, src, tmp );       // 2*B"
        , "  " ++ prefix_p ++ "add_inplace( tmp, tmp );    // 4*B"
-       , "  " ++ prefix_p ++ "inplace( tmp, tmp, tmp2);   // 8*B"
+       , "  " ++ prefix_p ++ "add( tmp, tmp, tmp2);       // 8*B"
        , "  " ++ prefix_p ++ "add( tmp, tmp2, tgt );      // 12*B"
        , "}"
        , ""
@@ -417,7 +486,7 @@ scale_by_3B (Curve{..}) (CodeGenParams{..}) = case curveB of
        , "}"
        ]
 
-  _ -> [ "// scale a field element by 3*B = " ++ show (3*curveB)
+  _ -> [ "// scale a field element by (3*B) = " ++ show (3*curveB)
        , "void " ++ prefix ++ "scale_by_3B(const uint64_t *src, uint64_t *tgt ) {"
        , "  " ++ prefix_p ++ "scl( " ++ show (3*curveB) ++ ", src, *tgt );"
        , "}"
@@ -439,15 +508,37 @@ normalize (Curve{..}) (CodeGenParams{..}) =
   , "    " ++ prefix_p ++ "set_one( Y3 );"
   , "  }"
   , "  else {"
-  , "    " ++ prefix_p ++ "inv( Z1, zinv );"
-  , "    " ++ prefix_p ++ "mul( X1, zinv, X3 );"
-  , "    " ++ prefix_p ++ "mul( Y1, zinv, Y3 );"
-  , "    " ++ prefix_p ++ "set_one( Z3 );"
+  , "    if (" ++ prefix_p ++ "is_one( Z1 )) {"
+  , "      // already normalized"
+  , "      if (tgt != src1) { memcpy( tgt, src1, " ++ show (8*3*nlimbs_p) ++ " ); }"
+  , "    }"
+  , "    else {"
+  , "      " ++ prefix_p ++ "inv( Z1, zinv );"
+  , "      " ++ prefix_p ++ "mul( X1, zinv, X3 );"
+  , "      " ++ prefix_p ++ "mul( Y1, zinv, Y3 );"
+  , "      " ++ prefix_p ++ "set_one( Z3 );"
+  , "    }"
   , "  }"
   , "}"
   , ""
   , "void " ++ prefix ++ "normalize_inplace( uint64_t *tgt ) {"
   , "  " ++ prefix ++ "normalize( tgt, tgt );"
+  , "}"
+  , ""
+  , "// checks whether the underlying representation (projective coordinates) are the same"
+  , "uint8_t " ++ prefix ++ "is_same( const uint64_t *src1, const uint64_t *src2 ) {"
+  , "  return ( " ++ prefix_p ++ "is_equal( X1, X2 ) &&"
+  , "           " ++ prefix_p ++ "is_equal( Y1, Y2 ) &&"
+  , "           " ++ prefix_p ++ "is_equal( Z1, Z2 ) );"
+  , "}"
+  , ""
+  , "// checks whether two curve points are equal"
+  , "uint8_t " ++ prefix ++ "is_equal( const uint64_t *src1, const uint64_t *src2 ) {"
+  , "  uint64_t tmp1[" ++ show(3*nlimbs_p) ++ "];"
+  , "  uint64_t tmp2[" ++ show(3*nlimbs_p) ++ "];"
+  , "  " ++ prefix ++ "normalize( src1, tmp1 );"
+  , "  " ++ prefix ++ "normalize( src2, tmp2 );"
+  , "  return " ++ prefix ++ "is_same( tmp1, tmp2 );"
   , "}"
   ]
 
@@ -851,20 +942,28 @@ scaleFpFr :: Curve -> CodeGenParams -> Code
 scaleFpFr (Curve{..}) (CodeGenParams{..}) =
   [ "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
   , "// where `grp` is a group element in G1, and `expo` is in Fr"
-  , "void " ++ prefix ++ "scl_reference(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
-  , "  " ++ prefix ++ "scl_naive(expo, grp, tgt, NLIMBS_R);"
+  , "void " ++ prefix ++ "scl_generic(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt, int nlimbs) {"
+  , "  " ++ prefix ++ "scl_windowed(expo, grp, tgt, nlimbs);"
   , "}"
   , ""
   , "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
   , "// where `grp` is a group element in G1, and `expo` is in Fr"
   , "void " ++ prefix ++ "scl_Fr(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
-  , "  " ++ prefix ++ "scl_windowed(expo, grp, tgt, NLIMBS_R);"
+  , "  " ++ prefix ++ "scl_generic(expo, grp, tgt, NLIMBS_R);"
   , "}"
   , ""
   , "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
   , "// where `grp` is a group element in G1, and `expo` is the same size as Fp"
-  , "void " ++ prefix ++ "scl_Fp(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
-  , "  " ++ prefix ++ "scl_windowed(expo, grp, tgt, NLIMBS_P);"
+  , "void " ++ prefix ++ "scl_big(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
+  , "  " ++ prefix ++ "scl_generic(expo, grp, tgt, NLIMBS_P);"
+  , "}"
+  , ""
+  , "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
+  , "// where `grp` is a group element in G1, and `expo` is a 64 bit (unsigned!) word"
+  , "void " ++ prefix ++ "scl_small(uint64_t expo, const uint64_t *grp, uint64_t *tgt) {"
+  , "  uint64_t expo_vec[1];"
+  , "  expo_vec[0] = expo;"
+  , "  " ++ prefix ++ "scl_generic(expo_vec, grp, tgt, 1);"
   , "}"
   ]
 
