@@ -6,6 +6,7 @@ module ZK.Test.Curve.Properties where
 
 --------------------------------------------------------------------------------
 
+import Data.Bits
 import Data.Proxy
 
 import Control.Monad
@@ -145,15 +146,16 @@ groupProps =
   , GroupProp1 prop_neg_dbl                     "neg (dbl x)"
   , GroupProp2 prop_neg_add                     "neg (add x y)"
     --
-  , GroupProp1 prop_scale_1                     "scale 1" 
-  , GroupProp1 prop_scale_2                     "scale 2" 
-  , GroupProp1 prop_scale_3                     "scale 3" 
-  , GroupProp1 prop_scale_4                     "scale 4" 
-  , GroupProp1 prop_scale_5                     "scale 5" 
-  , GroupProp1 prop_scale_zero                  "scale 0" 
-  , GroupProp1 prop_scale_minus1                "scale -1" 
-  , GroupProp1 prop_scale_minus2                "scale -2" 
-  , GroupProp1 prop_scale_minus3                "scale -3" 
+  , GroupPropI1 prop_scale_vs_ref               "scale vs. reference"
+  , GroupProp1  prop_scale_1                    "scale 1" 
+  , GroupProp1  prop_scale_2                    "scale 2" 
+  , GroupProp1  prop_scale_3                    "scale 3" 
+  , GroupProp1  prop_scale_4                    "scale 4" 
+  , GroupProp1  prop_scale_5                    "scale 5" 
+  , GroupProp1  prop_scale_zero                 "scale 0" 
+  , GroupProp1  prop_scale_minus1               "scale -1" 
+  , GroupProp1  prop_scale_minus2               "scale -2" 
+  , GroupProp1  prop_scale_minus3               "scale -3" 
   , GroupPropI1  prop_scale_int_vs_integer      "scale vs. scale_"
   , GroupPropI1  prop_scale_plus                "scale (k+1)"
   , GroupPropI1  prop_scale_double_1            "scale (2*k) / 1"
@@ -173,6 +175,19 @@ curveOnlyProps =
   , CurvePropI1 prop_is_on_curve_scale         "scale on curve"
   , CurveProp1  prop_normalize_on_curve        "normalize on curve"
   ]
+
+--------------------------------------------------------------------------------
+
+referenceScale :: Group a => Integer -> a -> a
+referenceScale k x0 
+  | k == 0     = grpUnit
+  | k < 0      = grpNeg $ go (-k) grpUnit x0
+  | otherwise  =          go   k  grpUnit x0
+  where
+    go 0 acc _   = acc
+    go k acc run = case (k .&. 1) of 
+      0 -> go (shiftR k 1)         acc      (grpDbl run)
+      _ -> go (shiftR k 1) (grpAdd acc run) (grpDbl run)
 
 --------------------------------------------------------------------------------
 -- * Group properties
@@ -226,6 +241,11 @@ prop_dbl_distributive_1 x y = (grpDbl (x `grpAdd` y)) == ((grpDbl x) `grpAdd` (g
 
 prop_dbl_distributive_2 :: Group a => a -> a -> Bool
 prop_dbl_distributive_2 x y = (grpDbl (x `grpSub` y)) == ((grpDbl x) `grpSub` (grpDbl y))
+
+prop_scale_vs_ref :: Group a => Int -> a -> Bool
+prop_scale_vs_ref k x =
+  (grpScale (fromIntegral k) x == ref) && (grpScale_ k x == ref) where
+    ref = referenceScale (fromIntegral k) x
 
 prop_scale_1 :: Group a => a -> Bool
 prop_scale_1 x  = (grpScale  1 x == x) 

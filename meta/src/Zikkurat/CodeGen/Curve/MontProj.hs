@@ -768,6 +768,58 @@ addCurve (Curve{..}) (CodeGenParams{..}) =
   , "}"
   ]
 
+addCurveA0 :: Curve -> CodeGenParams -> Code
+addCurveA0 (Curve{..}) (CodeGenParams{..}) =
+  [ "// adds two elliptic curve points, assuming A = 0" 
+  , "// https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2015-rcb"
+  , "void " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  uint64_t t0[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t t1[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t t2[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t t3[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t t4[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t t5[" ++ show nlimbs_p ++ "];"  
+  , "  " ++ prefix_p ++ "mul( X1, X2, t0 );              // t0 = X1*X2"
+  , "  " ++ prefix_p ++ "mul( Y1, Y2, t1 );              // t1 = Y1*Y2"
+  , "  " ++ prefix_p ++ "mul( Z1, Z2, t2 );              // t2 = Z1*Z2"
+  , "  " ++ prefix_p ++ "add( X1, Y1, t3 );              // t3 = X1+Y1"
+  , "  " ++ prefix_p ++ "add( X2, Y2, t4 );              // t4 = X2+Y2"
+  , "  " ++ prefix_p ++ "mul_inplace( t3, t4 );          // t3 = t3*t4"
+  , "  " ++ prefix_p ++ "add( t0, t1, t4 );              // t4 = t0+t1"
+  , "  " ++ prefix_p ++ "sub_inplace( t3 , t4 );         // t3 = t3-t4"
+  , "  " ++ prefix_p ++ "add( X1, Z1, t4 );              // t4 = X1+Z1"
+  , "  " ++ prefix_p ++ "add( X2, Z2, t5 );              // t5 = X2+Z2"
+  , "  " ++ prefix_p ++ "mul_inplace( t4, t5 );          // t4 = t4*t5"
+  , "  " ++ prefix_p ++ "add( t0, t2, t5 );              // t5 = t0+t2"
+  , "  " ++ prefix_p ++ "sub_inplace( t4, t5 );          // t4 = t4-t5"
+  , "  " ++ prefix_p ++ "add( Y1, Z1, t5 );              // t5 = Y1+Z1"
+  , "  " ++ prefix_p ++ "add( Y2, Z2, X3 );              // X3 = Y2+Z2"
+  , "  " ++ prefix_p ++ "mul_inplace( t5, X3 );          // t5 = t5*X3"
+  , "  " ++ prefix_p ++ "add( t1, t2, X3 );              // X3 = t1+t2"
+  , "  " ++ prefix_p ++ "sub_inplace( t5, X3 );          // t5 = t5-X3"
+  , "  " ++ prefix   ++ "scale_by_3B( t2, X3 );          // X3 = b3*t2"
+  , "  " ++ prefix_p ++ "copy( X3, Z3 );                 // Z3 = X3"
+  , "  " ++ prefix_p ++ "sub( t1, Z3, X3 );              // X3 = t1-Z3"
+  , "  " ++ prefix_p ++ "add_inplace( Z3, t1 );          // Z3 = t1+Z3"
+  , "  " ++ prefix_p ++ "mul( X3, Z3, Y3 );              // Y3 = X3*Z3"
+  , "  " ++ prefix_p ++ "add( t0, t0, t1 );              // t1 = t0+t0"
+  , "  " ++ prefix_p ++ "add_inplace( t1, t0 );          // t1 = t1+t0"
+  , "  " ++ prefix   ++ "scale_by_3B_inplace( t4 );      // t4 = b3*t4"
+  , "  " ++ prefix_p ++ "mul( t1, t4, t0 );              // t0 = t1*t4"
+  , "  " ++ prefix_p ++ "add_inplace( Y3, t0 );          // Y3 = Y3+t0"
+  , "  " ++ prefix_p ++ "mul( t4, t5, t0 );              // t0 = t5*t4"
+  , "  " ++ prefix_p ++ "mul_inplace( X3, t3 );          // X3 = t3*X3"
+  , "  " ++ prefix_p ++ "sub_inplace( X3, t0 );          // X3 = X3-t0"
+  , "  " ++ prefix_p ++ "mul( t1, t3, t0 );              // t0 = t3*t1"
+  , "  " ++ prefix_p ++ "mul_inplace( Z3, t5 );          // Z3 = t5*Z3"
+  , "  " ++ prefix_p ++ "add_inplace( Z3, t0 );          // Z3 = Z3+t0"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "add_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
+  , "  " ++ prefix ++ "add( tgt, src2, tgt);"
+  , "}"
+  ]
+
 subCurve :: Curve -> CodeGenParams -> Code
 subCurve (Curve{..}) (CodeGenParams{..}) =
   [ "void " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
@@ -983,7 +1035,9 @@ c_code curve params = concat $ map ("":)
     --
   , negCurve curve params
   , dblCurve curve params
-  , addCurve curve params
+  , if curveA curve == 0
+      then addCurveA0 curve params
+      else addCurve   curve params
   , subCurve curve params
   , mixedAddCurve curve params
     --

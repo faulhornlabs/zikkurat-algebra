@@ -226,7 +226,7 @@ void bls12_381_G1_dbl_inplace( uint64_t *tgt ) {
   bls12_381_G1_dbl( tgt , tgt );
 }
 
-// adds two elliptic curve points
+// adds two elliptic curve points, assuming A = 0
 // https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2015-rcb
 void bls12_381_G1_add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
   uint64_t t0[6];
@@ -253,20 +253,14 @@ void bls12_381_G1_add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt
   bls12_381_p_mont_mul_inplace( t5, X3 );          // t5 = t5*X3
   bls12_381_p_mont_add( t1, t2, X3 );              // X3 = t1+t2
   bls12_381_p_mont_sub_inplace( t5, X3 );          // t5 = t5-X3
-  bls12_381_G1_scale_by_A ( t4, Z3 );          // Z3 = a*t4 
   bls12_381_G1_scale_by_3B( t2, X3 );          // X3 = b3*t2
-  bls12_381_p_mont_add_inplace( Z3, X3 );          // Z3 = X3+Z3
+  bls12_381_p_mont_copy( X3, Z3 );                 // Z3 = X3
   bls12_381_p_mont_sub( t1, Z3, X3 );              // X3 = t1-Z3
   bls12_381_p_mont_add_inplace( Z3, t1 );          // Z3 = t1+Z3
   bls12_381_p_mont_mul( X3, Z3, Y3 );              // Y3 = X3*Z3
   bls12_381_p_mont_add( t0, t0, t1 );              // t1 = t0+t0
   bls12_381_p_mont_add_inplace( t1, t0 );          // t1 = t1+t0
-  bls12_381_G1_scale_by_A_inplace ( t2 );      // t2 = a*t2 
   bls12_381_G1_scale_by_3B_inplace( t4 );      // t4 = b3*t4
-  bls12_381_p_mont_add_inplace( t1, t2 );          // t1 = t1+t2
-  bls12_381_p_mont_sub_inplace_reverse( t2, t0 );  // t2 = t0-t2
-  bls12_381_G1_scale_by_A_inplace ( t2 );      // t2 = a*t2 
-  bls12_381_p_mont_add_inplace( t4, t2 );          // t4 = t4+t2
   bls12_381_p_mont_mul( t1, t4, t0 );              // t0 = t1*t4
   bls12_381_p_mont_add_inplace( Y3, t0 );          // Y3 = Y3+t0
   bls12_381_p_mont_mul( t4, t5, t0 );              // t0 = t5*t4
