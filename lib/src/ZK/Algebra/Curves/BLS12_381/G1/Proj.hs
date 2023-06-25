@@ -33,10 +33,10 @@ import Foreign.ForeignPtr
 
 import System.IO.Unsafe
 
-import ZK.Algebra.Curves.BLS12_381.Mont.Fp ( Fp(..) )
-import ZK.Algebra.Curves.BLS12_381.Mont.Fr ( Fr(..) )
-import qualified ZK.Algebra.Curves.BLS12_381.Mont.Fp as Fp
-import qualified ZK.Algebra.Curves.BLS12_381.Mont.Fr as Fr
+import ZK.Algebra.Curves.BLS12_381.Fp.Mont ( Fp(..) )
+import ZK.Algebra.Curves.BLS12_381.Fr.Mont ( Fr(..) )
+import qualified ZK.Algebra.Curves.BLS12_381.Fp.Mont as Fp
+import qualified ZK.Algebra.Curves.BLS12_381.Fr.Mont as Fr
 import qualified ZK.Algebra.BigInt.BigInt384 as BigP
 
 import qualified ZK.Algebra.Class.Field as F

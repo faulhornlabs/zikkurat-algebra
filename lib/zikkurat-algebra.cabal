@@ -46,14 +46,14 @@ Library
                         ZK.Algebra.BigInt.BigInt384
                         ZK.Algebra.BigInt.BigInt448
                         ZK.Algebra.BigInt.BigInt512
-                        ZK.Algebra.Curves.BN128.Std.Fp
-                        ZK.Algebra.Curves.BN128.Std.Fr
-                        ZK.Algebra.Curves.BN128.Mont.Fp
-                        ZK.Algebra.Curves.BN128.Mont.Fr
-                        ZK.Algebra.Curves.BLS12_381.Std.Fp
-                        ZK.Algebra.Curves.BLS12_381.Std.Fr
-                        ZK.Algebra.Curves.BLS12_381.Mont.Fp
-                        ZK.Algebra.Curves.BLS12_381.Mont.Fr
+                        ZK.Algebra.Curves.BN128.Fp.Std
+                        ZK.Algebra.Curves.BN128.Fr.Std
+                        ZK.Algebra.Curves.BN128.Fp.Mont
+                        ZK.Algebra.Curves.BN128.Fr.Mont
+                        ZK.Algebra.Curves.BLS12_381.Fp.Std
+                        ZK.Algebra.Curves.BLS12_381.Fr.Std
+                        ZK.Algebra.Curves.BLS12_381.Fp.Mont
+                        ZK.Algebra.Curves.BLS12_381.Fr.Mont
                         ZK.Algebra.Curves.BN128.G1.Proj
                         ZK.Algebra.Curves.BLS12_381.G1.Proj
  

@@ -19,14 +19,14 @@ myUserHooks = simpleUserHooks
 -- myPreBuild :: Args -> BuildFlags -> IO HookedBuildInfo
 myPreBuildHook args buildflags = do
 
-  generate_bigints C  "cbits/bigint"
-  generate_bigints Hs "src/ZK/Algebra/BigInt"
+  generate_bigints C  "cbits" -- "/bigint"
+  generate_bigints Hs "src"   -- "/ZK/Algebra/BigInt"
 
   generate_primefields_std C  "cbits"
-  generate_primefields_std Hs "src/ZK/Algebra"
+  generate_primefields_std Hs "src"
 
   generate_primefields_montgomery C  "cbits"
-  generate_primefields_montgomery Hs "src/ZK/Algebra"
+  generate_primefields_montgomery Hs "src"
 
   generate_curves_proj C  "cbits"
   generate_curves_proj Hs "src"

@@ -11,6 +11,7 @@ import Data.Char
 import Text.Printf
 
 import System.FilePath
+import System.Directory
 
 --------------------------------------------------------------------------------
 
@@ -48,6 +49,12 @@ hsFilePath (Path path) = intercalate "/" path ++ ".hs"
 
 hsModule :: Path -> FilePath
 hsModule (Path path) = intercalate "." path
+
+--------------------------------------------------------------------------------
+
+-- | Given a file, we create it's directory if necessary
+createTgtDirectory :: FilePath -> IO ()
+createTgtDirectory fpath = createDirectoryIfMissing True (takeDirectory fpath)
 
 --------------------------------------------------------------------------------
 

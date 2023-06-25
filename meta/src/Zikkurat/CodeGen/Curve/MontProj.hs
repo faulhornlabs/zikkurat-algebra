@@ -1062,6 +1062,9 @@ curve_MontProj_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
   let fn_h = tgtdir </> (cFilePath "h" c_path)
   let fn_c = tgtdir </> (cFilePath "c" c_path)
 
+  createTgtDirectory fn_h
+  createTgtDirectory fn_c
+
   putStrLn $ "writing `" ++ fn_h ++ "`" 
   writeFile fn_h $ unlines $ c_header curve params
 
@@ -1073,6 +1076,8 @@ curve_MontProj_hs_codegen tgtdir curve params@(CodeGenParams{..}) = do
 
   let fn_hs = tgtdir </> (hsFilePath hs_path)
 
+  createTgtDirectory fn_hs
+  
   putStrLn $ "writing `" ++ fn_hs ++ "`" 
   writeFile fn_hs $ unlines $ hs_code curve params
 

@@ -3,7 +3,7 @@
 -- NOTE 2: Generated code, do not edit!
 
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
-module ZK.Algebra.Curves.BLS12_381.Mont.Fr
+module ZK.Algebra.Curves.BLS12_381.Fr.Mont
   ( Fr(..)
   , prime
   , to , from
@@ -36,7 +36,7 @@ import System.IO.Unsafe
 
 import ZK.Algebra.BigInt.BigInt256( BigInt256(..) )
 import qualified ZK.Algebra.BigInt.BigInt256 as B
-import qualified ZK.Algebra.Curves.BLS12_381.Std.Fr as Std
+import qualified ZK.Algebra.Curves.BLS12_381.Fr.Std as Std
 import qualified ZK.Algebra.Class.Field as C
 
 --------------------------------------------------------------------------------  

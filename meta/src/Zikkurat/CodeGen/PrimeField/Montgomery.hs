@@ -25,11 +25,10 @@ data Params = Params
   , nlimbs        :: Int          -- ^ number of 64-bit limbs
   , thePrime      :: Integer      -- ^ the prime
   , bigint_       :: String       -- ^ the corresponding bigint prefix, like "bigint256_"
-  , c_basename    :: FilePath     -- ^ name of the @.c@ / @.h@ file (without extension)
-  , c_stdBasename :: FilePath     -- ^ same but for the standard repr. version
-  , hs_basename   :: FilePath     -- ^ the name of the @.hs@ file (without extension) and the type too
-  , hs_module     :: String       -- ^ the module path
-  , hs_stdModule  :: String       -- ^ the module path of the std. repr. version
+  , c_path        :: Path         -- ^ path of the C module (without extension)
+  , hs_path       :: Path         -- ^ path of the Hs module
+  , c_path_std    :: Path         -- ^ C path of the std. repr. version
+  , hs_path_std   :: Path         -- ^ the module path of the std. repr. version
   , typeName      :: String       -- ^ the name of the haskell type
   , bigintType    :: String       -- ^ the name of the haskell type of the corresponding BigInt
   , fieldName     :: String       -- ^ name of the field
@@ -81,7 +80,7 @@ hsBegin (Params{..}) =
   , "-- NOTE 2: Generated code, do not edit!"
   , ""
   , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}"
-  , "module " ++ hs_module ++ hs_basename 
+  , "module " ++ hsModule hs_path
   , "  ( " ++ typeName ++ "(..)"
   , "  , prime"
   , "  , to"    ++ postfix ++ " , from"    ++ postfix 
@@ -114,7 +113,7 @@ hsBegin (Params{..}) =
   , ""
   , "import ZK.Algebra.BigInt." ++ bigintType ++ "( " ++ bigintType ++ "(..) )"
   , "import qualified ZK.Algebra.BigInt." ++ bigintType ++ " as B"
-  , "import qualified " ++ hs_stdModule ++ hs_basename ++ " as Std"
+  , "import qualified " ++ hsModule hs_path_std ++ " as Std"
   , "import qualified ZK.Algebra.Class.Field as C"
   , ""
   , "--------------------------------------------------------------------------------  "
@@ -270,8 +269,8 @@ c_begin (Params{..}) =
   , "#include <string.h>"
   , "#include <stdint.h>"
   , "#include <x86intrin.h>"
-  , "#include \"" ++ c_basename    ++ ".h\""
-  , "#include \"" ++ c_stdBasename ++ ".h\""
+  , "#include \"" ++ pathBaseName c_path     ++ ".h\""
+  , "#include \"" ++ pathBaseName c_path_std ++ ".h\""
   , "#include \"bigint" ++ show (64*nlimbs) ++ ".h\""
   , ""
   , "#define NLIMBS " ++ show nlimbs
@@ -702,8 +701,11 @@ hs_code params@(Params{..}) = concat $ map ("":)
 primefield_Montgomery_c_codegen :: FilePath -> Params -> IO ()
 primefield_Montgomery_c_codegen tgtdir params@(Params{..}) = do
 
-  let fn_h = tgtdir </> (c_basename <.> "h")
-  let fn_c = tgtdir </> (c_basename <.> "c")
+  let fn_h = tgtdir </> (cFilePath "h" c_path)
+  let fn_c = tgtdir </> (cFilePath "c" c_path)
+
+  createTgtDirectory fn_h
+  createTgtDirectory fn_c
 
   putStrLn $ "writing `" ++ fn_h ++ "`" 
   writeFile fn_h $ unlines $ c_header params
@@ -714,7 +716,9 @@ primefield_Montgomery_c_codegen tgtdir params@(Params{..}) = do
 primefield_Montgomery_hs_codegen :: FilePath -> Params -> IO ()
 primefield_Montgomery_hs_codegen tgtdir params@(Params{..}) = do
 
-  let fn_hs = tgtdir </> (hs_basename <.> "hs")
+  let fn_hs = tgtdir </> (hsFilePath hs_path)
+
+  createTgtDirectory fn_hs
 
   putStrLn $ "writing `" ++ fn_hs ++ "`" 
   writeFile fn_hs $ unlines $ hs_code params
