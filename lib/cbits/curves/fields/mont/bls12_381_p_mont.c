@@ -253,8 +253,28 @@ void bls12_381_p_mont_div_inplace( uint64_t *tgt, const uint64_t *src2) {
   bls12_381_p_mont_mul_inplace( tgt, bls12_381_p_mont_R_squared );
 };
 
+uint8_t bls12_381_p_mont_is_zero( const uint64_t *src ) {
+  return bigint384_is_zero( src );
+}
+
 uint8_t bls12_381_p_mont_is_one( const uint64_t *src ) {
-  bigint384_is_equal( src, bls12_381_p_mont_R_modp );
+  return bigint384_is_equal( src, bls12_381_p_mont_R_modp );
+}
+
+uint8_t bls12_381_p_mont_is_equal( const uint64_t *src1, const uint64_t *src2 ) {
+  return bigint384_is_equal( src1 , src2 );
+}
+
+void bls12_381_p_mont_set_zero( uint64_t *tgt ) {
+  bigint384_set_zero( tgt );
+}
+
+void bls12_381_p_mont_set_one( uint64_t *tgt) {
+  bigint384_copy( bls12_381_p_mont_R_modp , tgt );
+}
+
+void bls12_381_p_mont_copy( const uint64_t *src, uint64_t *tgt ) {
+  bigint384_copy( src , tgt );
 }
 
 void bls12_381_p_mont_from_std( const uint64_t *src, uint64_t *tgt) {

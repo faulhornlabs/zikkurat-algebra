@@ -10,6 +10,8 @@ import Data.Char
 
 import Text.Printf
 
+import System.FilePath
+
 --------------------------------------------------------------------------------
 
 data HsOrC 
@@ -23,6 +25,29 @@ parseHsOrC str = case map toLower str of
   "hs"      -> Just Hs
   "haskell" -> Just Hs
   _         -> Nothing
+
+--------------------------------------------------------------------------------
+
+-- | A path (module or c source file or c header). The last entry is the 
+-- the base filename (no extension!)
+newtype Path 
+  = Path [String]
+  deriving (Eq,Show)
+
+pathDirectory :: Path -> FilePath
+pathDirectory (Path path) = foldl (</>) "." (init path)
+
+pathBaseName :: Path -> String
+pathBaseName (Path path) = last path
+
+cFilePath :: String -> Path -> FilePath
+cFilePath ext (Path path) = intercalate "/" path ++ "." ++ ext
+
+hsFilePath :: Path -> FilePath
+hsFilePath (Path path) = intercalate "/" path ++ ".hs"
+
+hsModule :: Path -> FilePath
+hsModule (Path path) = intercalate "." path
 
 --------------------------------------------------------------------------------
 
@@ -49,6 +74,10 @@ toWord64sLE' len what = take len $ toWord64sLE what ++ repeat 0
 mkConst :: Int -> String -> Integer -> String 
 mkConst n name value = "const uint64_t " ++ name ++ "[" ++ show n ++ "] = { " ++ intercalate ", " (map showHex64 ws) ++ " };" where
   ws = toWord64sLE' n value
+
+mkConstArr :: Int -> String -> [Integer] -> String 
+mkConstArr n name values = "const uint64_t " ++ name ++ "[" ++ show (n*length values) ++ "] = { " ++ intercalate ", " (map showHex64 $ concat wss) ++ " };" where
+  wss = map (toWord64sLE' n) values
 
 --------------------------------------------------------------------------------
 

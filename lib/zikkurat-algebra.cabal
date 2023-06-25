@@ -37,6 +37,7 @@ Library
                         random >= 1.1
                         
   Exposed-Modules:      ZK.Algebra.Class.Field
+                        ZK.Algebra.Class.Curve
                         ZK.Algebra.BigInt.Types        
                         ZK.Algebra.BigInt.BigInt128
                         ZK.Algebra.BigInt.BigInt192
@@ -53,7 +54,8 @@ Library
                         ZK.Algebra.Curves.BLS12_381.Std.Fr
                         ZK.Algebra.Curves.BLS12_381.Mont.Fp
                         ZK.Algebra.Curves.BLS12_381.Mont.Fr
-
+                        ZK.Algebra.Curves.BLS12_381.G1.Proj
+ 
   c-sources:            cbits/bigint/bigint128.c
                         cbits/bigint/bigint192.c
                         cbits/bigint/bigint256.c
@@ -69,6 +71,7 @@ Library
                         cbits/curves/fields/mont/bn128_r_mont.c
                         cbits/curves/fields/mont/bls12_381_p_mont.c
                         cbits/curves/fields/mont/bls12_381_r_mont.c
+                        cbits/curves/g1/proj/bls12_381_G1_proj.c
 
   Default-Language:     Haskell2010
   Default-Extensions:   CPP, BangPatterns
@@ -78,6 +81,7 @@ Library
   include-dirs:         cbits/bigint
                         cbits/curves/fields/std
                         cbits/curves/fields/mont
+                        cbits/curves/g1/proj/
 
   ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
 

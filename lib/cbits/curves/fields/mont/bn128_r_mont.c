@@ -239,8 +239,28 @@ void bn128_r_mont_div_inplace( uint64_t *tgt, const uint64_t *src2) {
   bn128_r_mont_mul_inplace( tgt, bn128_r_mont_R_squared );
 };
 
+uint8_t bn128_r_mont_is_zero( const uint64_t *src ) {
+  return bigint256_is_zero( src );
+}
+
 uint8_t bn128_r_mont_is_one( const uint64_t *src ) {
-  bigint256_is_equal( src, bn128_r_mont_R_modp );
+  return bigint256_is_equal( src, bn128_r_mont_R_modp );
+}
+
+uint8_t bn128_r_mont_is_equal( const uint64_t *src1, const uint64_t *src2 ) {
+  return bigint256_is_equal( src1 , src2 );
+}
+
+void bn128_r_mont_set_zero( uint64_t *tgt ) {
+  bigint256_set_zero( tgt );
+}
+
+void bn128_r_mont_set_one( uint64_t *tgt) {
+  bigint256_copy( bn128_r_mont_R_modp , tgt );
+}
+
+void bn128_r_mont_copy( const uint64_t *src, uint64_t *tgt ) {
+  bigint256_copy( src , tgt );
 }
 
 void bn128_r_mont_from_std( const uint64_t *src, uint64_t *tgt) {

@@ -28,6 +28,9 @@ myPreBuildHook args buildflags = do
   generate_primefields_montgomery C  "cbits"
   generate_primefields_montgomery Hs "src/ZK/Algebra"
 
+  generate_curves_proj C  "cbits"
+  generate_curves_proj Hs "src"
+
   return $ emptyHookedBuildInfo  
 
 -- myPostCleanHook :: Args -> CleanFlags -> PackageDescription -> () -> IO ()

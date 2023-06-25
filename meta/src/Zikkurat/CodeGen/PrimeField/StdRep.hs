@@ -42,7 +42,13 @@ c_header (Params{..}) =
   , ""
   , "extern uint8_t " ++ prefix ++ "is_valid( const uint64_t *src );"
   , ""
-  , "extern void " ++ prefix ++ "neg( const uint64_t *src , uint64_t *tgt );"
+  , "extern uint8_t " ++ prefix ++ "is_zero   ( const uint64_t *src );"
+  , "extern uint8_t " ++ prefix ++ "is_one    ( const uint64_t *src );"
+  , "extern uint8_t " ++ prefix ++ "is_equal  ( const uint64_t *src1, const uint64_t *src2 );"
+  , "extern void    " ++ prefix ++ "set_zero  (       uint64_t *tgt );"
+  , "extern void    " ++ prefix ++ "set_one   (       uint64_t *tgt );"
+  , "extern void    " ++ prefix ++ "copy      ( const uint64_t *src , uint64_t *tgt );"
+  , ""
   , "extern void " ++ prefix ++ "neg( const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
@@ -251,6 +257,35 @@ c_begin (Params{..}) =
   , ""
   , "//------------------------------------------------------------------------------"
   ] 
+
+--------------------------------------------------------------------------------
+
+stdIsOne :: Params -> Code
+stdIsOne Params{..} = 
+  [ "uint8_t " ++ prefix ++ "is_zero( const uint64_t *src ) {"
+  , "  return " ++ bigint_ ++ "is_zero( src );"
+  , "}"
+  , ""
+  , "uint8_t " ++ prefix ++ "is_one( const uint64_t *src ) {"
+  , "  return " ++ bigint_ ++ "is_one( src );"
+  , "}"
+  , ""
+  , "uint8_t " ++ prefix ++ "is_equal( const uint64_t *src1, const uint64_t *src2 ) {"
+  , "  return " ++ bigint_ ++ "is_equal( src1 , src2 );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "set_zero( uint64_t *tgt ) {"
+  , "  " ++ bigint_ ++ "set_zero( tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "set_one( uint64_t *tgt) {"
+  , "  " ++ bigint_ ++ "set_one( tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "copy( const uint64_t *src, uint64_t *tgt ) {"
+  , "  " ++ bigint_ ++ "copy( src , tgt );"
+  , "}"
+  ]
 
 --------------------------------------------------------------------------------
 -- * addition / subtraction
@@ -640,6 +675,8 @@ invField Params{..} =
 c_code :: Params -> Code
 c_code params = concat $ map ("":)
   [ c_begin   params
+    --
+  , stdIsOne  params
     --
   , addPrime  params
   , subPrime  params

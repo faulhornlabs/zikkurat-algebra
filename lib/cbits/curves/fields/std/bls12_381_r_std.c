@@ -17,6 +17,30 @@ const uint64_t bls12_381_r_std_prime[4] = { 0xffffffff00000001, 0x53bda402fffe5b
 
 //------------------------------------------------------------------------------
 
+uint8_t bls12_381_r_std_is_zero( const uint64_t *src ) {
+  return bigint256_is_zero( src );
+}
+
+uint8_t bls12_381_r_std_is_one( const uint64_t *src ) {
+  return bigint256_is_one( src );
+}
+
+uint8_t bls12_381_r_std_is_equal( const uint64_t *src1, const uint64_t *src2 ) {
+  return bigint256_is_equal( src1 , src2 );
+}
+
+void bls12_381_r_std_set_zero( uint64_t *tgt ) {
+  bigint256_set_zero( tgt );
+}
+
+void bls12_381_r_std_set_one( uint64_t *tgt) {
+  bigint256_set_one( tgt );
+}
+
+void bls12_381_r_std_copy( const uint64_t *src, uint64_t *tgt ) {
+  bigint256_copy( src , tgt );
+}
+
 // adds the prime p to a bigint
 uint8_t bls12_381_r_std_bigint256_add_prime( const uint64_t *src, uint64_t *tgt ) {
   return bigint256_add( src, bls12_381_r_std_prime, tgt );

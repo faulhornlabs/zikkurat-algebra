@@ -3,7 +3,7 @@ Name:                 zikkurat-algebra-codegen
 Version:              0.0.1
 Synopsis:             Code generator for algebraic primitives used in zero-knowledge proofs
 
-Description:          Generates C code for algebraic primitives (finite fields, 
+Description:          Generate C code for algebraic primitives (finite fields, 
                       elliptic curves and polynomials) used in zero-knowledge proofs
 
 License:              MIT OR Apache-2.0
@@ -30,6 +30,9 @@ Library
   Exposed-Modules:      Zikkurat.Generate
                         Zikkurat.CodeGen.PrimeField.StdRep
                         Zikkurat.CodeGen.PrimeField.Montgomery
+                        Zikkurat.CodeGen.Curve.MontProj
+                        Zikkurat.CodeGen.Curve.Params
+                        Zikkurat.CodeGen.Curve.CurveFFI
                         Zikkurat.CodeGen.BigInt
                         Zikkurat.CodeGen.FFI
                         Zikkurat.CodeGen.Misc

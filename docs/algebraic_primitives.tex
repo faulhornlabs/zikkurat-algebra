@@ -259,9 +259,17 @@ Negation of $[x]$ is $[p-x]$.
 \subsection{Multiplication and squaring}
 Multiplication is done by multiplying the representant numbers as non-negative 
 integers, and then taking reduction modulo $p$.
-The latter is normally done using the Barret reduction algorithm.
-It's not clear if using something like Karatsuba multiplication can make
-the first step faster on modern hardware and small $\ell$-s.
+The latter is normally done using the Barret reduction algorithm.\\
+
+Multiplication of integers can be done in a few ways too:
+\begin{itemize}
+\item ``Comba multiplication'' doesn't change the basic multiplication, but
+rearranges carry, so that is more efficient on actual computers.
+
+\url{https://everything2.com/title/Comba+multiplication}
+\item it's not clear if using something like Karatsuba multiplication can make
+the first step faster on modern hardware and small $\ell$-s.\\
+\end{itemize}
 
 \subsection{Power}
 This is normally done using the standard `fast exponentiation algorithm':
@@ -428,6 +436,41 @@ elliptic curve in Weierstrass form can be written in Montgomery form if and only
 \item the equation $z^3 + Az + B=0$ has at least one root $\alpha\in F$;
 \item and for that $\alpha$ the field element $3\alpha^2 + A$ is a quadratic residue in $\F$.
 \end{itemize}
+
+%-------------------------------------------------------------------------------
+
+\section{Subgroup check}
+
+Normally we are interested in a prime-order subgroup $\G_1 \subset E(\F_p)$
+of the curve, with $|\G_1|=r$. For some curves, like the BN128, we actually
+have $\G_1 = E(\F_p)$, but for other curves, like the BLS12-381, we actually
+have $|G_1|=r\ll |E(\F_p)$. When we got an elliptic curve point from an
+untrusted source (for example in the verifier), it's important to check both
+that it's a point on the curve and that it is a point on the required subgroup.\\
+
+A simple algorithm for this is to compute $r*(x,y)$ and check whether it's
+the point at the infinity. However, this is relatively slow.\\
+
+More efficient algorithms for the curve BLS12-381 are described in the paper
+``Faster Subgroup Checks for BLS12-381'' by Sean Bowe.
+
+%-------------------------------------------------------------------------------
+
+\section{Hash-to-curve and random curve points}
+
+We may want to convert a number to a curve point or subgroup point, for several 
+possible reasons: Either to randomly generate a point, or to map some other
+data (typically a message hash) to a point.\\
+
+The simplest way to take a number $\mod r$, and multiply the generator by it.
+This will give an element of $\G_1$. However, this is relatively slow.\\
+
+The following method is faster: Map the number to a coordinate $x\in\F_p$. Check
+whether $x^3+Ax+B$ is a quadratic residue or not. If yes, we got (usually two)
+curve points, select one. If you want to end in the subgroup $G_1$, multiply by
+the cofactor $h$.\\
+
+An even better approach is using the so-called SWU map.
 
 %-------------------------------------------------------------------------------
 

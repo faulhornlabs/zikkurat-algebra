@@ -4,6 +4,7 @@ module Zikkurat.Generate
   , generate_bigints
   , generate_primefields_std
   , generate_primefields_montgomery
+  , generate_curves_proj
   ) 
   where
 
@@ -19,8 +20,10 @@ import System.Directory
 import qualified Zikkurat.CodeGen.BigInt                as BigInt
 import qualified Zikkurat.CodeGen.PrimeField.StdRep     as FpStd
 import qualified Zikkurat.CodeGen.PrimeField.Montgomery as FpMont
+import qualified Zikkurat.CodeGen.Curve.MontProj        as Proj
 
-import Zikkurat.CodeGen.Misc ( HsOrC(..) )
+import Zikkurat.CodeGen.Misc
+import Zikkurat.CodeGen.Curve.Params
 import Zikkurat.Primes
 
 --------------------------------------------------------------------------------
@@ -196,5 +199,45 @@ generate_primefields_montgomery hsOrC tgtdir0 = do
 
 --------------------------------------------------------------------------------
 
+bls12_381_cgParams :: CodeGenParams
+bls12_381_cgParams = CodeGenParams
+  { prefix        = "bls12_381_G1_"                                             -- prefix for C names
+  , prefix_p      = "bls12_381_p_mont_"                                         -- prefix for C names for Fp
+  , prefix_r      = "bls12_381_q_mont_"                                         -- prefix for C names for Fq
+  , nlimbs_p      = 6                                                           -- number of 64-bit limbs in p
+  , nlimbs_r      = 4                                                           -- number of 64-bit limbs in r
+  , c_path        = Path ["curves","g1","proj","bls12_381_G1_proj"]             -- path of the C file
+  , hs_path       = Path ["ZK","Algebra","Curves","BLS12_381","G1","Proj"]      -- path of the Haskell module
+  , hs_path_p     = Path ["ZK","Algebra","Curves","BLS12_381","Mont","Fp"]      -- path of the Haskell module for Fp
+  , hs_path_r     = Path ["ZK","Algebra","Curves","BLS12_381","Mont","Fr"]      -- path of the Haskell module for Fr
+  , c_basename_p  = "bls12_381_p_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_r  = "bls12_381_r_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , typeName      = "G1"                                                        -- the name of the haskell type for curve points
+  }
 
+curveList :: [(Curve,CodeGenParams)]
+curveList = 
+  [ ( bls12_381_curve  , bls12_381_cgParams  )
+  ]
+
+generate_curves_proj :: HsOrC -> FilePath -> IO ()
+generate_curves_proj hsOrC tgtdir = do
+
+  forM_ curveList $ \(curve,cgparams) -> do
+
+    let ctgtdir = tgtdir </> pathDirectory (c_path  cgparams)
+    let htgtdir = tgtdir </> pathDirectory (hs_path cgparams)
+  
+    -- only for createDirectory
+    let tgtdir1 = case hsOrC of 
+          C  -> ctgtdir
+          Hs -> htgtdir
+    createDirectoryIfMissing True tgtdir1
+  
+    -- print params
+    case hsOrC of 
+      C  -> Proj.curve_MontProj_c_codegen  tgtdir curve cgparams
+      Hs -> Proj.curve_MontProj_hs_codegen tgtdir curve cgparams
+
+--------------------------------------------------------------------------------
 

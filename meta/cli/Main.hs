@@ -43,6 +43,9 @@ main1 hsOrC what tgtdir = case map toLower what of
   "fields" -> do Gen.generate_primefields_std        hsOrC tgtdir 
                  Gen.generate_primefields_montgomery hsOrC tgtdir 
 
+  "curves" -> do Gen.generate_curves_proj            hsOrC tgtdir 
+                 -- Gen.generate_curves_jacobian        hsOrC tgtdir 
+
   _        ->    help
 
 ----------------------------------------
