@@ -101,7 +101,9 @@ hsBoot (Curve{..}) (CodeGenParams{..}) =
 
 hsBegin :: Curve -> CodeGenParams -> Code
 hsBegin (Curve{..}) (CodeGenParams{..}) =
-  [ "-- NOTE 1: This module is intented to be imported qualified"
+  [ "-- | " ++ curveName ++ " curve, affine coordinates, Montgomery field representation"
+  , ""
+  , "-- NOTE 1: This module is intented to be imported qualified"
   , "-- NOTE 2: Generated code, do not edit!"
   , ""
   , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}"

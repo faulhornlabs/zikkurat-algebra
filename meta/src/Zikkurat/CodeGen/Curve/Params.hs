@@ -25,6 +25,7 @@ data CodeGenParams = CodeGenParams
   { prefix         :: String       -- ^ prefix for C names (what we are generating)
   , prefix_affine  :: String       -- ^ prefix for C names
   , prefix_proj    :: String       -- ^ prefix for C names
+  , prefix_jac     :: String       -- ^ prefix for C names
   , prefix_p       :: String       -- ^ prefix for C names for Fp
   , prefix_r       :: String       -- ^ prefix for C names for Fq
   , nlimbs_p       :: Int          -- ^ number of 64-bit limbs in p
@@ -35,9 +36,11 @@ data CodeGenParams = CodeGenParams
   , c_path         :: Path         -- ^ path of the C file (what we are generating)
   , c_path_affine  :: Path         -- ^ path of the C file
   , c_path_proj    :: Path         -- ^ path of the C file
+  , c_path_jac     :: Path         -- ^ path of the C file
   , hs_path        :: Path         -- ^ path of the Haskell module (what we are generating)
   , hs_path_affine :: Path         -- ^ path of the Haskell module
   , hs_path_proj   :: Path         -- ^ path of the Haskell module
+  , hs_path_jac    :: Path         -- ^ path of the Haskell module
   , c_basename_p   :: String       -- ^ name of the @.c@ / @.h@ file for Fr (without extension)
   , c_basename_r   :: String       -- ^ name of the @.c@ / @.h@ file for Fr (without extension)
   , typeName       :: String       -- ^ the name of the haskell type for curve points

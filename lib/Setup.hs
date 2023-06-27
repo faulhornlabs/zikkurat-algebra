@@ -1,4 +1,6 @@
 
+import Control.Monad
+
 import Distribution.Simple
 import Distribution.Types.HookedBuildInfo
 
@@ -31,15 +33,23 @@ myPreBuildHook args buildflags = do
   generate_curves_proj C  "cbits"
   generate_curves_proj Hs "src"
 
+  generate_curves_jac C  "cbits"
+  generate_curves_jac Hs "src"
+
   generate_curves_affine C  "cbits"
   generate_curves_affine Hs "src"
 
   return $ emptyHookedBuildInfo  
 
+myRemoveDirectory :: FilePath -> IO ()
+myRemoveDirectory fpath = do
+  b <- doesDirectoryExist fpath
+  when b (removeDirectoryRecursive fpath)
+
 -- myPostCleanHook :: Args -> CleanFlags -> PackageDescription -> () -> IO ()
 myPostCleanHook args cleanflags pdep mlocalbuildinfo = do
-   removeDirectoryRecursive "src/ZK/Algebra/BigInt"
-   removeDirectoryRecursive "src/ZK/Algebra/Curves"
-   removeDirectoryRecursive "cbits/bigint"
-   removeDirectoryRecursive "cbits/curves"
+   myRemoveDirectory "src/ZK/Algebra/BigInt"
+   myRemoveDirectory "src/ZK/Algebra/Curves"
+   myRemoveDirectory "cbits/bigint"
+   myRemoveDirectory "cbits/curves"
 

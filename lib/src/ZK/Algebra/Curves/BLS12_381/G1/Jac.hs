@@ -1,11 +1,11 @@
 
--- | BLS12-381 curve, projective coordinates, Montgomery field representation
-
+-- | BLS12-381 curve, Jacobian (or weighted) projective coordinates, Montgomery field representation
+--
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
 
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
-module ZK.Algebra.Curves.BLS12_381.G1.Proj
+module ZK.Algebra.Curves.BLS12_381.G1.Jac
   ( G1(..)
   , primeP , primeR , cofactor , curveA , curveB
   , genG1 , infinity
@@ -67,7 +67,7 @@ genG1 = mkPoint (x, y, Fp.one) where
 
 --------------------------------------------------------------------------------
 
--- | An elliptic curve point, in projective coordinates
+-- | An elliptic curve point, in Jacobian (weighted projective) coordinates
 newtype G1 = MkG1 (ForeignPtr Word64)
 
 -- | Note: this throws an exception if the point is not on the curve
@@ -80,9 +80,9 @@ mkPointMaybe :: (Fp, Fp, Fp) -> Maybe G1
 mkPointMaybe xyz = let pt = unsafeMkPoint xyz in
   case isOnCurve pt of { True -> Just pt ; False -> Nothing }
 
--- | The point at infinity
+-- | The point at infinity, @{1 : 1 : 0}@
 infinity :: G1
-infinity = unsafeMkPoint (Fp.zero, Fp.one, Fp.zero)
+infinity = unsafeMkPoint (Fp.one, Fp.one, Fp.zero)
 
 {-# NOINLINE unsafeMkPoint #-}
 unsafeMkPoint :: (Fp, Fp, Fp) -> G1
@@ -134,15 +134,15 @@ instance Eq G1 where
 
 instance Show G1 where
   show pt = case coords pt of
-     (x,y,z) -> "[ " ++ show x ++ " : " ++ show y ++ " : " ++ show z ++ " ]"
+     (x,y,z) -> "{ " ++ show x ++ " : " ++ show y ++ " : " ++ show z ++ " }"
 
 instance F.Rnd G1 where
   rndIO = rndG1
 
 instance C.Group G1 where
   grpName _    = "BLS12-381 / G1"
-  grpIsUnit    = ZK.Algebra.Curves.BLS12_381.G1.Proj.isInfinity
-  grpUnit      = ZK.Algebra.Curves.BLS12_381.G1.Proj.infinity
+  grpIsUnit    = ZK.Algebra.Curves.BLS12_381.G1.Jac.isInfinity
+  grpUnit      = ZK.Algebra.Curves.BLS12_381.G1.Jac.infinity
   grpNormalize = normalize
   grpNeg       = neg
   grpDbl       = dbl
@@ -155,11 +155,11 @@ instance C.Curve G1 where
   curveNamePxy _ = "BLS12-381 ( Fp )"
   type BaseField   G1 = Fp
   type ScalarField G1 = Fr
-  isOnCurve   = ZK.Algebra.Curves.BLS12_381.G1.Proj.isOnCurve
-  isInifinity = ZK.Algebra.Curves.BLS12_381.G1.Proj.isInfinity
-  infinity    = ZK.Algebra.Curves.BLS12_381.G1.Proj.infinity
-  subgroupGen = ZK.Algebra.Curves.BLS12_381.G1.Proj.genG1
-  scalarMul   = ZK.Algebra.Curves.BLS12_381.G1.Proj.sclFr
+  isOnCurve   = ZK.Algebra.Curves.BLS12_381.G1.Jac.isOnCurve
+  isInifinity = ZK.Algebra.Curves.BLS12_381.G1.Jac.isInfinity
+  infinity    = ZK.Algebra.Curves.BLS12_381.G1.Jac.infinity
+  subgroupGen = ZK.Algebra.Curves.BLS12_381.G1.Jac.genG1
+  scalarMul   = ZK.Algebra.Curves.BLS12_381.G1.Jac.sclFr
 
 --------------------------------------------------------------------------------
 
@@ -177,54 +177,54 @@ sclBig k pt
 
 --------------------------------------------------------------------------------
 
-foreign import ccall unsafe "bls12_381_G1_proj_is_on_curve" c_bls12_381_G1_proj_is_on_curve :: Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_G1_jac_is_on_curve" c_bls12_381_G1_jac_is_on_curve :: Ptr Word64 -> IO Word8
 
 {-# NOINLINE isOnCurve #-}
 isOnCurve :: G1 -> Bool
 isOnCurve (MkG1 fptr) = unsafePerformIO $ do
   cret <- withForeignPtr fptr $ \ptr -> do
-    c_bls12_381_G1_proj_is_on_curve ptr
+    c_bls12_381_G1_jac_is_on_curve ptr
   return (cret /= 0)
 
-foreign import ccall unsafe "bls12_381_G1_proj_is_infinity" c_bls12_381_G1_proj_is_infinity :: Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_G1_jac_is_infinity" c_bls12_381_G1_jac_is_infinity :: Ptr Word64 -> IO Word8
 
 {-# NOINLINE isInfinity #-}
 isInfinity :: G1 -> Bool
 isInfinity (MkG1 fptr) = unsafePerformIO $ do
   cret <- withForeignPtr fptr $ \ptr -> do
-    c_bls12_381_G1_proj_is_infinity ptr
+    c_bls12_381_G1_jac_is_infinity ptr
   return (cret /= 0)
 
-foreign import ccall unsafe "bls12_381_G1_proj_is_in_subgroup" c_bls12_381_G1_proj_is_in_subgroup :: Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_G1_jac_is_in_subgroup" c_bls12_381_G1_jac_is_in_subgroup :: Ptr Word64 -> IO Word8
 
 {-# NOINLINE isInSubgroup #-}
 isInSubgroup :: G1 -> Bool
 isInSubgroup (MkG1 fptr) = unsafePerformIO $ do
   cret <- withForeignPtr fptr $ \ptr -> do
-    c_bls12_381_G1_proj_is_in_subgroup ptr
+    c_bls12_381_G1_jac_is_in_subgroup ptr
   return (cret /= 0)
 
-foreign import ccall unsafe "bls12_381_G1_proj_is_equal" c_bls12_381_G1_proj_is_equal :: Ptr Word64 -> Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_G1_jac_is_equal" c_bls12_381_G1_jac_is_equal :: Ptr Word64 -> Ptr Word64 -> IO Word8
 
 {-# NOINLINE isEqual #-}
 isEqual :: G1 -> G1 -> Bool
 isEqual (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
   cret <- withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_G1_proj_is_equal ptr1 ptr2
+      c_bls12_381_G1_jac_is_equal ptr1 ptr2
   return (cret /= 0)
 
-foreign import ccall unsafe "bls12_381_G1_proj_is_same" c_bls12_381_G1_proj_is_same :: Ptr Word64 -> Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_G1_jac_is_same" c_bls12_381_G1_jac_is_same :: Ptr Word64 -> Ptr Word64 -> IO Word8
 
 {-# NOINLINE isSame #-}
 isSame :: G1 -> G1 -> Bool
 isSame (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
   cret <- withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_G1_proj_is_same ptr1 ptr2
+      c_bls12_381_G1_jac_is_same ptr1 ptr2
   return (cret /= 0)
 
-foreign import ccall unsafe "bls12_381_G1_proj_normalize" c_bls12_381_G1_proj_normalize :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_normalize" c_bls12_381_G1_jac_normalize :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE normalize #-}
 normalize :: G1 -> G1
@@ -232,32 +232,32 @@ normalize (MkG1 fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 18
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_G1_proj_normalize ptr1 ptr2
+      c_bls12_381_G1_jac_normalize ptr1 ptr2
   return (MkG1 fptr2)
 
-foreign import ccall unsafe "bls12_381_G1_proj_from_affine" c_bls12_381_G1_proj_from_affine :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_from_affine" c_bls12_381_G1_jac_from_affine :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE fromAffine #-}
-fromAffine :: ZK.Algebra.Curves.BLS12_381.G1.Affine.G1 -> ZK.Algebra.Curves.BLS12_381.G1.Proj.G1
+fromAffine :: ZK.Algebra.Curves.BLS12_381.G1.Affine.G1 -> ZK.Algebra.Curves.BLS12_381.G1.Jac.G1
 fromAffine (ZK.Algebra.Curves.BLS12_381.G1.Affine.MkG1 fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 18
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_G1_proj_from_affine ptr1 ptr2
+      c_bls12_381_G1_jac_from_affine ptr1 ptr2
   return (MkG1 fptr2)
 
-foreign import ccall unsafe "bls12_381_G1_proj_to_affine" c_bls12_381_G1_proj_to_affine :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_to_affine" c_bls12_381_G1_jac_to_affine :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE toAffine #-}
-toAffine :: ZK.Algebra.Curves.BLS12_381.G1.Proj.G1 -> ZK.Algebra.Curves.BLS12_381.G1.Affine.G1
+toAffine :: ZK.Algebra.Curves.BLS12_381.G1.Jac.G1 -> ZK.Algebra.Curves.BLS12_381.G1.Affine.G1
 toAffine (MkG1 fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 12
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_G1_proj_to_affine ptr1 ptr2
+      c_bls12_381_G1_jac_to_affine ptr1 ptr2
   return (ZK.Algebra.Curves.BLS12_381.G1.Affine.MkG1 fptr2)
 
-foreign import ccall unsafe "bls12_381_G1_proj_neg" c_bls12_381_G1_proj_neg :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_neg" c_bls12_381_G1_jac_neg :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE neg #-}
 neg :: G1 -> G1
@@ -265,10 +265,10 @@ neg (MkG1 fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 18
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_G1_proj_neg ptr1 ptr2
+      c_bls12_381_G1_jac_neg ptr1 ptr2
   return (MkG1 fptr2)
 
-foreign import ccall unsafe "bls12_381_G1_proj_dbl" c_bls12_381_G1_proj_dbl :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_dbl" c_bls12_381_G1_jac_dbl :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE dbl #-}
 dbl :: G1 -> G1
@@ -276,10 +276,10 @@ dbl (MkG1 fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 18
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_G1_proj_dbl ptr1 ptr2
+      c_bls12_381_G1_jac_dbl ptr1 ptr2
   return (MkG1 fptr2)
 
-foreign import ccall unsafe "bls12_381_G1_proj_add" c_bls12_381_G1_proj_add :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_add" c_bls12_381_G1_jac_add :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE add #-}
 add :: G1 -> G1 -> G1
@@ -288,10 +288,10 @@ add (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_G1_proj_add ptr1 ptr2 ptr3
+        c_bls12_381_G1_jac_add ptr1 ptr2 ptr3
   return (MkG1 fptr3)
 
-foreign import ccall unsafe "bls12_381_G1_proj_sub" c_bls12_381_G1_proj_sub :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_sub" c_bls12_381_G1_jac_sub :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sub #-}
 sub :: G1 -> G1 -> G1
@@ -300,10 +300,10 @@ sub (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_G1_proj_sub ptr1 ptr2 ptr3
+        c_bls12_381_G1_jac_sub ptr1 ptr2 ptr3
   return (MkG1 fptr3)
 
-foreign import ccall unsafe "bls12_381_G1_proj_madd_proj_aff" c_bls12_381_G1_proj_madd_proj_aff :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_madd_jac_aff" c_bls12_381_G1_jac_madd_jac_aff :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE madd #-}
 madd :: G1 -> ZK.Algebra.Curves.BLS12_381.G1.Affine.G1 -> G1
@@ -312,10 +312,10 @@ madd (MkG1 fptr1) (ZK.Algebra.Curves.BLS12_381.G1.Affine.MkG1 fptr2) = unsafePer
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_G1_proj_madd_proj_aff ptr1 ptr2 ptr3
+        c_bls12_381_G1_jac_madd_jac_aff ptr1 ptr2 ptr3
   return (MkG1 fptr3)
 
-foreign import ccall unsafe "bls12_381_G1_proj_scl_Fr" c_bls12_381_G1_proj_scl_Fr :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_scl_Fr" c_bls12_381_G1_jac_scl_Fr :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sclFr #-}
 sclFr :: Fr -> G1 -> G1
@@ -324,10 +324,10 @@ sclFr (MkFr fptr1) (MkG1 fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_G1_proj_scl_Fr ptr1 ptr2 ptr3
+        c_bls12_381_G1_jac_scl_Fr ptr1 ptr2 ptr3
   return (MkG1 fptr3)
 
-foreign import ccall unsafe "bls12_381_G1_proj_scl_big" c_bls12_381_G1_proj_scl_big :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_scl_big" c_bls12_381_G1_jac_scl_big :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sclBigNonNeg #-}
 sclBigNonNeg :: BigP.BigInt384 -> G1 -> G1
@@ -336,10 +336,10 @@ sclBigNonNeg (BigP.MkBigInt384 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_G1_proj_scl_big ptr1 ptr2 ptr3
+        c_bls12_381_G1_jac_scl_big ptr1 ptr2 ptr3
   return (MkG1 fptr3)
 
-foreign import ccall unsafe "bls12_381_G1_proj_scl_small" c_bls12_381_G1_proj_scl_small :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_scl_small" c_bls12_381_G1_jac_scl_small :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sclSmallNonNeg #-}
 sclSmallNonNeg :: Int -> G1 -> G1
@@ -347,5 +347,5 @@ sclSmallNonNeg k1 (MkG1 fptr2) = unsafePerformIO $ do
   fptr3 <- mallocForeignPtrArray 18
   withForeignPtr fptr2 $ \ptr2 -> do
     withForeignPtr fptr3 $ \ptr3 -> do
-      c_bls12_381_G1_proj_scl_small (fromIntegral k1) ptr2 ptr3
+      c_bls12_381_G1_jac_scl_small (fromIntegral k1) ptr2 ptr3
   return (MkG1 fptr3)

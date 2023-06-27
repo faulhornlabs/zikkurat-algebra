@@ -264,9 +264,23 @@ curveFfiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
     [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
     , ""
     , "{-# NOINLINE " ++ hsFunName ++ " #-}"
-    , hsFunName ++ " :: " ++ hsTyName ++ " -> " ++ hsTyName ++ " -> " ++ hsTyName
-    , hsFunName ++ " (" ++ hsTyCon ++ " fptr1) (" ++ hsTyCon ++ " fptr2) = unsafePerformIO $ do"
+    , hsFunName ++ " :: " ++ hsTyNameAffine ++ " -> " ++ hsTyNameAffine ++ " -> " ++ hsTyNameAffine
+    , hsFunName ++ " (" ++ hsTyConAffine ++ " fptr1) (" ++ hsTyConAffine ++ " fptr2) = unsafePerformIO $ do"
     , "  fptr3 <- mallocForeignPtrArray " ++ show (2*hsNLimbsP)
+    , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+    , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+    , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+    , "        c_" ++ cname ++ " ptr1 ptr2 ptr3"
+    , "  return (" ++ hsTyConAffine ++ " fptr3)"
+    ]
+
+  CTyp [CArgInProj, CArgInAffine, CArgOutProj] CRetVoid -> 
+    [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+    , ""
+    , "{-# NOINLINE " ++ hsFunName ++ " #-}"
+    , hsFunName ++ " :: " ++ hsTyName ++ " -> " ++ hsTyNameAffine ++ " -> " ++ hsTyName
+    , hsFunName ++ " (" ++ hsTyCon ++ " fptr1) (" ++ hsTyConAffine ++ " fptr2) = unsafePerformIO $ do"
+    , "  fptr3 <- mallocForeignPtrArray " ++ show (3*hsNLimbsP)
     , "  withForeignPtr fptr1 $ \\ptr1 -> do"
     , "    withForeignPtr fptr2 $ \\ptr2 -> do"
     , "      withForeignPtr fptr3 $ \\ptr3 -> do"

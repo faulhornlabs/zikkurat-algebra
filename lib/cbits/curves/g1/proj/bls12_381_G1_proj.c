@@ -140,7 +140,7 @@ void bls12_381_G1_proj_to_affine( const uint64_t *src1 , uint64_t *tgt ) {
 }
 
 void bls12_381_G1_proj_copy( const uint64_t *src1 , uint64_t *tgt ) {
-  memcpy( tgt, src1, 144 );
+  if (tgt != src1) { memcpy( tgt, src1, 144 ); }
 }
 
 uint8_t bls12_381_G1_proj_is_infinity ( const uint64_t *src1 ) {
@@ -171,7 +171,9 @@ uint8_t bls12_381_G1_proj_is_on_curve ( const uint64_t *src1 ) {
   bls12_381_p_mont_mul( Z1, ZZ, tmp );          // Z^3
   bls12_381_G1_proj_scale_by_B_inplace( tmp );   // B*Z^3
   bls12_381_p_mont_add_inplace( acc, tmp );     // - Y^2*Z + X^3 + A*X*Z^2 + B*Z^3
-  return bls12_381_p_mont_is_zero( acc );
+  return (bls12_381_p_mont_is_zero( acc ) &&
+           ( (!bls12_381_p_mont_is_zero( Z1 )) || 
+             (!bls12_381_p_mont_is_zero( Y1 )) ) );
 }
 
 // checks whether the given point is in the subgroup G1
@@ -188,7 +190,7 @@ uint8_t bls12_381_G1_proj_is_in_subgroup ( const uint64_t *src1 ) {
 
 // negates an elliptic curve point
 void bls12_381_G1_proj_neg( const uint64_t *src, uint64_t *tgt ) {
-  memcpy( tgt, src, 144 );
+  if (tgt != src) { memcpy( tgt, src, 144 ); }
   bls12_381_p_mont_neg_inplace( Y3 );
 }
 

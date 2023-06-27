@@ -1,4 +1,6 @@
 
+-- | BN128 curve, affine coordinates, Montgomery field representation
+
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
 
@@ -240,26 +242,26 @@ dbl (MkG1 fptr1) = unsafePerformIO $ do
 foreign import ccall unsafe "bn128_G1_affine_add" c_bn128_G1_affine_add :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE add #-}
-add :: G1 -> G1 -> G1
-add (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
+add :: ZK.Algebra.Curves.BN128.G1.Affine.G1 -> ZK.Algebra.Curves.BN128.G1.Affine.G1 -> ZK.Algebra.Curves.BN128.G1.Affine.G1
+add (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr1) (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr2) = unsafePerformIO $ do
   fptr3 <- mallocForeignPtrArray 8
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
         c_bn128_G1_affine_add ptr1 ptr2 ptr3
-  return (MkG1 fptr3)
+  return (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr3)
 
 foreign import ccall unsafe "bn128_G1_affine_sub" c_bn128_G1_affine_sub :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sub #-}
-sub :: G1 -> G1 -> G1
-sub (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
+sub :: ZK.Algebra.Curves.BN128.G1.Affine.G1 -> ZK.Algebra.Curves.BN128.G1.Affine.G1 -> ZK.Algebra.Curves.BN128.G1.Affine.G1
+sub (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr1) (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr2) = unsafePerformIO $ do
   fptr3 <- mallocForeignPtrArray 8
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
         c_bn128_G1_affine_sub ptr1 ptr2 ptr3
-  return (MkG1 fptr3)
+  return (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr3)
 
 foreign import ccall unsafe "bn128_G1_affine_scl_Fr" c_bn128_G1_affine_scl_Fr :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 

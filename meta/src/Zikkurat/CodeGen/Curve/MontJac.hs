@@ -1,8 +1,8 @@
 
--- | Projective coordinates, Montgomery field representation
+-- | Jacobian (or weighted) projective coordinates, Montgomery field representation
 
 {-# LANGUAGE StrictData, RecordWildCards #-}
-module Zikkurat.CodeGen.Curve.MontProj where
+module Zikkurat.CodeGen.Curve.MontJac where
 
 --------------------------------------------------------------------------------
 
@@ -50,9 +50,9 @@ c_header (Curve{..}) (CodeGenParams{..}) =
   , "extern void " ++ prefix ++ "add_inplace(       uint64_t *tgt , const uint64_t *src2 );"
   , "extern void " ++ prefix ++ "sub_inplace(       uint64_t *tgt , const uint64_t *src2 );"
   , ""
-  , "extern void " ++ prefix ++ "madd_proj_aff ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "madd_aff_proj ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "madd_inplace(         uint64_t *tgt , const uint64_t *src2 );"
+  , "extern void " ++ prefix ++ "madd_jac_aff ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "madd_aff_jac ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "madd_inplace (       uint64_t *tgt , const uint64_t *src2 );"
   , ""
   , "extern void " ++ prefix ++ "scl_generic( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
   , "extern void " ++ prefix ++ "scl_Fr     ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
@@ -84,7 +84,7 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
   , mkffi "add"         $ cfun "add"              (CTyp [CArgInProj , CArgInProj , CArgOutProj ] CRetVoid)
   , mkffi "sub"         $ cfun "sub"              (CTyp [CArgInProj , CArgInProj , CArgOutProj ] CRetVoid)
     --
-  , mkffi "madd"        $ cfun "madd_proj_aff"    (CTyp [CArgInProj , CArgInAffine , CArgOutProj ] CRetVoid)
+  , mkffi "madd"        $ cfun "madd_jac_aff"     (CTyp [CArgInProj , CArgInAffine , CArgOutProj ] CRetVoid)
     --
   , mkffi "sclFr"          $ cfun "scl_Fr"        (CTyp [CArgInScalarR , CArgInProj , CArgOutProj ] CRetVoid)
   , mkffi "sclBigNonNeg"   $ cfun "scl_big"       (CTyp [CArgInBigIntP , CArgInProj , CArgOutProj ] CRetVoid)
@@ -103,8 +103,8 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
     hsTyDesc = HsTyDesc 
       { hsTyName =         typeName
       , hsTyCon  = "Mk" ++ typeName
-      , hsTyNameProj   = hsModule hs_path_proj   ++ "." ++         typeName
-      , hsTyConProj    = hsModule hs_path_proj   ++ "." ++ "Mk" ++ typeName
+      , hsTyNameProj   = hsModule hs_path_jac    ++ "." ++         typeName
+      , hsTyConProj    = hsModule hs_path_jac    ++ "." ++ "Mk" ++ typeName
       , hsTyNameAffine = hsModule hs_path_affine ++ "." ++         typeName
       , hsTyConAffine  = hsModule hs_path_affine ++ "." ++ "Mk" ++ typeName
       , hsNLimbsP = nlimbs_p
@@ -115,13 +115,13 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
 
 hsBegin :: Curve -> CodeGenParams -> Code
 hsBegin (Curve{..}) (CodeGenParams{..}) =
-  [ "-- | " ++ curveName ++ " curve, projective coordinates, Montgomery field representation"
-  , ""
+  [ "-- | " ++ curveName ++ " curve, Jacobian (or weighted) projective coordinates, Montgomery field representation"
+  , "--"
   , "-- NOTE 1: This module is intented to be imported qualified"
   , "-- NOTE 2: Generated code, do not edit!"
   , ""
   , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}"
-  , "module " ++ hsModule hs_path_proj
+  , "module " ++ hsModule hs_path_jac
   , "  ( " ++ typeName ++ "(..)"
   , "  , primeP , primeR , cofactor , curveA , curveB"
   , "  , genG1 , infinity"
@@ -184,7 +184,7 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
-  , "-- | An elliptic curve point, in projective coordinates"
+  , "-- | An elliptic curve point, in Jacobian (weighted projective) coordinates"
   , "newtype " ++ typeName ++ " = Mk" ++ typeName ++ " (ForeignPtr Word64)"
   , ""
   , "-- | Note: this throws an exception if the point is not on the curve"
@@ -197,9 +197,9 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "mkPointMaybe xyz = let pt = unsafeMkPoint xyz in"
   , "  case isOnCurve pt of { True -> Just pt ; False -> Nothing }"
   , ""
-  , "-- | The point at infinity"
+  , "-- | The point at infinity, @{1 : 1 : 0}@"
   , "infinity :: " ++ typeName
-  , "infinity = unsafeMkPoint (Fp.zero, Fp.one, Fp.zero)"
+  , "infinity = unsafeMkPoint (Fp.one, Fp.one, Fp.zero)"
   , ""
   , "{-# NOINLINE unsafeMkPoint #-}"
   , "unsafeMkPoint :: (Fp, Fp, Fp) -> " ++ typeName
@@ -251,15 +251,15 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "instance Show " ++ typeName ++ " where"
   , "  show pt = case coords pt of"
-  , "     (x,y,z) -> \"[ \" ++ show x ++ \" : \" ++ show y ++ \" : \" ++ show z ++ \" ]\""
+  , "     (x,y,z) -> \"{ \" ++ show x ++ \" : \" ++ show y ++ \" : \" ++ show z ++ \" }\""
   , ""
   , "instance F.Rnd " ++ typeName ++ " where"
   , "  rndIO = rndG1"
   , ""
   , "instance C.Group " ++ typeName ++ " where"
   , "  grpName _    = \"" ++ curveName ++ " / G1\""
-  , "  grpIsUnit    = " ++ hsModule hs_path_proj ++ ".isInfinity"
-  , "  grpUnit      = " ++ hsModule hs_path_proj ++ ".infinity"
+  , "  grpIsUnit    = " ++ hsModule hs_path_jac ++ ".isInfinity"
+  , "  grpUnit      = " ++ hsModule hs_path_jac ++ ".infinity"
   , "  grpNormalize = normalize"
   , "  grpNeg       = neg"
   , "  grpDbl       = dbl"
@@ -272,11 +272,11 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  curveNamePxy _ = \"" ++ curveName ++ " ( Fp )\""
   , "  type BaseField   " ++ typeName ++ " = Fp"
   , "  type ScalarField " ++ typeName ++ " = Fr"
-  , "  isOnCurve   = " ++ hsModule hs_path_proj ++ ".isOnCurve"
-  , "  isInifinity = " ++ hsModule hs_path_proj ++ ".isInfinity"
-  , "  infinity    = " ++ hsModule hs_path_proj ++ ".infinity"
-  , "  subgroupGen = " ++ hsModule hs_path_proj ++ ".genG1"
-  , "  scalarMul   = " ++ hsModule hs_path_proj ++ ".sclFr"
+  , "  isOnCurve   = " ++ hsModule hs_path_jac ++ ".isOnCurve"
+  , "  isInifinity = " ++ hsModule hs_path_jac ++ ".isInfinity"
+  , "  infinity    = " ++ hsModule hs_path_jac ++ ".infinity"
+  , "  subgroupGen = " ++ hsModule hs_path_jac ++ ".genG1"
+  , "  scalarMul   = " ++ hsModule hs_path_jac ++ ".sclFr"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -307,7 +307,7 @@ c_begin curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
   , "#include <stdint.h>"
   , "#include <x86intrin.h>"
   , ""
-  , "#include \"" ++ pathBaseName c_path_proj   ++ ".h\""
+  , "#include \"" ++ pathBaseName c_path_jac   ++ ".h\""
   , "#include \"" ++ pathBaseName c_path_affine ++ ".h\""
   , "#include \"" ++ c_basename_p  ++ ".h\""
   , "#include \"" ++ c_basename_r  ++ ".h\""
@@ -456,66 +456,11 @@ scale_by_B (Curve{..}) (CodeGenParams{..}) = case curveB of
        , "}"
        ]
 
-----------------------------------------
-
-scale_by_3B ::  Curve -> CodeGenParams -> Code
-scale_by_3B (Curve{..}) (CodeGenParams{..}) = case curveB of
-
-  0 -> [ "// scale a field element by (3*B) = " ++ show (3*curveB)
-       , "void " ++ prefix ++ "scale_by_3B(const uint64_t *src, uint64_t *tgt ) {"
-       , "  memset( tgt, 0, " ++ show (8*nlimbs_p) ++ " );"
-       , "}"
-       , ""
-       , "void " ++ prefix ++ "scale_by_3B_inplace( uint64_t *tgt ) {"
-       , "  memset( tgt, 0, " ++ show (8*nlimbs_p) ++ " );"
-       , "}"
-       ]
-
-  3 -> [ "// scale a field element by (3*B) = " ++ show (3*curveB)
-       , "void " ++ prefix ++ "scale_by_3B(const uint64_t *src, uint64_t *tgt ) {"
-       , "  uint64_t tmp[NLIMBS_P];"
-       , "  " ++ prefix_p ++ "add( src, src, tmp );       // 2*B"
-       , "  " ++ prefix_p ++ "add_inplace( tmp, tmp );    // 4*B"
-       , "  " ++ prefix_p ++ "add_inplace( tmp, tmp );    // 8*B"
-       , "  " ++ prefix_p ++ "add( src, tmp, tgt );       // 9*B"
-       , "}"
-       , ""
-       , "void " ++ prefix ++ "scale_by_3B_inplace( uint64_t *tgt ) {"
-       , "  " ++ prefix ++ "scale_by_3B( tgt , tgt );"
-       , "}"
-       ]
-
-  4  ->[ "// scale a field element by (3*B) = " ++ show (3*curveB)
-       , "void " ++ prefix ++ "scale_by_3B(const uint64_t *src, uint64_t *tgt ) {"
-       , "  uint64_t tmp [NLIMBS_P];"
-       , "  uint64_t tmp2[NLIMBS_P];"
-       , "  " ++ prefix_p ++ "add( src, src, tmp );       // 2*B"
-       , "  " ++ prefix_p ++ "add_inplace( tmp, tmp );    // 4*B"
-       , "  " ++ prefix_p ++ "add( tmp, tmp, tmp2);       // 8*B"
-       , "  " ++ prefix_p ++ "add( tmp, tmp2, tgt );      // 12*B"
-       , "}"
-       , ""
-       , "void " ++ prefix ++ "scale_by_3B_inplace( uint64_t *tgt ) {"
-       , "  " ++ prefix ++ "scale_by_3B( tgt , tgt );"
-       , "}"
-       ]
-
-  _ -> [ "// scale a field element by (3*B) = " ++ show (3*curveB)
-       , "void " ++ prefix ++ "scale_by_3B(const uint64_t *src, uint64_t *tgt ) {"
-       , "  " ++ prefix_p ++ "scl( " ++ show (3*curveB) ++ ", src, *tgt );"
-       , "}"
-       , ""
-       , "void " ++ prefix ++ "scale_by_3B_inplace( uint64_t *tgt ) {"
-       , "  " ++ prefix_p ++ "scl_inplace( tgt, " ++ show (3*curveB) ++ " );"
-       , "}"
-       ]
-
 --------------------------------------------------------------------------------
 
 normalize :: Curve -> CodeGenParams -> Code
 normalize (Curve{..}) (CodeGenParams{..}) =
   [ "void " ++ prefix ++ "normalize( const uint64_t *src1, uint64_t *tgt ) {"
-  , "  uint64_t zinv[" ++ show nlimbs_p ++ "];"
   , "  if (" ++ prefix_p ++ "is_zero( Z1 ) ) {"
   , "    // Z == 0, it must be the point at infinity"
   , "    memset( tgt, 0, " ++ show (8*3*nlimbs_p) ++ " );"
@@ -527,9 +472,14 @@ normalize (Curve{..}) (CodeGenParams{..}) =
   , "      if (tgt != src1) { memcpy( tgt, src1, " ++ show (8*3*nlimbs_p) ++ " ); }"
   , "    }"
   , "    else {"
+  , "      uint64_t zinv [" ++ show nlimbs_p ++ "];"
+  , "      uint64_t zinv2[" ++ show nlimbs_p ++ "];"
+  , "      uint64_t zinv3[" ++ show nlimbs_p ++ "];"
   , "      " ++ prefix_p ++ "inv( Z1, zinv );"
-  , "      " ++ prefix_p ++ "mul( X1, zinv, X3 );"
-  , "      " ++ prefix_p ++ "mul( Y1, zinv, Y3 );"
+  , "      " ++ prefix_p ++ "sqr( zinv, zinv2 );"
+  , "      " ++ prefix_p ++ "mul( zinv, zinv2, zinv3 );"
+  , "      " ++ prefix_p ++ "mul( X1, zinv2, X3 );"
+  , "      " ++ prefix_p ++ "mul( Y1, zinv3, Y3 );"
   , "      " ++ prefix_p ++ "set_one( Z3 );"
   , "    }"
   , "  }"
@@ -578,10 +528,14 @@ convertAffine (Curve{..}) (CodeGenParams{..}) =
   , "    memset( tgt, 0xff, " ++ show (8*2*nlimbs_p) ++ " );"
   , "  }"
   , "  else {"
-  , "    uint64_t zinv[" ++ show nlimbs_p ++ "];"
+  , "    uint64_t zinv [" ++ show nlimbs_p ++ "];"
+  , "    uint64_t zinv2[" ++ show nlimbs_p ++ "];"
+  , "    uint64_t zinv3[" ++ show nlimbs_p ++ "];"
   , "    " ++ prefix_p ++ "inv( Z1, zinv );"
-  , "    " ++ prefix_p ++ "mul( X1, zinv, X3 );"
-  , "    " ++ prefix_p ++ "mul( Y1, zinv, Y3 );"
+  , "    " ++ prefix_p ++ "mul( zinv, zinv , zinv2 );"
+  , "    " ++ prefix_p ++ "mul( zinv, zinv2, zinv3 );"
+  , "    " ++ prefix_p ++ "mul( X1, zinv2, X3 );"
+  , "    " ++ prefix_p ++ "mul( Y1, zinv3, Y3 );"
   , "  }"
   , "}"
   , ""
@@ -593,41 +547,55 @@ convertAffine (Curve{..}) (CodeGenParams{..}) =
 isOnCurve :: Curve -> CodeGenParams -> Code
 isOnCurve (Curve{..}) (CodeGenParams{..}) = 
   [ "uint8_t " ++ prefix ++ "is_infinity ( const uint64_t *src1 ) {"
-  , "  return ( ( " ++ prefix_p ++ "is_zero( Z1 )) &&"
-  , "           (!" ++ prefix_p ++ "is_zero( Y1 )) &&"
-  , "           ( " ++ prefix_p ++ "is_zero( X1 )) );"
+  , "  if ( ( " ++ prefix_p ++ "is_zero( Z1 )) &&"
+  , "       (!" ++ prefix_p ++ "is_zero( X1 )) &&"
+  , "       (!" ++ prefix_p ++ "is_zero( Y1 )) ) {"
+  , "    // for Z=0 we have the equation Y^2 = X^3"
+  , "    uint64_t XX [" ++ show nlimbs_p ++ "];"
+  , "    uint64_t XXX[" ++ show nlimbs_p ++ "];"
+  , "    uint64_t YY [" ++ show nlimbs_p ++ "];"
+  , "    " ++ prefix_p ++ "sqr(X1, XX);"
+  , "    " ++ prefix_p ++ "mul(X1, XX, XXX);"
+  , "    " ++ prefix_p ++ "sqr(Y1, YY);"
+  , "    return " ++ prefix_p ++ "is_equal( YY, XXX );"
+  , "  }"
+  , "  else {"
+  , "    return 0;"
+  , "  }"
   , "}"
   , ""
+  , "// note: In Jacobian coordinates, the point at infinity is [1:1:0]"
   , "void " ++ prefix ++ "set_infinity ( uint64_t *tgt ) {"
-  , "  " ++ prefix_p ++ "set_zero( X3 );"
+  , "  " ++ prefix_p ++ "set_one ( X3 );"
   , "  " ++ prefix_p ++ "set_one ( Y3 );"
   , "  " ++ prefix_p ++ "set_zero( Z3 );"
   , "}"
   , ""
   , "// checks the curve equation"
-  , "//   y^2*z == x^3 + A*x*z^2 + B*z^3"
+  , "//   y^2 == x^3 + A*x*z^4 + B*z^6"
   , "uint8_t " ++ prefix ++ "is_on_curve ( const uint64_t *src1 ) {"
-  , "  uint64_t  ZZ[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t ZZ2[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t ZZ4[" ++ show nlimbs_p ++ "];"
   , "  uint64_t acc[" ++ show nlimbs_p ++ "];"
   , "  uint64_t tmp[" ++ show nlimbs_p ++ "];"
   , "  " ++ prefix_p ++ "sqr( Y1, acc );             // Y^2"
-  , "  " ++ prefix_p ++ "mul_inplace( acc, Z1 );     // Y^2*Z"
-  , "  " ++ prefix_p ++ "neg_inplace( acc );         // -Y^2*Z"
+  , "  " ++ prefix_p ++ "neg_inplace( acc );         // -Y^2"
   , "  " ++ prefix_p ++ "sqr( X1, tmp );             // X^2"
   , "  " ++ prefix_p ++ "mul_inplace( tmp, X1 );     // X^3"
-  , "  " ++ prefix_p ++ "add_inplace( acc, tmp );    // - Y^2*Z + X^3"
-  , "  " ++ prefix_p ++ "sqr( Z1, ZZ );              // Z^2"
+  , "  " ++ prefix_p ++ "add_inplace( acc, tmp );    // - Y^2 + X^3"
+  , "  " ++ prefix_p ++ "sqr( Z1 , ZZ2 );            // Z^2"
+  , "  " ++ prefix_p ++ "sqr( ZZ2, ZZ4 );            // Z^4"
   ] ++ 
   (if curveA == 0 then [] else 
-    [ "  " ++ prefix_p ++ "mul( X1, ZZ, tmp );          // X*Z^2"
-    , "  " ++ prefix   ++ "scale_by_A_inplace( tmp );   // A*X*Z^2"
-    , "  " ++ prefix_p ++ "add_inplace( acc, tmp );     // - Y^2*Z + X^3 + A*X*Z^2"
+    [ "  " ++ prefix_p ++ "mul( X1, ZZ4, tmp );          // X*Z^4"
+    , "  " ++ prefix   ++ "scale_by_A_inplace( tmp );   // A*X*Z^4"
+    , "  " ++ prefix_p ++ "add_inplace( acc, tmp );     // - Y^2 + X^3 + A*X*Z^4"
     ]
   ) ++ 
   (if curveB == 0 then [] else 
-    [ "  " ++ prefix_p ++ "mul( Z1, ZZ, tmp );          // Z^3"
-    , "  " ++ prefix   ++ "scale_by_B_inplace( tmp );   // B*Z^3"
-    , "  " ++ prefix_p ++ "add_inplace( acc, tmp );     // - Y^2*Z + X^3 + A*X*Z^2 + B*Z^3"
+    [ "  " ++ prefix_p ++ "mul( ZZ2, ZZ4, tmp );        // Z^6"
+    , "  " ++ prefix   ++ "scale_by_B_inplace( tmp );   // B*Z^6"
+    , "  " ++ prefix_p ++ "add_inplace( acc, tmp );     // - Y^2 + X^3 + A*X*Z^4 + B*Z^6"
     ]
   ) ++
   [ "  return (" ++ prefix_p ++ "is_zero( acc ) &&"
@@ -667,63 +635,80 @@ negCurve (Curve{..}) (CodeGenParams{..}) =
 --------------------------------------------------------------------------------
 
 {-
-  formula from <https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-2007-bl.
-    XX = X1^2
-    ZZ = Z1^2
-    w = a*ZZ+3*XX
-    s = 2*Y1*Z1
-    ss = s^2
-    sss = s*ss
-    R = Y1*s
-    RR = R2
-    B = (X1+R)^2-XX-RR
-    h = w^2-2*B
-    X3 = h*s
-    Y3 = w*(B-h)-2*RR
-    Z3 = sss
+ -- actuall this is the same as below, we don't need to reimplement it
+ formula from https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
+ assumptions: a = 0
+      A = X1^2
+      B = Y1^2
+      C = B^2
+      D = 2*((X1+B)^2-A-C)
+      E = 3*A
+      F = E^2
+      X3 = F-2*D
+      Y3 = E*(D-X3)-8*C
+      Z3 = 2*Y1*Z1
+
+dblCurveA0 :: Curve -> CodeGenParams -> Code
+dblCurveA0  = dblCurve
+-}
+
+----------------------------------------
+
+{-
+  formula from <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#doubling-dbl-2007-bl>
+      XX = X1^2
+      YY = Y1^2
+      YYYY = YY^2
+      ZZ = Z1^2
+      S = 2*((X1+YY)^2-XX-YYYY)
+      M = 3*XX+a*ZZ^2
+      T = M^2-2*S
+      X3 = T
+      Y3 = M*(S-T)-8*YYYY
+      Z3 = (Y1+Z1)^2-YY-ZZ
 -}
 dblCurve :: Curve -> CodeGenParams -> Code
 dblCurve (Curve{..}) (CodeGenParams{..}) =
   [ "// doubles an elliptic curve point" 
-  , "// https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-2007-bl"
+  , "// <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#doubling-dbl-2007-bl>"
   , "void " ++ prefix ++ "dbl( const uint64_t *src1, uint64_t *tgt ) {"
-  , "  uint64_t  XX[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t  ZZ[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t   w[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t   s[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t  ss[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t sss[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t   R[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t  RR[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t   B[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t   h[" ++ show nlimbs_p ++ "];"
-  , "  " ++ prefix_p ++ "sqr( X1 , XX );         // XX = X1^2"
-  , "  " ++ prefix_p ++ "sqr( Z1 , ZZ );         // ZZ = Z1^2"
-  , "  " ++ prefix_p ++ "add( XX, XX, w );       // w  = 2*XX"
-  , "  " ++ prefix_p ++ "add_inplace( w, XX );   // w  = 3*XX"   
+  , "  uint64_t   XX[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t   YY[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t YYYY[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t   ZZ[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t    S[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t    M[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t    T[" ++ show nlimbs_p ++ "];"
+  , "  " ++ prefix_p ++ "sqr( X1, XX );           // XX = X1^2"
+  , "  " ++ prefix_p ++ "sqr( Y1, YY );           // YY = Y1^2"
+  , "  " ++ prefix_p ++ "sqr( YY, YYYY );         // YYYY = Y1^4"
+  , "  " ++ prefix_p ++ "sqr( Z1, ZZ );           // ZZ = Z1^2"
+  , "  " ++ prefix_p ++ "add( X1, YY , S );       // = (X1+YY)"
+  , "  " ++ prefix_p ++ "sqr_inplace( S );        // = (X1+YY)^2"
+  , "  " ++ prefix_p ++ "sub_inplace( S, XX );    // = (X1+YY)^2 - XX"
+  , "  " ++ prefix_p ++ "sub_inplace( S, YYYY );  // = (X1+YY)^2 - XX -YYYY"
+  , "  " ++ prefix_p ++ "add_inplace( S, S );     // = S = 2*((X1+YY)^2-XX-YYYY)"
+  , "  " ++ prefix_p ++ "add( XX, XX, M );        // = 2*XX"
+  , "  " ++ prefix_p ++ "add_inplace( M, XX );    // M = 3*XX"   
   ] ++ (if curveA == 0 then [] else 
-    [ "  uint64_t tmp[" ++ show nlimbs_p ++ "];"
-    , "  " ++ prefix   ++ "scale_by_A ( ZZ , tmp );   // tmp =  a*ZZ"
-    , "  " ++ prefix_p ++ "add_inplace ( w , tmp );   // w = a*ZZ + 3*XX"
+    [ "  " ++ prefix_p ++ "sqr( ZZ , T );              // = ZZ^2"
+    , "  " ++ prefix   ++ "scale_by_A_inplace( T );    // = a*ZZ^2"
+    , "  " ++ prefix_p ++ "add_inplace ( M , T );      // M = 3*XX + a*ZZ^2"
     ]) ++
-  [ "  " ++ prefix_p ++ "mul( Y1 , Z1 , s );         // s   = Y1*Z1"
-  , "  " ++ prefix_p ++ "add_inplace( s, s );        // s   = 2*Y1*Z1"
-  , "  " ++ prefix_p ++ "sqr( s , ss );              // ss  = s^2"
-  , "  " ++ prefix_p ++ "mul( Y1 , s , R);           // R   = Y1*s"
-  , "  " ++ prefix_p ++ "sqr( R , RR );              // RR  = R^2"
-  , "  " ++ prefix_p ++ "add( X1 , R , B);           // B   = (X1+R)"
-  , "  " ++ prefix_p ++ "sqr_inplace( B );           // B   = (X1+R)^2"
-  , "  " ++ prefix_p ++ "sub_inplace( B , XX );      // B   = (X1+R)^2 - XX"
-  , "  " ++ prefix_p ++ "sub_inplace( B , RR );      // B   = (X1+R)^2 - XX - RR"
-  , "  " ++ prefix_p ++ "sqr( w , h );               // h   = w^2"
-  , "  " ++ prefix_p ++ "sub_inplace( h , B );       // h   = w^2 - B"
-  , "  " ++ prefix_p ++ "sub_inplace( h , B );       // h   = w^2 - 2*B"
-  , "  " ++ prefix_p ++ "mul( s , ss , Z3 );         // Z3  = s^3"
-  , "  " ++ prefix_p ++ "mul( h , s , X3 );          // X3  = h*s"
-  , "  " ++ prefix_p ++ "sub( B , h , Y3 );          // Y3  = B-h"
-  , "  " ++ prefix_p ++ "mul_inplace( Y3 , w  );     // Y3  = w*(B-h)"
-  , "  " ++ prefix_p ++ "sub_inplace( Y3 , RR );     // Y3  = w*(B-h) - RR"
-  , "  " ++ prefix_p ++ "sub_inplace( Y3 , RR );     // Y3  = w*(B-h) - 2*RR"
+  [ "  " ++ prefix_p ++ "sqr( M, T );                // T = M^2"
+  , "  " ++ prefix_p ++ "sub_inplace( T, S );        // T = M^2 - S"
+  , "  " ++ prefix_p ++ "sub_inplace( T, S );        // T = M^2 - 2*S"
+  , "  " ++ prefix_p ++ "copy( T, X3 );              // X3  = T"
+  , "  " ++ prefix_p ++ "add( Z1, Y1, Z3 );          // Z3  = Y1+Z1"
+  , "  " ++ prefix_p ++ "sqr_inplace( Z3 );          // Z3  = (Y1+Z1)^2"
+  , "  " ++ prefix_p ++ "sub_inplace( Z3, YY );      // Z3  = (Y1+Z1)^2 - YY"
+  , "  " ++ prefix_p ++ "sub_inplace( Z3, ZZ );      // Z3  = (Y1+Z1)^2 - YY - ZZ"
+  , "  " ++ prefix_p ++ "sub( S, T, Y3 );            // Y3  = S - T"
+  , "  " ++ prefix_p ++ "mul_inplace( Y3, M );       // Y3  = M*(S - T)"
+  , "  " ++ prefix_p ++ "add_inplace( YYYY , YYYY ); // 2 * YYYY"
+  , "  " ++ prefix_p ++ "add_inplace( YYYY , YYYY ); // 4 * YYYY"
+  , "  " ++ prefix_p ++ "add_inplace( YYYY , YYYY ); // 8 * YYYY"
+  , "  " ++ prefix_p ++ "sub_inplace( Y3 , YYYY);    // Y3  = M*(S - T) - 8*YYYY"
   , "}"
   , ""
   , "// doubles an elliptic curve point" 
@@ -734,109 +719,99 @@ dblCurve (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
+{-
+formula from <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-add-2007-bl>
+
+note: this does not work for adding the point at infinity!
+neither for doubling, it seems
+
+      Z1Z1 = Z1^2
+      Z2Z2 = Z2^2
+      U1 = X1*Z2Z2
+      U2 = X2*Z1Z1
+      S1 = Y1*Z2*Z2Z2
+      S2 = Y2*Z1*Z1Z1
+      H = U2-U1
+      I = (2*H)^2
+      J = H*I
+      r = 2*(S2-S1)
+      V = U1*I
+      X3 = r^2-J-2*V
+      Y3 = r*(V-X3)-2*S1*J
+      Z3 = ((Z1+Z2)^2-Z1Z1-Z2Z2)*H
+-}
+
+-- TODO: implement A=0 special case
+addCurveA0 = addCurve 
+
 addCurve :: Curve -> CodeGenParams -> Code
 addCurve (Curve{..}) (CodeGenParams{..}) =
   [ "// adds two elliptic curve points" 
-  , "// https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2015-rcb"
+  , "// <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-add-2007-bl>"
   , "void " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
-  , "  uint64_t t0[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t1[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t2[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t3[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t4[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t5[" ++ show nlimbs_p ++ "];"  
-  , "  " ++ prefix_p ++ "mul( X1, X2, t0 );              // t0 = X1*X2"
-  , "  " ++ prefix_p ++ "mul( Y1, Y2, t1 );              // t1 = Y1*Y2"
-  , "  " ++ prefix_p ++ "mul( Z1, Z2, t2 );              // t2 = Z1*Z2"
-  , "  " ++ prefix_p ++ "add( X1, Y1, t3 );              // t3 = X1+Y1"
-  , "  " ++ prefix_p ++ "add( X2, Y2, t4 );              // t4 = X2+Y2"
-  , "  " ++ prefix_p ++ "mul_inplace( t3, t4 );          // t3 = t3*t4"
-  , "  " ++ prefix_p ++ "add( t0, t1, t4 );              // t4 = t0+t1"
-  , "  " ++ prefix_p ++ "sub_inplace( t3 , t4 );         // t3 = t3-t4"
-  , "  " ++ prefix_p ++ "add( X1, Z1, t4 );              // t4 = X1+Z1"
-  , "  " ++ prefix_p ++ "add( X2, Z2, t5 );              // t5 = X2+Z2"
-  , "  " ++ prefix_p ++ "mul_inplace( t4, t5 );          // t4 = t4*t5"
-  , "  " ++ prefix_p ++ "add( t0, t2, t5 );              // t5 = t0+t2"
-  , "  " ++ prefix_p ++ "sub_inplace( t4, t5 );          // t4 = t4-t5"
-  , "  " ++ prefix_p ++ "add( Y1, Z1, t5 );              // t5 = Y1+Z1"
-  , "  " ++ prefix_p ++ "add( Y2, Z2, X3 );              // X3 = Y2+Z2"
-  , "  " ++ prefix_p ++ "mul_inplace( t5, X3 );          // t5 = t5*X3"
-  , "  " ++ prefix_p ++ "add( t1, t2, X3 );              // X3 = t1+t2"
-  , "  " ++ prefix_p ++ "sub_inplace( t5, X3 );          // t5 = t5-X3"
-  , "  " ++ prefix   ++ "scale_by_A ( t4, Z3 );          // Z3 = a*t4 "
-  , "  " ++ prefix   ++ "scale_by_3B( t2, X3 );          // X3 = b3*t2"
-  , "  " ++ prefix_p ++ "add_inplace( Z3, X3 );          // Z3 = X3+Z3"
-  , "  " ++ prefix_p ++ "sub( t1, Z3, X3 );              // X3 = t1-Z3"
-  , "  " ++ prefix_p ++ "add_inplace( Z3, t1 );          // Z3 = t1+Z3"
-  , "  " ++ prefix_p ++ "mul( X3, Z3, Y3 );              // Y3 = X3*Z3"
-  , "  " ++ prefix_p ++ "add( t0, t0, t1 );              // t1 = t0+t0"
-  , "  " ++ prefix_p ++ "add_inplace( t1, t0 );          // t1 = t1+t0"
-  , "  " ++ prefix   ++ "scale_by_A_inplace ( t2 );      // t2 = a*t2 "
-  , "  " ++ prefix   ++ "scale_by_3B_inplace( t4 );      // t4 = b3*t4"
-  , "  " ++ prefix_p ++ "add_inplace( t1, t2 );          // t1 = t1+t2"
-  , "  " ++ prefix_p ++ "sub_inplace_reverse( t2, t0 );  // t2 = t0-t2"
-  , "  " ++ prefix   ++ "scale_by_A_inplace ( t2 );      // t2 = a*t2 "
-  , "  " ++ prefix_p ++ "add_inplace( t4, t2 );          // t4 = t4+t2"
-  , "  " ++ prefix_p ++ "mul( t1, t4, t0 );              // t0 = t1*t4"
-  , "  " ++ prefix_p ++ "add_inplace( Y3, t0 );          // Y3 = Y3+t0"
-  , "  " ++ prefix_p ++ "mul( t4, t5, t0 );              // t0 = t5*t4"
-  , "  " ++ prefix_p ++ "mul_inplace( X3, t3 );          // X3 = t3*X3"
-  , "  " ++ prefix_p ++ "sub_inplace( X3, t0 );          // X3 = X3-t0"
-  , "  " ++ prefix_p ++ "mul( t1, t3, t0 );              // t0 = t3*t1"
-  , "  " ++ prefix_p ++ "mul_inplace( Z3, t5 );          // Z3 = t5*Z3"
-  , "  " ++ prefix_p ++ "add_inplace( Z3, t0 );          // Z3 = Z3+t0"
-  , "}"
-  , ""
-  , "void " ++ prefix ++ "add_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
-  , "  " ++ prefix ++ "add( tgt, src2, tgt);"
-  , "}"
-  ]
-
-addCurveA0 :: Curve -> CodeGenParams -> Code
-addCurveA0 (Curve{..}) (CodeGenParams{..}) =
-  [ "// adds two elliptic curve points, assuming A = 0" 
-  , "// https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2015-rcb"
-  , "void " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
-  , "  uint64_t t0[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t1[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t2[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t3[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t4[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t t5[" ++ show nlimbs_p ++ "];"  
-  , "  " ++ prefix_p ++ "mul( X1, X2, t0 );              // t0 = X1*X2"
-  , "  " ++ prefix_p ++ "mul( Y1, Y2, t1 );              // t1 = Y1*Y2"
-  , "  " ++ prefix_p ++ "mul( Z1, Z2, t2 );              // t2 = Z1*Z2"
-  , "  " ++ prefix_p ++ "add( X1, Y1, t3 );              // t3 = X1+Y1"
-  , "  " ++ prefix_p ++ "add( X2, Y2, t4 );              // t4 = X2+Y2"
-  , "  " ++ prefix_p ++ "mul_inplace( t3, t4 );          // t3 = t3*t4"
-  , "  " ++ prefix_p ++ "add( t0, t1, t4 );              // t4 = t0+t1"
-  , "  " ++ prefix_p ++ "sub_inplace( t3 , t4 );         // t3 = t3-t4"
-  , "  " ++ prefix_p ++ "add( X1, Z1, t4 );              // t4 = X1+Z1"
-  , "  " ++ prefix_p ++ "add( X2, Z2, t5 );              // t5 = X2+Z2"
-  , "  " ++ prefix_p ++ "mul_inplace( t4, t5 );          // t4 = t4*t5"
-  , "  " ++ prefix_p ++ "add( t0, t2, t5 );              // t5 = t0+t2"
-  , "  " ++ prefix_p ++ "sub_inplace( t4, t5 );          // t4 = t4-t5"
-  , "  " ++ prefix_p ++ "add( Y1, Z1, t5 );              // t5 = Y1+Z1"
-  , "  " ++ prefix_p ++ "add( Y2, Z2, X3 );              // X3 = Y2+Z2"
-  , "  " ++ prefix_p ++ "mul_inplace( t5, X3 );          // t5 = t5*X3"
-  , "  " ++ prefix_p ++ "add( t1, t2, X3 );              // X3 = t1+t2"
-  , "  " ++ prefix_p ++ "sub_inplace( t5, X3 );          // t5 = t5-X3"
-  , "  " ++ prefix   ++ "scale_by_3B( t2, X3 );          // X3 = b3*t2"
-  , "  " ++ prefix_p ++ "copy( X3, Z3 );                 // Z3 = X3"
-  , "  " ++ prefix_p ++ "sub( t1, Z3, X3 );              // X3 = t1-Z3"
-  , "  " ++ prefix_p ++ "add_inplace( Z3, t1 );          // Z3 = t1+Z3"
-  , "  " ++ prefix_p ++ "mul( X3, Z3, Y3 );              // Y3 = X3*Z3"
-  , "  " ++ prefix_p ++ "add( t0, t0, t1 );              // t1 = t0+t0"
-  , "  " ++ prefix_p ++ "add_inplace( t1, t0 );          // t1 = t1+t0"
-  , "  " ++ prefix   ++ "scale_by_3B_inplace( t4 );      // t4 = b3*t4"
-  , "  " ++ prefix_p ++ "mul( t1, t4, t0 );              // t0 = t1*t4"
-  , "  " ++ prefix_p ++ "add_inplace( Y3, t0 );          // Y3 = Y3+t0"
-  , "  " ++ prefix_p ++ "mul( t4, t5, t0 );              // t0 = t5*t4"
-  , "  " ++ prefix_p ++ "mul_inplace( X3, t3 );          // X3 = t3*X3"
-  , "  " ++ prefix_p ++ "sub_inplace( X3, t0 );          // X3 = X3-t0"
-  , "  " ++ prefix_p ++ "mul( t1, t3, t0 );              // t0 = t3*t1"
-  , "  " ++ prefix_p ++ "mul_inplace( Z3, t5 );          // Z3 = t5*Z3"
-  , "  " ++ prefix_p ++ "add_inplace( Z3, t0 );          // Z3 = Z3+t0"
+  , "  if (" ++ prefix ++ "is_infinity(src1)) {"
+  , "    if (tgt != src2) { memcpy( tgt, src2, " ++ show (8*3*nlimbs_p) ++ "); }"
+  , "    return;"
+  , "  }"
+  , "  if (" ++ prefix ++ "is_infinity(src2)) {"
+  , "    if (tgt != src1) { memcpy( tgt, src1, " ++ show (8*3*nlimbs_p) ++ "); }"
+  , "    return;"
+  , "  }"
+  , "  uint64_t Z1Z1[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t Z2Z2[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t U1[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t U2[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t S1[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t S2[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  H[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  I[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  J[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  r[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  V[" ++ show nlimbs_p ++ "];"  
+  , "  " ++ prefix_p ++ "sqr( Z1, Z1Z1 );           // Z1Z1 = Z1^2"
+  , "  " ++ prefix_p ++ "sqr( Z2, Z2Z2 );           // Z2Z2 = Z2^2"
+  , "  " ++ prefix_p ++ "mul( X1, Z2Z2 , U1 );      // U1 = X1*Z2Z2"
+  , "  " ++ prefix_p ++ "mul( X2, Z1Z1 , U2 );      // U2 = X2*Z1Z1"
+  , "  " ++ prefix_p ++ "mul( Y1, Z2 , S1 );        //    = Y1 * Z2"
+  , "  " ++ prefix_p ++ "mul_inplace(  S1, Z2Z2 );  // S1 = Y1 * Z2 * Z2Z2"
+  , "  " ++ prefix_p ++ "mul( Y2, Z1 , S2 );        //    = Y2 * Z1"
+  , "  " ++ prefix_p ++ "mul_inplace(  S2, Z1Z1 );  // S2 = Y2 * Z1 * Z1Z1"
+  , "  " ++ prefix_p ++ "sub( U2, U1, H );          // H  = U2-U1"
+  , "  if (" ++ prefix_p ++ "is_zero( H )) {"
+  , "    // X1/Z1^2 == X2/Z2^2"
+  , "    // so either Y1/Z1^3 == Y2/Z2^3, in which case it's a doubling"
+  , "    // or not, in which case Y1/Z1^3 == - Y2/Z2^3 and the result is infinity"
+  , "    if (" ++ prefix_p ++ "is_equal( S1, S2)) {"
+  , "      // Y1/Z1^3 == Y2/Z2^3"
+  , "      " ++ prefix ++ "dbl( src1, tgt );"
+  , "      return;"
+  , "    }"
+  , "    else {"
+  , "      // Y1/Z1^3 != Y2/Z2^3"
+  , "      " ++ prefix ++ "set_infinity( tgt );"
+  , "      return;"
+  , "    }"
+  , "  }"
+  , "  " ++ prefix_p ++ "add( H, H, I );            //    = 2*H"
+  , "  " ++ prefix_p ++ "sqr_inplace( I );          // I  = (2*H)^2"
+  , "  " ++ prefix_p ++ "mul( H, I, J );            // J  = H*I"
+  , "  " ++ prefix_p ++ "sub( S2, S1, r );          //    = S2-S1"
+  , "  " ++ prefix_p ++ "add_inplace( r, r );       // r  = 2*(S2-S1)"
+  , "  " ++ prefix_p ++ "mul( U1, I, V );           // V  = U1*I"
+  , "  " ++ prefix_p ++ "sqr( r, X3 );              //    = r^2"
+  , "  " ++ prefix_p ++ "sub_inplace( X3, J );      //    = r^2 - J"
+  , "  " ++ prefix_p ++ "sub_inplace( X3, V );      //    = r^2 - J - V"
+  , "  " ++ prefix_p ++ "sub_inplace( X3, V );      // X3 = r^2 - J - 2*V"
+  , "  " ++ prefix_p ++ "sub( V, X3, Y3 );          //    = V-X3"
+  , "  " ++ prefix_p ++ "mul_inplace( Y3, r );      //    = r*(V-X3)"
+  , "  " ++ prefix_p ++ "mul_inplace( J, S1 );      // J := S1*J"
+  , "  " ++ prefix_p ++ "sub_inplace( Y3, J );      //    = r*(V-X3) - S1*J"
+  , "  " ++ prefix_p ++ "sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*S1*J"
+  , "  " ++ prefix_p ++ "add( Z1, Z2, Z3 );         //    = Z1+Z2"
+  , "  " ++ prefix_p ++ "sqr_inplace( Z3 );         //    = (Z1+Z2)^2"
+  , "  " ++ prefix_p ++ "sub_inplace( Z3, Z1Z1 );   //    = (Z1+Z2)^2-Z1Z1"
+  , "  " ++ prefix_p ++ "sub_inplace( Z3, Z2Z2 );   //    = (Z1+Z2)^2-Z1Z1-Z2Z2"
+  , "  " ++ prefix_p ++ "mul_inplace( Z3, H );      // Z3 = ((Z1+Z2)^2-Z1Z1-Z2Z2)*H"
   , "}"
   , ""
   , "void " ++ prefix ++ "add_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
@@ -863,68 +838,75 @@ subCurve (Curve{..}) (CodeGenParams{..}) =
 
 {-
 
-https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-madd-1998-cmo
+https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-madd-2007-bl
 
 assumption: Z2 == 1
 
-    u = Y2*Z1-Y1
-    uu = u2
-    v = X2*Z1-X1
-    vv = v2
-    vvv = v*vv
-    R = vv*X1
-    A = uu*Z1-vvv-2*R
-    X3 = v*A
-    Y3 = u*(R-A)-vvv*Y1
-    Z3 = vvv*Z1
+      Z1Z1 = Z1^2
+      U2 = X2*Z1Z1
+      S2 = Y2*Z1*Z1Z1
+      H = U2-X1
+      HH = H^2
+      I = 4*HH
+      J = H*I
+      r = 2*(S2-Y1)
+      V = X1*I
+      X3 = r^2-J-2*V
+      Y3 = r*(V-X3)-2*Y1*J
+      Z3 = (Z1+H)^2-Z1Z1-HH
+
 -}
 
 mixedAddCurve :: Curve -> CodeGenParams -> Code
 mixedAddCurve (Curve{..}) (CodeGenParams{..}) =
   [ "// adds a projective point (src1) to an affine point (src2)"
-  , "// https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-madd-1998-cmo"
-  , "void " ++ prefix ++ "madd_proj_aff( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
-  , "  uint64_t   u[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t  uu[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t   v[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t  vv[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t vvv[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t   R[" ++ show nlimbs_p ++ "];"
-  , "  uint64_t   A[" ++ show nlimbs_p ++ "];"  
-  , "  " ++ prefix_p ++ "mul( Y2, Z1, u );              //  u = Y2*Z1     "     
-  , "  " ++ prefix_p ++ "sub_inplace( u , Y1 );         //  u = Y2*Z1-Y1  "     
-  , "  " ++ prefix_p ++ "mul( X2, Z1, v );              //  v = X2*Z1     "     
-  , "  " ++ prefix_p ++ "sub_inplace( v , X1 );         //  v = X2*Z1-X1  "     
-  , "  if (" ++ prefix_p ++ "is_zero(u) && " ++ prefix_p ++ "is_zero(v) ) {"
-  , "    // it's doubling, the naive result would be (0,0,0)"
-  , "    " ++ prefix   ++ "dbl( src1 , tgt );"
-  , "    return;"
-  , "  }"
-  , "  " ++ prefix_p ++ "sqr( u , uu );                 //  uu = u2       "
-  , "  " ++ prefix_p ++ "sqr( v, vv );                  //  vv = v2       "
-  , "  " ++ prefix_p ++ "mul( v, vv, vvv );             //  vvv = v*vv    "   
-  , "  " ++ prefix_p ++ "mul( vv, X1, R );              //  R = vv*X1     "  
-  , "  " ++ prefix_p ++ "mul( uu, Z1, A );              //  A = uu*Z1     "          
-  , "  " ++ prefix_p ++ "sub_inplace( A, vvv );         //  A = uu*Z1-vvv "          
-  , "  " ++ prefix_p ++ "sub_inplace( A, R );           //  A = uu*Z1-vvv-2  "          
-  , "  " ++ prefix_p ++ "sub_inplace( A, R );           //  A = uu*Z1-vvv-2*R"          
-  , "  " ++ prefix_p ++ "mul( v, A, X3 );               //  X3 = v*A      " 
-  , "  " ++ prefix_p ++ "mul( Z1, vvv, Z3 );            //  Z3 = vvv*Z1   "    
-  , "  " ++ prefix_p ++ "sub_inplace( R , A );          //  R' =  R-A     "
-  , "  " ++ prefix_p ++ "mul_inplace( vvv , Y1 );       //  vvv' = vvv*Y1 "
-  , "  " ++ prefix_p ++ "mul( u , R , Y3 );             //  Y3 = u*(R-A)  "
-  , "  " ++ prefix_p ++ "sub_inplace( Y3, vvv );        //  Y3 = u*(R-A)-vvv*Y1"            
+  , "// <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-madd-2007-bl>"
+  , "void " ++ prefix ++ "madd_jac_aff( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  uint64_t Z1Z1[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t U2[" ++ show nlimbs_p ++ "];"
+  , "  uint64_t S2[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  H[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t HH[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  I[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  J[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  r[" ++ show nlimbs_p ++ "];"  
+  , "  uint64_t  V[" ++ show nlimbs_p ++ "];"  
+  , "  " ++ prefix_p ++ "sqr( Z1, Z1Z1 );           // Z1Z1 = Z1^2"
+  , "  " ++ prefix_p ++ "mul( X2, Z1Z1 , U2 );      // U2 = X2*Z1Z1"
+  , "  " ++ prefix_p ++ "mul( Y2, Z1 , S2 );        //    = Y2 * Z1"
+  , "  " ++ prefix_p ++ "mul_inplace( S2, Z1Z1 );   // S2 = Y2 * Z1 * Z1Z1"
+  , "  " ++ prefix_p ++ "sub( U2, X1, H );          // H  = U2-X1"
+  , "  " ++ prefix_p ++ "sqr( H, HH );              // HH = H^2"
+  , "  " ++ prefix_p ++ "add( HH, HH, I );          //    = 2*HH"
+  , "  " ++ prefix_p ++ "add_inplace( I, I );       // I  = 4*HH"
+  , "  " ++ prefix_p ++ "mul( H, I, J );            // J  = H*I"
+  , "  " ++ prefix_p ++ "sub( S2, Y1, r );          //    = S2-S1"
+  , "  " ++ prefix_p ++ "add_inplace( r, r );       // r  = 2*(S2-Y1)"
+  , "  " ++ prefix_p ++ "mul( X1, I, V );           // V  = X1*I"
+  , "  " ++ prefix_p ++ "sqr( r, X3 );              //    = r^2"
+  , "  " ++ prefix_p ++ "sub_inplace( X3, J );      //    = r^2 - J"
+  , "  " ++ prefix_p ++ "sub_inplace( X3, V );      //    = r^2 - J - V"
+  , "  " ++ prefix_p ++ "sub_inplace( X3, V );      // X3 = r^2 - J - 2*V"
+  , "  " ++ prefix_p ++ "sub( V, X3, Y3 );          //    = V-X3"
+  , "  " ++ prefix_p ++ "mul_inplace( X3, r );      //    = r*(V-X3)"
+  , "  " ++ prefix_p ++ "mul_inplace( J, Y1 );      // J := Y1*J"
+  , "  " ++ prefix_p ++ "sub_inplace( Y3, J );      //    = r*(V-X3) - S1*J"
+  , "  " ++ prefix_p ++ "sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*S1*J"
+  , "  " ++ prefix_p ++ "add( Z1, H , Z3 );         //    = Z1+H"
+  , "  " ++ prefix_p ++ "sqr_inplace( Z3 );         //    = (Z1+H)^2"
+  , "  " ++ prefix_p ++ "sub_inplace( Z3, Z1Z1 );   //    = (Z1+H)^2-Z1Z1"
+  , "  " ++ prefix_p ++ "sub_inplace( Z3, HH );     // Z3 = (Z1+H)^2-Z1Z1-HH"
   , "}"
   , ""
   , "// adds an affine point (src1) to a projective one (src2)"
   , "// https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2015-rcb"
-  , "void " ++ prefix ++ "madd_aff_proj( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
-  , "  " ++ prefix ++ "madd_proj_aff( src2, src1, tgt );"
+  , "void " ++ prefix ++ "madd_aff_jac( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  " ++ prefix ++ "madd_jac_aff( src2, src1, tgt );"
   , "}"
   , ""
   , "// adds to a projective point (tgt) an affine point (src2), in place"
   , "void " ++ prefix ++ "madd_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
-  , "  " ++ prefix ++ "madd_proj_aff( tgt, src2, tgt );"
+  , "  " ++ prefix ++ "madd_jac_aff( tgt, src2, tgt );"
   , "}"
   ]
 
@@ -1051,14 +1033,13 @@ c_code curve params = concat $ map ("":)
     --
   , scale_by_A  curve params
   , scale_by_B  curve params
-  , scale_by_3B curve params
     --
   , normalize     curve params
   , convertAffine curve params
   , isOnCurve     curve params
     --
   , negCurve curve params
-  , dblCurve curve params
+  , dblCurve  curve params
   , if curveA curve == 0
       then addCurveA0 curve params
       else addCurve   curve params
@@ -1080,11 +1061,11 @@ hs_code curve params@(CodeGenParams{..}) = concat $ map ("":)
 
 --------------------------------------------------------------------------------
 
-curve_MontProj_c_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
-curve_MontProj_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
+curve_MontJac_c_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
+curve_MontJac_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
 
-  let fn_h = tgtdir </> (cFilePath "h" c_path_proj)
-  let fn_c = tgtdir </> (cFilePath "c" c_path_proj)
+  let fn_h = tgtdir </> (cFilePath "h" c_path_jac)
+  let fn_c = tgtdir </> (cFilePath "c" c_path_jac)
 
   createTgtDirectory fn_h
   createTgtDirectory fn_c
@@ -1095,10 +1076,10 @@ curve_MontProj_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
   putStrLn $ "writing `" ++ fn_c ++ "`" 
   writeFile fn_c $ unlines $ c_code curve params
 
-curve_MontProj_hs_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
-curve_MontProj_hs_codegen tgtdir curve params@(CodeGenParams{..}) = do
+curve_MontJac_hs_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
+curve_MontJac_hs_codegen tgtdir curve params@(CodeGenParams{..}) = do
 
-  let fn_hs = tgtdir </> (hsFilePath hs_path_proj)
+  let fn_hs = tgtdir </> (hsFilePath hs_path_jac)
 
   createTgtDirectory fn_hs
 

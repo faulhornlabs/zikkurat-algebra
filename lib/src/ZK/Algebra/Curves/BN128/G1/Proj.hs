@@ -1,4 +1,6 @@
 
+-- | BN128 curve, projective coordinates, Montgomery field representation
+
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
 
@@ -12,7 +14,7 @@ module ZK.Algebra.Curves.BN128.G1.Proj
   , isEqual , isSame
   , isOnCurve , isInfinity , isInSubgroup
   , normalize
-  , neg , add , dbl , sub
+  , neg , add , madd, dbl , sub
   , sclFr , sclBig , sclSmall
   , rndG1 , rndG1_naive
   )
@@ -299,6 +301,18 @@ sub (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
         c_bn128_G1_proj_sub ptr1 ptr2 ptr3
+  return (MkG1 fptr3)
+
+foreign import ccall unsafe "bn128_G1_proj_madd_proj_aff" c_bn128_G1_proj_madd_proj_aff :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE madd #-}
+madd :: G1 -> ZK.Algebra.Curves.BN128.G1.Affine.G1 -> G1
+madd (MkG1 fptr1) (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bn128_G1_proj_madd_proj_aff ptr1 ptr2 ptr3
   return (MkG1 fptr3)
 
 foreign import ccall unsafe "bn128_G1_proj_scl_Fr" c_bn128_G1_proj_scl_Fr :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()

@@ -32,8 +32,9 @@ help = do
   putStrLn " - bigint"
   putStrLn " - std_field"
   putStrLn " - montgomery"
-  putStrLn " - proj_curve"
   putStrLn " - affine_curve"
+  putStrLn " - proj_curve"
+  putStrLn " - jac_curve"
   putStrLn ""
 
 --------------------------------------------------------------------------------
@@ -44,8 +45,9 @@ validNames =
   , "bigint"
   , "stdfield"
   , "montfield" , "montgomery"
-  , "projcurve"
-  , "affcurve" , "affinecurve"
+  , "projcurve" , "projective"
+  , "jaccurve" , "jacobiancurve", "jacobian"
+  , "affcurve" , "affinecurve", "affine"
   ]
 
 testMain :: String -> Int -> IO ()
@@ -59,9 +61,15 @@ testMain what n = case canonicalizeName what of
   "montgomery" -> runTestsMontField n
 
   "projcurve"  -> runTestsProjCurve n
+  "projective" -> runTestsProjCurve n
 
-  "affcurve"   -> runTestsAffineCurve n
-  "affinecurve"-> runTestsAffineCurve n
+  "jaccurve"      -> runTestsJacCurve n
+  "jacobian"      -> runTestsJacCurve n
+  "jacobiancurve" -> runTestsJacCurve n
+
+  "affcurve"    -> runTestsAffineCurve n
+  "affinecurve" -> runTestsAffineCurve n
+  "affine"      -> runTestsAffineCurve n
 
 canonicalizeName :: String -> String 
 canonicalizeName = map toLower . filter isLetter
