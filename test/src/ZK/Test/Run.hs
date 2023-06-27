@@ -28,8 +28,10 @@ import qualified ZK.Algebra.Curves.BLS12_381.Fr.Std  as BLS12_381_Fr_Std
 import qualified ZK.Algebra.Curves.BLS12_381.Fp.Mont as BLS12_381_Fp_Mont
 import qualified ZK.Algebra.Curves.BLS12_381.Fr.Mont as BLS12_381_Fr_Mont
 
-import qualified ZK.Algebra.Curves.BN128.G1.Proj     as BN128_G1_Proj
-import qualified ZK.Algebra.Curves.BLS12_381.G1.Proj as BLS12_381_G1_Proj
+import qualified ZK.Algebra.Curves.BN128.G1.Proj       as BN128_G1_Proj
+import qualified ZK.Algebra.Curves.BN128.G1.Affine     as BN128_G1_Affine
+import qualified ZK.Algebra.Curves.BLS12_381.G1.Proj   as BLS12_381_G1_Proj
+import qualified ZK.Algebra.Curves.BLS12_381.G1.Affine as BLS12_381_G1_Affine
 
 --------------------------------------------------------------------------------
 
@@ -47,6 +49,7 @@ runTestsAll n = do
   runTestsStdField  n
   runTestsMontField n
   runTestsProjCurve n
+  runTestsAffineCurve n
 
 ----------------------------------------
 
@@ -58,6 +61,17 @@ runTestsProjCurve n = do
 
   printHeader "running tests for BN128/G1/Proj"
   runCurveTests n (Proxy @BN128_G1_Proj.G1)
+
+----------------------------------------
+
+runTestsAffineCurve :: Int -> IO ()
+runTestsAffineCurve n = do
+
+  printHeader "running tests for BLS12-381/G1/Affine"
+  runCurveTests n (Proxy @BLS12_381_G1_Affine.G1)
+
+  printHeader "running tests for BN128/G1/Affine"
+  runCurveTests n (Proxy @BN128_G1_Affine.G1)
 
 ----------------------------------------
 

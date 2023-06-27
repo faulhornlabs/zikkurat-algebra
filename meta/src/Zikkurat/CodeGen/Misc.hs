@@ -41,6 +41,9 @@ pathDirectory (Path path) = foldl (</>) "." (init path)
 pathBaseName :: Path -> String
 pathBaseName (Path path) = last path
 
+pathReplaceBaseName :: String -> Path -> Path
+pathReplaceBaseName new (Path path) = Path (init path ++ [new])
+
 cFilePath :: String -> Path -> FilePath
 cFilePath ext (Path path) = intercalate "/" path ++ "." ++ ext
 

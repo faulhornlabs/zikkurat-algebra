@@ -28,9 +28,9 @@ c_header (Curve{..}) (CodeGenParams{..}) =
   , "extern void " ++ prefix ++ "normalize         ( const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "normalize_inplace (       uint64_t *tgt );"
   , ""
-  , "extern void " ++ prefix ++ "copy     ( const uint64_t *src , uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "from_aff ( const uint64_t *src , uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "to_aff   ( const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "copy        ( const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "from_affine ( const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "to_affine   ( const uint64_t *src , uint64_t *tgt );"
   , ""
   , "extern uint8_t " ++ prefix ++ "is_on_curve   ( const uint64_t *src );"
   , "extern uint8_t " ++ prefix ++ "is_infinity   ( const uint64_t *src );"
@@ -67,30 +67,31 @@ c_header (Curve{..}) (CodeGenParams{..}) =
 
 hsFFI :: Curve -> CodeGenParams -> Code
 hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $ 
-  [ mkffi "isOnCurve"   $ cfun "is_on_curve"     (CTyp [CArgInProj] CRetBool)
-  , mkffi "isInfinity"  $ cfun "is_infinity"     (CTyp [CArgInProj] CRetBool)
+  [ mkffi "isOnCurve"    $ cfun "is_on_curve"     (CTyp [CArgInProj] CRetBool)
+  , mkffi "isInfinity"   $ cfun "is_infinity"     (CTyp [CArgInProj] CRetBool)
+  , mkffi "isInSubgroup" $ cfun "is_in_subgroup"  (CTyp [CArgInProj] CRetBool)
     --
-  , mkffi "isEqual"     $ cfun "is_equal"        (CTyp [CArgInProj, CArgInProj ] CRetBool)
-  , mkffi "isSame"      $ cfun "is_same"         (CTyp [CArgInProj, CArgInProj ] CRetBool)
+  , mkffi "isEqual"     $ cfun "is_equal"         (CTyp [CArgInProj, CArgInProj ] CRetBool)
+  , mkffi "isSame"      $ cfun "is_same"          (CTyp [CArgInProj, CArgInProj ] CRetBool)
     --
-  , mkffi "normalize"   $ cfun "normalize"       (CTyp [CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "normalize"   $ cfun "normalize"        (CTyp [CArgInProj, CArgOutProj ] CRetVoid)
     --
--- TODO: we need an affine type first 
---  , mkffi "fromAffine"  $ cfun "from_aff"         (CTyp [CArgInAffine , CArgOutProj   ] CRetVoid)
---  , mkffi "toAffine"    $ cfun "to_aff"           (CTyp [CArgInProj   , CArgOutAffine ] CRetVoid)
+  , mkffi "fromAffine"  $ cfun "from_affine"      (CTyp [CArgInAffine , CArgOutProj   ] CRetVoid)
+  , mkffi "toAffine"    $ cfun "to_affine"        (CTyp [CArgInProj   , CArgOutAffine ] CRetVoid)
     --
   , mkffi "neg"         $ cfun "neg"              (CTyp [CArgInProj              , CArgOutProj ] CRetVoid)
   , mkffi "dbl"         $ cfun "dbl"              (CTyp [CArgInProj              , CArgOutProj ] CRetVoid)
   , mkffi "add"         $ cfun "add"              (CTyp [CArgInProj , CArgInProj , CArgOutProj ] CRetVoid)
   , mkffi "sub"         $ cfun "sub"              (CTyp [CArgInProj , CArgInProj , CArgOutProj ] CRetVoid)
     --
-  , mkffi "sclFr"          $ cfun "scl_Fr"           (CTyp [CArgInScalarR , CArgInProj , CArgOutProj ] CRetVoid)
-  , mkffi "sclBigNonNeg"   $ cfun "scl_big"          (CTyp [CArgInBigIntP , CArgInProj , CArgOutProj ] CRetVoid)
-  , mkffi "sclSmallNonNeg" $ cfun "scl_small"        (CTyp [CArgInt       , CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "sclFr"          $ cfun "scl_Fr"        (CTyp [CArgInScalarR , CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "sclBigNonNeg"   $ cfun "scl_big"       (CTyp [CArgInBigIntP , CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "sclSmallNonNeg" $ cfun "scl_small"     (CTyp [CArgInt       , CArgInProj , CArgOutProj ] CRetVoid)
    --
-  , mkffi "scaleByA"  $ cfun "scale_by_A"  (CTyp [CArgInScalarP , CArgOutScalarP ] CRetVoid)
-  , mkffi "scaleByB"  $ cfun "scale_by_B"  (CTyp [CArgInScalarP , CArgOutScalarP ] CRetVoid)
-  , mkffi "scaleBy3B" $ cfun "scale_by_3B" (CTyp [CArgInScalarP , CArgOutScalarP ] CRetVoid)
+--  -- FOR DEBUGGING ONLY
+--  , mkffi "scaleByA"  $ cfun "scale_by_A"  (CTyp [CArgInScalarP , CArgOutScalarP ] CRetVoid)
+--  , mkffi "scaleByB"  $ cfun "scale_by_B"  (CTyp [CArgInScalarP , CArgOutScalarP ] CRetVoid)
+--  , mkffi "scaleBy3B" $ cfun "scale_by_3B" (CTyp [CArgInScalarP , CArgOutScalarP ] CRetVoid)
   ]
   where
     -- cfun_ cname = CFun (bigint_   ++ cname)
@@ -100,6 +101,10 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
     hsTyDesc = HsTyDesc 
       { hsTyName =         typeName
       , hsTyCon  = "Mk" ++ typeName
+      , hsTyNameProj   = hsModule hs_path_proj   ++ "." ++         typeName
+      , hsTyConProj    = hsModule hs_path_proj   ++ "." ++ "Mk" ++ typeName
+      , hsTyNameAffine = hsModule hs_path_affine ++ "." ++         typeName
+      , hsTyConAffine  = hsModule hs_path_affine ++ "." ++ "Mk" ++ typeName
       , hsNLimbsP = nlimbs_p
       , hsNLimbsR = nlimbs_r
       }
@@ -112,18 +117,19 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "-- NOTE 2: Generated code, do not edit!"
   , ""
   , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}"
-  , "module " ++ hsModule hs_path
+  , "module " ++ hsModule hs_path_proj
   , "  ( " ++ typeName ++ "(..)"
   , "  , primeP , primeR , cofactor , curveA , curveB"
   , "  , genG1 , infinity"
   , "  , coords , mkPoint , mkPointMaybe , unsafeMkPoint"
+  , "  , fromAffine , toAffine"
   , "  , isEqual , isSame"
-  , "  , isOnCurve , isInfinity"
+  , "  , isOnCurve , isInfinity , isInSubgroup"
   , "  , normalize"
   , "  , neg , add , dbl , sub"
   , "  , sclFr , sclBig , sclSmall"
   , "  , rndG1 , rndG1_naive"
-  , "  , scaleByA , scaleByB , scaleBy3B    -- temp for debugging"
+--  , "  , scaleByA , scaleByB , scaleBy3B    -- temp for debugging"
   , "  )"  
   , "  where"  
   , ""
@@ -148,11 +154,14 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "import qualified " ++ hsModule hs_path_r ++ " as Fr"
   , "import qualified " ++ hsModule hs_path_big_p ++ " as BigP"
   , ""
+  , "import {-# SOURCE #-} qualified " ++ hsModule hs_path_affine  -- ++ " as Affine" 
+  , ""
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Curve as C"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
+  , "-- | The sizes of the fields Fp, Fr, and the cofactor of the subgroup G1"
   , "primeP, primeR, cofactor :: Integer"
   , "primeP = Fp.prime"
   , "primeR = Fr.prime"
@@ -238,15 +247,15 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "instance Show " ++ typeName ++ " where"
   , "  show pt = case coords pt of"
-  , "     (x,y,z) -> \"[ \" ++ show x ++ \" : \" ++ show y ++ \" : \" ++ show z ++ \"] \""
+  , "     (x,y,z) -> \"[ \" ++ show x ++ \" : \" ++ show y ++ \" : \" ++ show z ++ \" ]\""
   , ""
   , "instance F.Rnd " ++ typeName ++ " where"
   , "  rndIO = rndG1"
   , ""
   , "instance C.Group " ++ typeName ++ " where"
   , "  grpName _    = \"" ++ curveName ++ " / G1\""
-  , "  grpIsUnit    = " ++ hsModule hs_path ++ ".isInfinity"
-  , "  grpUnit      = " ++ hsModule hs_path ++ ".infinity"
+  , "  grpIsUnit    = " ++ hsModule hs_path_proj ++ ".isInfinity"
+  , "  grpUnit      = " ++ hsModule hs_path_proj ++ ".infinity"
   , "  grpNormalize = normalize"
   , "  grpNeg       = neg"
   , "  grpDbl       = dbl"
@@ -259,11 +268,11 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  curveNamePxy _ = \"" ++ curveName ++ " ( Fp )\""
   , "  type BaseField   " ++ typeName ++ " = Fp"
   , "  type ScalarField " ++ typeName ++ " = Fr"
-  , "  isOnCurve   = " ++ hsModule hs_path ++ ".isOnCurve"
-  , "  isInifinity = " ++ hsModule hs_path ++ ".isInfinity"
-  , "  infinity    = " ++ hsModule hs_path ++ ".infinity"
-  , "  subgroupGen = " ++ hsModule hs_path ++ ".genG1"
-  , "  scalarMul   = " ++ hsModule hs_path ++ ".sclFr"
+  , "  isOnCurve   = " ++ hsModule hs_path_proj ++ ".isOnCurve"
+  , "  isInifinity = " ++ hsModule hs_path_proj ++ ".isInfinity"
+  , "  infinity    = " ++ hsModule hs_path_proj ++ ".infinity"
+  , "  subgroupGen = " ++ hsModule hs_path_proj ++ ".genG1"
+  , "  scalarMul   = " ++ hsModule hs_path_proj ++ ".sclFr"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -294,7 +303,8 @@ c_begin curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
   , "#include <stdint.h>"
   , "#include <x86intrin.h>"
   , ""
-  , "#include \"" ++ pathBaseName c_path ++ ".h\""
+  , "#include \"" ++ pathBaseName c_path_proj   ++ ".h\""
+  , "#include \"" ++ pathBaseName c_path_affine ++ ".h\""
   , "#include \"" ++ c_basename_p  ++ ".h\""
   , "#include \"" ++ c_basename_r  ++ ".h\""
   , ""
@@ -545,18 +555,30 @@ normalize (Curve{..}) (CodeGenParams{..}) =
 convertAffine :: Curve -> CodeGenParams -> Code
 convertAffine (Curve{..}) (CodeGenParams{..}) = 
   [ "// converts from affine coordinates"
-  , "void " ++ prefix ++ "from_aff( const uint64_t *src1 , uint64_t *tgt ) {"
+  , "void " ++ prefix ++ "from_affine( const uint64_t *src1 , uint64_t *tgt ) {"
   , "  memcpy( tgt, src1, " ++ show (8*2*nlimbs_p) ++ " );"
-  , "  " ++ prefix_p ++ "set_one( Z3 );"
+  , "  if (" ++ prefix_affine ++ "is_infinity( src1 )) {"
+  , "    " ++ prefix ++ "set_infinity( tgt );"
+  , "  }"
+  , "  else {"
+  , "    " ++ prefix_p ++ "set_one( Z3 );"
+  , "  }"
   , "}"
   , ""
   , "// converts to affine coordinates"
-  , "// remark: the point at infinity will result in (0,0)"
-  , "void " ++ prefix ++ "to_aff( const uint64_t *src1 , uint64_t *tgt ) {"
-  , "  uint64_t zinv[" ++ show nlimbs_p ++ "];"
-  , "  " ++ prefix_p ++ "inv( Z1, zinv );"
-  , "  " ++ prefix_p ++ "mul( X1, zinv, X3 );"
-  , "  " ++ prefix_p ++ "mul( Y1, zinv, Y3 );"
+  , "// remark: the point at infinity will result in the special string `0xffff...ffff`"
+  , "void " ++ prefix ++ "to_affine( const uint64_t *src1 , uint64_t *tgt ) {"
+  , "  if (" ++ prefix_p ++ "is_zero( Z1 )) {"
+  , "    // in the affine coordinate system, the point at infinity is represented by a hack"
+  , "    // consisting all 0xff bytes (note that that's an invalid value for prime fields)"
+  , "    memset( tgt, 0xff, " ++ show (8*2*nlimbs_p) ++ " );"
+  , "  }"
+  , "  else {"
+  , "    uint64_t zinv[" ++ show nlimbs_p ++ "];"
+  , "    " ++ prefix_p ++ "inv( Z1, zinv );"
+  , "    " ++ prefix_p ++ "mul( X1, zinv, X3 );"
+  , "    " ++ prefix_p ++ "mul( Y1, zinv, Y3 );"
+  , "  }"
   , "}"
   , ""
   , "void " ++ prefix ++ "copy( const uint64_t *src1 , uint64_t *tgt ) {"
@@ -619,10 +641,6 @@ isOnCurve (Curve{..}) (CodeGenParams{..}) =
   , "  }"
   , "}"
   ]
-
--- TODO
--- subgroupCheck :: Curve -> CodeGenParams -> Code
--- subgroupCheck (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
@@ -1059,8 +1077,8 @@ hs_code curve params@(CodeGenParams{..}) = concat $ map ("":)
 curve_MontProj_c_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
 curve_MontProj_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
 
-  let fn_h = tgtdir </> (cFilePath "h" c_path)
-  let fn_c = tgtdir </> (cFilePath "c" c_path)
+  let fn_h = tgtdir </> (cFilePath "h" c_path_proj)
+  let fn_c = tgtdir </> (cFilePath "c" c_path_proj)
 
   createTgtDirectory fn_h
   createTgtDirectory fn_c
@@ -1074,10 +1092,10 @@ curve_MontProj_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
 curve_MontProj_hs_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
 curve_MontProj_hs_codegen tgtdir curve params@(CodeGenParams{..}) = do
 
-  let fn_hs = tgtdir </> (hsFilePath hs_path)
+  let fn_hs = tgtdir </> (hsFilePath hs_path_proj)
 
   createTgtDirectory fn_hs
-  
+
   putStrLn $ "writing `" ++ fn_hs ++ "`" 
   writeFile fn_hs $ unlines $ hs_code curve params
 

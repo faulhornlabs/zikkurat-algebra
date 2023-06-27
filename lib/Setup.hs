@@ -31,6 +31,9 @@ myPreBuildHook args buildflags = do
   generate_curves_proj C  "cbits"
   generate_curves_proj Hs "src"
 
+  generate_curves_affine C  "cbits"
+  generate_curves_affine Hs "src"
+
   return $ emptyHookedBuildInfo  
 
 -- myPostCleanHook :: Args -> CleanFlags -> PackageDescription -> () -> IO ()

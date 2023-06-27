@@ -19,6 +19,10 @@ Category:             Math, Cryptography
 Tested-With:          GHC == 8.6.5, GHC == 9.0.1
 Build-Type:           Custom
 
+source-repository head
+  type:                git 
+  location:            https://github.com/faulhornlabs/zikkurat-algebra
+
 --------------------------------------------------------------------------------
 
 custom-setup
@@ -54,7 +58,9 @@ Library
                         ZK.Algebra.Curves.BLS12_381.Fr.Std
                         ZK.Algebra.Curves.BLS12_381.Fp.Mont
                         ZK.Algebra.Curves.BLS12_381.Fr.Mont
+                        ZK.Algebra.Curves.BN128.G1.Affine
                         ZK.Algebra.Curves.BN128.G1.Proj
+                        ZK.Algebra.Curves.BLS12_381.G1.Affine
                         ZK.Algebra.Curves.BLS12_381.G1.Proj
  
   c-sources:            cbits/bigint/bigint128.c
@@ -72,7 +78,9 @@ Library
                         cbits/curves/fields/mont/bn128_r_mont.c
                         cbits/curves/fields/mont/bls12_381_p_mont.c
                         cbits/curves/fields/mont/bls12_381_r_mont.c
+                        cbits/curves/g1/proj/bn128_G1_affine.c
                         cbits/curves/g1/proj/bn128_G1_proj.c
+                        cbits/curves/g1/proj/bls12_381_G1_affine.c
                         cbits/curves/g1/proj/bls12_381_G1_proj.c
 
   Default-Language:     Haskell2010

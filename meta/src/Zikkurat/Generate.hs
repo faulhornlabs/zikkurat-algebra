@@ -4,6 +4,7 @@ module Zikkurat.Generate
   , generate_bigints
   , generate_primefields_std
   , generate_primefields_montgomery
+  , generate_curves_affine
   , generate_curves_proj
   ) 
   where
@@ -21,6 +22,7 @@ import qualified Zikkurat.CodeGen.BigInt                as BigInt
 import qualified Zikkurat.CodeGen.PrimeField.StdRep     as FpStd
 import qualified Zikkurat.CodeGen.PrimeField.Montgomery as FpMont
 import qualified Zikkurat.CodeGen.Curve.MontProj        as Proj
+import qualified Zikkurat.CodeGen.Curve.MontAffine      as Affine
 
 import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.Curve.Params
@@ -167,36 +169,48 @@ generate_primefields_montgomery hsOrC tgtdir = do
 
 bn128_cgParams :: CodeGenParams
 bn128_cgParams = CodeGenParams
-  { prefix        = "bn128_G1_"                                                 -- prefix for C names
-  , prefix_p      = "bn128_p_mont_"                                             -- prefix for C names for Fp
-  , prefix_r      = "bn128_q_mont_"                                             -- prefix for C names for Fq
-  , nlimbs_p      = 4                                                           -- number of 64-bit limbs in p
-  , nlimbs_r      = 4                                                           -- number of 64-bit limbs in r
-  , c_path        = Path ["curves","g1","proj","bn128_G1_proj"]                 -- path of the C file
-  , hs_path       = Path ["ZK","Algebra","Curves","BN128","G1","Proj"]          -- path of the Haskell module
-  , hs_path_p     = Path ["ZK","Algebra","Curves","BN128","Fp","Mont"]          -- path of the Haskell module for Fp
-  , hs_path_r     = Path ["ZK","Algebra","Curves","BN128","Fr","Mont"]          -- path of the Haskell module for Fr
-  , hs_path_big_p = Path ["ZK","Algebra","BigInt","BigInt256"]                  
-  , c_basename_p  = "bn128_p_mont"                                              -- name of the @.c@ / @.h@ file for Fr (without extension)
-  , c_basename_r  = "bn128_r_mont"                                              -- name of the @.c@ / @.h@ file for Fr (without extension)
-  , typeName      = "G1"                                                        -- the name of the haskell type for curve points
+  { prefix         = error "bn128 / prefix"                                      -- prefix for C names
+  , prefix_affine  = "bn128_G1_affine_"                                          -- prefix for C names
+  , prefix_proj    = "bn128_G1_proj_"                                            -- prefix for C names
+  , prefix_p       = "bn128_p_mont_"                                             -- prefix for C names for Fp
+  , prefix_r       = "bn128_q_mont_"                                             -- prefix for C names for Fq
+  , nlimbs_p       = 4                                                           -- number of 64-bit limbs in p
+  , nlimbs_r       = 4                                                           -- number of 64-bit limbs in r
+  , hs_path_p      = Path ["ZK","Algebra","Curves","BN128","Fp","Mont"]          -- path of the Haskell module for Fp
+  , hs_path_r      = Path ["ZK","Algebra","Curves","BN128","Fr","Mont"]          -- path of the Haskell module for Fr
+  , hs_path_big_p  = Path ["ZK","Algebra","BigInt","BigInt256"]                  
+  , c_path         = error "bn128 / c_path"
+  , c_path_affine  = Path ["curves","g1","proj","bn128_G1_affine"]               -- path of the C file
+  , c_path_proj    = Path ["curves","g1","proj","bn128_G1_proj"]                 -- path of the C file
+  , hs_path        = error "bn128 / hs_path"
+  , hs_path_affine = Path ["ZK","Algebra","Curves","BN128","G1","Affine"]        -- path of the Haskell module
+  , hs_path_proj   = Path ["ZK","Algebra","Curves","BN128","G1","Proj"]          -- path of the Haskell module
+  , c_basename_p   = "bn128_p_mont"                                              -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_r   = "bn128_r_mont"                                              -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , typeName       = "G1"                                                        -- the name of the haskell type for curve points
   }
 
 bls12_381_cgParams :: CodeGenParams
 bls12_381_cgParams = CodeGenParams
-  { prefix        = "bls12_381_G1_"                                             -- prefix for C names
-  , prefix_p      = "bls12_381_p_mont_"                                         -- prefix for C names for Fp
-  , prefix_r      = "bls12_381_q_mont_"                                         -- prefix for C names for Fq
-  , nlimbs_p      = 6                                                           -- number of 64-bit limbs in p
-  , nlimbs_r      = 4                                                           -- number of 64-bit limbs in r
-  , c_path        = Path ["curves","g1","proj","bls12_381_G1_proj"]             -- path of the C file
-  , hs_path       = Path ["ZK","Algebra","Curves","BLS12_381","G1","Proj"]      -- path of the Haskell module
-  , hs_path_p     = Path ["ZK","Algebra","Curves","BLS12_381","Fp","Mont"]      -- path of the Haskell module for Fp
-  , hs_path_r     = Path ["ZK","Algebra","Curves","BLS12_381","Fr","Mont"]      -- path of the Haskell module for Fr
-  , hs_path_big_p = Path ["ZK","Algebra","BigInt","BigInt384"]                  
-  , c_basename_p  = "bls12_381_p_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
-  , c_basename_r  = "bls12_381_r_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
-  , typeName      = "G1"                                                        -- the name of the haskell type for curve points
+  { prefix         = error "bls12_381 / prefix"                                  -- prefix for C names
+  , prefix_affine  = "bls12_381_G1_affine_"                                      -- prefix for C names
+  , prefix_proj    = "bls12_381_G1_proj_"                                        -- prefix for C names
+  , prefix_p       = "bls12_381_p_mont_"                                         -- prefix for C names for Fp
+  , prefix_r       = "bls12_381_q_mont_"                                         -- prefix for C names for Fq
+  , nlimbs_p       = 6                                                           -- number of 64-bit limbs in p
+  , nlimbs_r       = 4                                                           -- number of 64-bit limbs in r
+  , hs_path_p      = Path ["ZK","Algebra","Curves","BLS12_381","Fp","Mont"]      -- path of the Haskell module for Fp
+  , hs_path_r      = Path ["ZK","Algebra","Curves","BLS12_381","Fr","Mont"]      -- path of the Haskell module for Fr
+  , hs_path_big_p  = Path ["ZK","Algebra","BigInt","BigInt384"]                  
+  , c_path         = error "bls12_381 / c_path"
+  , c_path_affine  = Path ["curves","g1","proj","bls12_381_G1_affine"]           -- path of the C file
+  , c_path_proj    = Path ["curves","g1","proj","bls12_381_G1_proj"]             -- path of the C file
+  , hs_path        = error "bls12_381 / hs_path"
+  , hs_path_affine = Path ["ZK","Algebra","Curves","BLS12_381","G1","Affine"]    -- path of the Haskell module
+  , hs_path_proj   = Path ["ZK","Algebra","Curves","BLS12_381","G1","Proj"]      -- path of the Haskell module
+  , c_basename_p   = "bls12_381_p_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_r   = "bls12_381_r_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , typeName       = "G1"                                                        -- the name of the haskell type for curve points
   }
 
 curveList :: [(Curve,CodeGenParams)]
@@ -208,12 +222,32 @@ curveList =
 generate_curves_proj :: HsOrC -> FilePath -> IO ()
 generate_curves_proj hsOrC tgtdir = do
 
-  forM_ curveList $ \(curve,cgparams) -> do
-  
-    -- print params
+  forM_ curveList $ \(curve,cgparams0) -> do
+
+    let cgparams = cgparams0 
+          { prefix  = prefix_proj  cgparams0
+          , c_path  = c_path_proj  cgparams0 
+          , hs_path = hs_path_proj cgparams0 
+          }
+
     case hsOrC of 
       C  -> Proj.curve_MontProj_c_codegen  tgtdir curve cgparams
       Hs -> Proj.curve_MontProj_hs_codegen tgtdir curve cgparams
+
+generate_curves_affine :: HsOrC -> FilePath -> IO ()
+generate_curves_affine hsOrC tgtdir = do
+
+  forM_ curveList $ \(curve,cgparams0) -> do
+
+    let cgparams = cgparams0 
+          { prefix  = prefix_affine  cgparams0 
+          , c_path  = c_path_affine  cgparams0 
+          , hs_path = hs_path_affine cgparams0 
+          }
+
+    case hsOrC of 
+      C  -> Affine.curve_MontAffine_c_codegen  tgtdir curve cgparams
+      Hs -> Affine.curve_MontAffine_hs_codegen tgtdir curve cgparams
 
 --------------------------------------------------------------------------------
 

@@ -33,6 +33,7 @@ help = do
   putStrLn " - std_field"
   putStrLn " - montgomery"
   putStrLn " - proj_curve"
+  putStrLn " - affine_curve"
   putStrLn ""
 
 --------------------------------------------------------------------------------
@@ -44,16 +45,23 @@ validNames =
   , "stdfield"
   , "montfield" , "montgomery"
   , "projcurve"
+  , "affcurve" , "affinecurve"
   ]
 
 testMain :: String -> Int -> IO ()
 testMain what n = case canonicalizeName what of
+
   "all"        -> runTestsAll       n
   "bigint"     -> runTestsBigInt    n
   "stdfield"   -> runTestsStdField  n     
+
   "montfield"  -> runTestsMontField n
   "montgomery" -> runTestsMontField n
+
   "projcurve"  -> runTestsProjCurve n
+
+  "affcurve"   -> runTestsAffineCurve n
+  "affinecurve"-> runTestsAffineCurve n
 
 canonicalizeName :: String -> String 
 canonicalizeName = map toLower . filter isLetter
