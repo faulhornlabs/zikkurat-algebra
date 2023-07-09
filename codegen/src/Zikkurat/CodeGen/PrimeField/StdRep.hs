@@ -435,7 +435,7 @@ mulField Params{..} =
   , "  " ++ prefix ++ "reduce_modp( prod, tgt );"
   , "}"
   , ""
-  , "void f" ++ prefix ++ "sqr_inplace( uint64_t *tgt ) {"
+  , "void " ++ prefix ++ "sqr_inplace( uint64_t *tgt ) {"
   , "  uint64_t prod[" ++ show (2*nlimbs) ++ "];"
   , "  " ++ bigint_ ++ "sqr( tgt, prod );"
   , "  " ++ prefix ++ "reduce_modp( prod, tgt );"
