@@ -34,6 +34,7 @@ Library
                         Zikkurat.CodeGen.Curve.MontAffine
                         Zikkurat.CodeGen.Curve.MontProj
                         Zikkurat.CodeGen.Curve.MontJac
+                        -- Zikkurat.CodeGen.Curve.MSM
                         Zikkurat.CodeGen.Curve.Params
                         Zikkurat.CodeGen.Curve.CurveFFI
                         Zikkurat.CodeGen.BigInt

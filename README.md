@@ -17,7 +17,7 @@ Project goals:
 - comprehensive testing
 - the code should stay simple enough (and documented enough) so that auditing 
   the correctness wouldn't be a nightmarishly daunting task 
-  (very much not satisfied at the moment)
+  (this is very much not satisfied at the moment, as the code generator is very hackish)
 
 
 Metadata
@@ -58,7 +58,7 @@ Currently, we have the following ones.
 ### Supported elliptic curves
 
 - Pairing-friendly curves:
-    - BN128 (aka. alt-bn128, BN256, etc)
+    - BN128 (aka. alt-bn128, BN254, BN256, etc)
     - BLS12-381
     - ...
 - General curves:
@@ -85,10 +85,14 @@ TODO
 - [x] implement bigints
 - [x] implement prime fields
 - [x] implement curves
-- [ ] implement polynomials
-- [ ] create a test framework
-- [ ] add pure Haskell reference implementations
+- [ ] implement univariate polynomials
+- [x] property-based test framework
+- [ ] unit-test framework
+- [ ] long division of bigints
+- [ ] square roots in prime fields 
+- [ ] hash-to-curve & better random curve points  
 - [ ] add benchmarking
+- [ ] add pure Haskell reference implementations
 - [ ] figure out a better meta-programming story
 - [ ] try to optimize a bit more
 - [ ] add an explicit discrete logarithm type (integers modulo `p-1`)

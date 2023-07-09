@@ -154,6 +154,10 @@ instance C.Curve G1 where
   subgroupGen = ZK.Algebra.Curves.BLS12_381.G1.Affine.genG1
   scalarMul   = ZK.Algebra.Curves.BLS12_381.G1.Affine.sclFr
 
+instance C.AffineCurve G1 where
+  coords2    = ZK.Algebra.Curves.BLS12_381.G1.Affine.coords
+  mkPoint2   = ZK.Algebra.Curves.BLS12_381.G1.Affine.mkPoint
+
 --------------------------------------------------------------------------------
 
 sclSmall :: Int -> G1 -> G1

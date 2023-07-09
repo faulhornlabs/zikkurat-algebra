@@ -10,7 +10,7 @@ import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Curve
 
 import ZK.Test.Field.Properties ( runRingTests  , runFieldTests )
-import ZK.Test.Curve.Properties ( runGroupTests , runCurveTests )
+import ZK.Test.Curve.Properties ( runGroupTests , runCurveTests , runProjCurveTests )
 
 import qualified ZK.Algebra.BigInt.BigInt128 as BigInt128
 import qualified ZK.Algebra.BigInt.BigInt192 as BigInt192
@@ -60,10 +60,10 @@ runTestsProjCurve :: Int -> IO ()
 runTestsProjCurve n = do
 
   printHeader "running tests for BLS12-381/G1/Proj"
-  runCurveTests n (Proxy @BLS12_381_G1_Proj.G1)
+  runProjCurveTests n (Proxy @BLS12_381_G1_Proj.G1)
 
   printHeader "running tests for BN128/G1/Proj"
-  runCurveTests n (Proxy @BN128_G1_Proj.G1)
+  runProjCurveTests n (Proxy @BN128_G1_Proj.G1)
 
 ----------------------------------------
 
@@ -71,10 +71,10 @@ runTestsJacCurve :: Int -> IO ()
 runTestsJacCurve n = do
 
   printHeader "running tests for BLS12-381/G1/Jac"
-  runCurveTests n (Proxy @BLS12_381_G1_Jac.G1)
+  runProjCurveTests n (Proxy @BLS12_381_G1_Jac.G1)
 
   printHeader "running tests for BN128/G1/Jac"
-  runCurveTests n (Proxy @BN128_G1_Jac.G1)
+  runProjCurveTests n (Proxy @BN128_G1_Jac.G1)
 
 ----------------------------------------
 

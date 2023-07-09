@@ -278,6 +278,14 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  subgroupGen = " ++ hsModule hs_path_jac ++ ".genG1"
   , "  scalarMul   = " ++ hsModule hs_path_jac ++ ".sclFr"
   , ""
+  , "instance C.ProjCurve " ++ typeName ++ " where"
+  , "  type AffinePoint " ++ typeName ++ " = " ++ hsModule hs_path_affine ++ "." ++ typeName
+  , "  fromAffine = " ++ hsModule hs_path_jac ++ ".fromAffine"
+  , "  toAffine   = " ++ hsModule hs_path_jac ++ ".toAffine"
+  , "  coords3    = " ++ hsModule hs_path_jac ++ ".coords"
+  , "  mkPoint3   = " ++ hsModule hs_path_jac ++ ".mkPoint"
+  , "  mixedAdd   = " ++ hsModule hs_path_jac ++ ".madd"
+  , "  "
   , "--------------------------------------------------------------------------------"
   , ""
   , "sclSmall :: Int -> G1 -> G1"
@@ -840,6 +848,8 @@ subCurve (Curve{..}) (CodeGenParams{..}) =
 
 https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-madd-2007-bl
 
+note: this formula does not seem to work for any of the corner cases...
+
 assumption: Z2 == 1
 
       Z1Z1 = Z1^2
@@ -859,9 +869,18 @@ assumption: Z2 == 1
 
 mixedAddCurve :: Curve -> CodeGenParams -> Code
 mixedAddCurve (Curve{..}) (CodeGenParams{..}) =
-  [ "// adds a projective point (src1) to an affine point (src2)"
+  [ "// adds a Jacobian projective point (src1) to an affine point (src2)"
   , "// <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-madd-2007-bl>"
   , "void " ++ prefix ++ "madd_jac_aff( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  if (" ++ prefix ++ "is_infinity( src1 )) {"
+  , "    // the formula is not valid for this case"
+  , "    " ++ prefix ++ "from_affine( src2 , tgt );"
+  , "    return;"
+  , "  }"
+  , "  if (" ++ prefix_affine ++ "is_infinity( src2 )) {"
+  , "    " ++ prefix ++ "copy( src1 , tgt );"
+  , "    return;"
+  , "  }"
   , "  uint64_t Z1Z1[" ++ show nlimbs_p ++ "];"
   , "  uint64_t U2[" ++ show nlimbs_p ++ "];"
   , "  uint64_t S2[" ++ show nlimbs_p ++ "];"  
@@ -880,7 +899,23 @@ mixedAddCurve (Curve{..}) (CodeGenParams{..}) =
   , "  " ++ prefix_p ++ "add( HH, HH, I );          //    = 2*HH"
   , "  " ++ prefix_p ++ "add_inplace( I, I );       // I  = 4*HH"
   , "  " ++ prefix_p ++ "mul( H, I, J );            // J  = H*I"
-  , "  " ++ prefix_p ++ "sub( S2, Y1, r );          //    = S2-S1"
+  , "  " ++ prefix_p ++ "sub( S2, Y1, r );          //    = S2-Y1"
+  , "  if (" ++ prefix_p ++ "is_zero(H)) {"
+  , "    // H=0  <==>  X1/Z1^2 = X2"
+  , "    // either a doubling or the result is infinity"
+  , "    if (" ++ prefix_p ++ "is_zero(r)) {"
+  , "      // r=0  <==>  Y1/Z1^2 = Y2"
+  , "      // it's a doubling"
+  , "      " ++ prefix ++ "dbl( src1, tgt );"
+  , "      return;"
+  , "    }"
+  , "    else {"
+  , "      // X1/Z1^2 = X2 but Y1/Z1^2 /= Y2"
+  , "      // so the result must be infinity"
+  , "      " ++ prefix ++ "set_infinity( tgt );"
+  , "      return;"
+  , "    }"
+  , "  }"
   , "  " ++ prefix_p ++ "add_inplace( r, r );       // r  = 2*(S2-Y1)"
   , "  " ++ prefix_p ++ "mul( X1, I, V );           // V  = X1*I"
   , "  " ++ prefix_p ++ "sqr( r, X3 );              //    = r^2"
@@ -888,10 +923,10 @@ mixedAddCurve (Curve{..}) (CodeGenParams{..}) =
   , "  " ++ prefix_p ++ "sub_inplace( X3, V );      //    = r^2 - J - V"
   , "  " ++ prefix_p ++ "sub_inplace( X3, V );      // X3 = r^2 - J - 2*V"
   , "  " ++ prefix_p ++ "sub( V, X3, Y3 );          //    = V-X3"
-  , "  " ++ prefix_p ++ "mul_inplace( X3, r );      //    = r*(V-X3)"
+  , "  " ++ prefix_p ++ "mul_inplace( Y3, r );      //    = r*(V-X3)"
   , "  " ++ prefix_p ++ "mul_inplace( J, Y1 );      // J := Y1*J"
-  , "  " ++ prefix_p ++ "sub_inplace( Y3, J );      //    = r*(V-X3) - S1*J"
-  , "  " ++ prefix_p ++ "sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*S1*J"
+  , "  " ++ prefix_p ++ "sub_inplace( Y3, J );      //    = r*(V-X3) - Y1*J"
+  , "  " ++ prefix_p ++ "sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*Y1*J"
   , "  " ++ prefix_p ++ "add( Z1, H , Z3 );         //    = Z1+H"
   , "  " ++ prefix_p ++ "sqr_inplace( Z3 );         //    = (Z1+H)^2"
   , "  " ++ prefix_p ++ "sub_inplace( Z3, Z1Z1 );   //    = (Z1+H)^2-Z1Z1"

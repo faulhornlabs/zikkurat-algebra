@@ -304,6 +304,15 @@ void bn128_G1_proj_sub_inplace( uint64_t *tgt, const uint64_t *src2 ) {
 // adds a projective point (src1) to an affine point (src2)
 // https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-madd-1998-cmo
 void bn128_G1_proj_madd_proj_aff( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+  if (bn128_G1_proj_is_infinity( src1 )) {
+    // the formula is not valid for this case
+    bn128_G1_proj_from_affine( src2 , tgt );
+    return;
+  }
+  if (bn128_G1_affine_is_infinity( src2 )) {
+    bn128_G1_proj_copy( src1 , tgt );
+    return;
+  }
   uint64_t   u[4];
   uint64_t  uu[4];
   uint64_t   v[4];

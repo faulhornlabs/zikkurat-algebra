@@ -24,6 +24,12 @@ runCurveTests n pxy = do
   runGroupTests     n pxy
   runCurveOnlyTests n pxy 
 
+runProjCurveTests :: forall a. ProjCurve a => Int -> Proxy a -> IO ()
+runProjCurveTests n pxy = do
+  runGroupTests         n pxy
+  runCurveOnlyTests     n pxy 
+  runProjCurveOnlyTests n pxy 
+
 --------------------------------------------------------------------------------
 
 runGroupTests :: forall a. Group a => Int -> Proxy a -> IO ()
@@ -88,6 +94,29 @@ runCurveOnlyTests n pxy = do
       x <- rndIO @a
       return (test k x) 
 
+runProjCurveOnlyTests :: forall a. ProjCurve a => Int -> Proxy a -> IO ()
+runProjCurveOnlyTests n pxy = do
+
+  forM_ projCurveOnlyProps $ \prop -> case prop of
+  
+    ProjCurveProp1 test name -> doTests n name $ do
+      x <- rndIO @a
+      return (test x) 
+
+    ProjCurvePropA test name -> doTests n name $ do
+      x <- rndIO @(AffinePoint a)
+      return (test pxy x) 
+
+    ProjCurveProp2 test name -> doTests n name $ do
+      x <- rndIO @a
+      y <- rndIO @a
+      return (test x y) 
+
+    ProjCurvePropI1 test name -> doTests n name $ do
+      k <- randomRIO (-1000,1000)
+      x <- rndIO @a
+      return (test k x) 
+
 --------------------------------------------------------------------------------
 
 doTests :: Int -> String -> IO Bool -> IO Bool
@@ -121,6 +150,25 @@ data CurveProp
   | CurveProp2  (forall a. Curve a  => a -> a -> Bool     ) String
   | CurveProp3  (forall a. Curve a  => a -> a -> a -> Bool) String
   | CurvePropI1 (forall a. Curve a  => Int -> a -> Bool   ) String
+
+data ProjCurveProp
+  = ProjCurveProp1  (forall a. ProjCurve a  => a -> Bool            ) String
+  | ProjCurveProp2  (forall a. ProjCurve a  => a -> a -> Bool       ) String
+  | ProjCurvePropA  (forall a. ProjCurve a  => Proxy a -> AffinePoint a -> Bool) String
+  | ProjCurvePropI1 (forall a. ProjCurve a  => Int -> a -> Bool     ) String
+
+--------------------------------------------------------------------------------
+
+referenceScale :: Group a => Integer -> a -> a
+referenceScale k x0 
+  | k == 0     = grpUnit
+  | k < 0      = grpNeg $ go (-k) grpUnit x0
+  | otherwise  =          go   k  grpUnit x0
+  where
+    go 0 acc _   = acc
+    go k acc run = case (k .&. 1) of 
+      0 -> go (shiftR k 1)         acc      (grpDbl run)
+      _ -> go (shiftR k 1) (grpAdd acc run) (grpDbl run)
 
 --------------------------------------------------------------------------------
 
@@ -163,31 +211,6 @@ groupProps =
   , GroupPropII1 prop_scale_left_distrib        "scale (k+l) x"
   , GroupPropI2  prop_scale_right_distrib       "scale k (x+y)"
   ]
-
-curveOnlyProps :: [CurveProp]
-curveOnlyProps = 
-  [ CurveProp1  prop_is_on_curve               "pt on curve"
-  , CurveProp1  prop_is_on_curve_neg           "neg on curve"
-  , CurveProp1  prop_is_on_curve_dbl           "dbl on curve"
-  , CurveProp2  prop_is_on_curve_add           "add on curve"
-  , CurveProp1  prop_is_on_curve_add_to_self   "x+x on curve"
-  , CurveProp2  prop_is_on_curve_sub           "sub on curve"
-  , CurvePropI1 prop_is_on_curve_scale         "scale on curve"
-  , CurveProp1  prop_normalize_on_curve        "normalize on curve"
-  ]
-
---------------------------------------------------------------------------------
-
-referenceScale :: Group a => Integer -> a -> a
-referenceScale k x0 
-  | k == 0     = grpUnit
-  | k < 0      = grpNeg $ go (-k) grpUnit x0
-  | otherwise  =          go   k  grpUnit x0
-  where
-    go 0 acc _   = acc
-    go k acc run = case (k .&. 1) of 
-      0 -> go (shiftR k 1)         acc      (grpDbl run)
-      _ -> go (shiftR k 1) (grpAdd acc run) (grpDbl run)
 
 --------------------------------------------------------------------------------
 -- * Group properties
@@ -326,6 +349,18 @@ prop_is_equal x = and
 --------------------------------------------------------------------------------
 -- * curve properties
 
+curveOnlyProps :: [CurveProp]
+curveOnlyProps = 
+  [ CurveProp1  prop_is_on_curve               "pt on curve"
+  , CurveProp1  prop_is_on_curve_neg           "neg on curve"
+  , CurveProp1  prop_is_on_curve_dbl           "dbl on curve"
+  , CurveProp2  prop_is_on_curve_add           "add on curve"
+  , CurveProp1  prop_is_on_curve_add_to_self   "x+x on curve"
+  , CurveProp2  prop_is_on_curve_sub           "sub on curve"
+  , CurvePropI1 prop_is_on_curve_scale         "scale on curve"
+  , CurveProp1  prop_normalize_on_curve        "normalize on curve"
+  ]
+
 prop_is_on_curve :: Curve a => a -> Bool
 prop_is_on_curve x = isOnCurve x
 
@@ -348,3 +383,75 @@ prop_is_on_curve_scale :: Curve a => Int -> a -> Bool
 prop_is_on_curve_scale k x = isOnCurve (grpScale_ k x)
 
 --------------------------------------------------------------------------------
+-- * projective properties
+
+projCurveOnlyProps :: [ProjCurveProp]
+projCurveOnlyProps = 
+  [ ProjCurveProp1   prop_to_from_affine            "fromAffine . toAffine"  
+  , ProjCurvePropA   prop_from_to_affine            "toAffine . fromAffine"  
+  , ProjCurveProp1   prop_is_on_curve_toAffine      "oncurve(toAffine(x))"  
+  , ProjCurveProp1   prop_normalize_then_toAffine   "toAffine(normalize(x))"  
+  , ProjCurvePropA   prop_is_on_curve_fromAffine    "oncurve(fromAffine(x))"  
+  , ProjCurveProp2   prop_mixed_add                 "mixed addition" 
+  , ProjCurveProp1   prop_mixed_add_dbl             "mixed add with itself" 
+  , ProjCurveProp1   prop_mixed_add_left_unit       "mixed add left unit" 
+  , ProjCurveProp1   prop_mixed_add_right_unit      "mixed add right unit" 
+  , ProjCurveProp1   prop_mixed_add_left_inv        "mixed add left inv" 
+  , ProjCurveProp1   prop_mixed_add_right_inv       "mixed add right inv" 
+  , ProjCurveProp2   prop_to_proj_vs_affine_add     "add proj vs. affine" 
+  , ProjCurveProp2   prop_to_proj_vs_affine_sub     "sub proj vs. affine" 
+  , ProjCurveProp1   prop_to_proj_vs_affine_dbl     "dbl proj vs. affine" 
+  , ProjCurveProp1   prop_to_proj_vs_affine_neg     "neg proj vs. affine" 
+  , ProjCurvePropI1  prop_to_proj_vs_affine_scl     "scl proj vs. affine" 
+  ]
+
+prop_to_from_affine :: ProjCurve a => a -> Bool
+prop_to_from_affine x = (fromAffine (toAffine x)) == x
+
+prop_from_to_affine :: forall a. ProjCurve a => Proxy a -> AffinePoint a -> Bool
+prop_from_to_affine _ x = toAffine (fromAffine @a x) == x
+
+prop_is_on_curve_toAffine :: ProjCurve a => a -> Bool
+prop_is_on_curve_toAffine x = isOnCurve (toAffine x)
+
+prop_normalize_then_toAffine :: ProjCurve a => a -> Bool
+prop_normalize_then_toAffine x = toAffine x == toAffine (grpNormalize x)
+
+prop_is_on_curve_fromAffine :: forall a. ProjCurve a => Proxy a -> AffinePoint a -> Bool
+prop_is_on_curve_fromAffine _ x = isOnCurve (fromAffine @a x)
+
+prop_mixed_add :: ProjCurve a => a -> a -> Bool
+prop_mixed_add x y = mixedAdd x (toAffine y) == grpAdd x y
+
+prop_mixed_add_dbl :: ProjCurve a => a -> Bool
+prop_mixed_add_dbl x = mixedAdd x (toAffine x) == grpDbl x
+
+prop_mixed_add_left_unit :: ProjCurve a => a -> Bool
+prop_mixed_add_left_unit x = mixedAdd infinity (toAffine x) == x
+
+prop_mixed_add_right_unit :: ProjCurve a => a -> Bool
+prop_mixed_add_right_unit x = mixedAdd x infinity == x
+
+prop_mixed_add_left_inv :: ProjCurve a => a -> Bool
+prop_mixed_add_left_inv x = mixedAdd (grpNeg x) (toAffine x) == infinity
+
+prop_mixed_add_right_inv :: ProjCurve a => a -> Bool
+prop_mixed_add_right_inv x = mixedAdd x (toAffine $ grpNeg x) == infinity
+
+prop_to_proj_vs_affine_add :: ProjCurve a => a -> a -> Bool
+prop_to_proj_vs_affine_add x y = toAffine (grpAdd x y) == grpAdd (toAffine x) (toAffine y)
+
+prop_to_proj_vs_affine_sub :: ProjCurve a => a -> a -> Bool
+prop_to_proj_vs_affine_sub x y = toAffine (grpSub x y) == grpSub (toAffine x) (toAffine y)
+
+prop_to_proj_vs_affine_dbl :: ProjCurve a => a -> Bool
+prop_to_proj_vs_affine_dbl x = toAffine (grpDbl x) == grpDbl (toAffine x)
+
+prop_to_proj_vs_affine_neg :: ProjCurve a => a -> Bool
+prop_to_proj_vs_affine_neg x = toAffine (grpNeg x) == grpNeg (toAffine x)
+
+prop_to_proj_vs_affine_scl :: ProjCurve a => Int -> a -> Bool
+prop_to_proj_vs_affine_scl k x = toAffine (grpScale_ k x) == grpScale_ k (toAffine x)
+
+--------------------------------------------------------------------------------
+

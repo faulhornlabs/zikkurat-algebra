@@ -163,7 +163,7 @@ void bn128_r_std_sqr( const uint64_t *src, uint64_t *tgt ) {
   bn128_r_std_reduce_modp( prod, tgt );
 }
 
-void fbn128_r_std_sqr_inplace( uint64_t *tgt ) {
+void bn128_r_std_sqr_inplace( uint64_t *tgt ) {
   uint64_t prod[8];
   bigint256_sqr( tgt, prod );
   bn128_r_std_reduce_modp( prod, tgt );

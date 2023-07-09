@@ -173,7 +173,7 @@ void bls12_381_p_std_sqr( const uint64_t *src, uint64_t *tgt ) {
   bls12_381_p_std_reduce_modp( prod, tgt );
 }
 
-void fbls12_381_p_std_sqr_inplace( uint64_t *tgt ) {
+void bls12_381_p_std_sqr_inplace( uint64_t *tgt ) {
   uint64_t prod[12];
   bigint384_sqr( tgt, prod );
   bls12_381_p_std_reduce_modp( prod, tgt );

@@ -161,6 +161,14 @@ instance C.Curve G1 where
   subgroupGen = ZK.Algebra.Curves.BLS12_381.G1.Proj.genG1
   scalarMul   = ZK.Algebra.Curves.BLS12_381.G1.Proj.sclFr
 
+instance C.ProjCurve G1 where
+  type AffinePoint G1 = ZK.Algebra.Curves.BLS12_381.G1.Affine.G1
+  fromAffine = ZK.Algebra.Curves.BLS12_381.G1.Proj.fromAffine
+  toAffine   = ZK.Algebra.Curves.BLS12_381.G1.Proj.toAffine
+  coords3    = ZK.Algebra.Curves.BLS12_381.G1.Proj.coords
+  mkPoint3   = ZK.Algebra.Curves.BLS12_381.G1.Proj.mkPoint
+  mixedAdd   = ZK.Algebra.Curves.BLS12_381.G1.Proj.madd
+  
 --------------------------------------------------------------------------------
 
 sclSmall :: Int -> G1 -> G1

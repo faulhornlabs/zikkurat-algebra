@@ -64,13 +64,29 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   scalarMul   :: ScalarField a -> a -> a
 
 --------------------------------------------------------------------------------
+-- * Affine curves
+
+class Curve a => AffineCurve a where
+  -- | affine coordinates
+  coords2  :: a -> (BaseField a, BaseField a)
+  -- | making a point from affine coordinates
+  mkPoint2 :: (BaseField a, BaseField a) -> a   
+
+--------------------------------------------------------------------------------
 -- * Projective curves
 
-class Curve a => ProjCurve a where
-  -- type AffinePoint a :: *
-  -- fromAffine :: AffinePoint a -> a 
-  -- toAffine   :: a -> AffinePoint a
-  coords  :: a -> (BaseField a, BaseField a, BaseField a)
-  mkPoint :: (BaseField a, BaseField a, BaseField a) -> a   
+class (Curve a, AffineCurve (AffinePoint a)) => ProjCurve a where
+  -- | the corresponding affine curve
+  type AffinePoint a :: *
+  -- | convert from affine to projective coordinates
+  fromAffine :: AffinePoint a -> a 
+  -- | convert from projective to affine coordinates
+  toAffine   :: a -> AffinePoint a
+  -- | projective coordinates
+  coords3  :: a -> (BaseField a, BaseField a, BaseField a)
+  -- | making a point from projective coordinates
+  mkPoint3 :: (BaseField a, BaseField a, BaseField a) -> a   
+  -- | mixed addition
+  mixedAdd :: a -> AffinePoint a -> a
 
 --------------------------------------------------------------------------------

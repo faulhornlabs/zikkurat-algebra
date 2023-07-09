@@ -333,9 +333,18 @@ void bls12_381_G1_jac_sub_inplace( uint64_t *tgt, const uint64_t *src2 ) {
   bls12_381_G1_jac_add( tgt , tmp, tgt );
 }
 
-// adds a projective point (src1) to an affine point (src2)
+// adds a Jacobian projective point (src1) to an affine point (src2)
 // <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-madd-2007-bl>
 void bls12_381_G1_jac_madd_jac_aff( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+  if (bls12_381_G1_jac_is_infinity( src1 )) {
+    // the formula is not valid for this case
+    bls12_381_G1_jac_from_affine( src2 , tgt );
+    return;
+  }
+  if (bls12_381_G1_affine_is_infinity( src2 )) {
+    bls12_381_G1_jac_copy( src1 , tgt );
+    return;
+  }
   uint64_t Z1Z1[6];
   uint64_t U2[6];
   uint64_t S2[6];
@@ -354,7 +363,23 @@ void bls12_381_G1_jac_madd_jac_aff( const uint64_t *src1, const uint64_t *src2, 
   bls12_381_p_mont_add( HH, HH, I );          //    = 2*HH
   bls12_381_p_mont_add_inplace( I, I );       // I  = 4*HH
   bls12_381_p_mont_mul( H, I, J );            // J  = H*I
-  bls12_381_p_mont_sub( S2, Y1, r );          //    = S2-S1
+  bls12_381_p_mont_sub( S2, Y1, r );          //    = S2-Y1
+  if (bls12_381_p_mont_is_zero(H)) {
+    // H=0  <==>  X1/Z1^2 = X2
+    // either a doubling or the result is infinity
+    if (bls12_381_p_mont_is_zero(r)) {
+      // r=0  <==>  Y1/Z1^2 = Y2
+      // it's a doubling
+      bls12_381_G1_jac_dbl( src1, tgt );
+      return;
+    }
+    else {
+      // X1/Z1^2 = X2 but Y1/Z1^2 /= Y2
+      // so the result must be infinity
+      bls12_381_G1_jac_set_infinity( tgt );
+      return;
+    }
+  }
   bls12_381_p_mont_add_inplace( r, r );       // r  = 2*(S2-Y1)
   bls12_381_p_mont_mul( X1, I, V );           // V  = X1*I
   bls12_381_p_mont_sqr( r, X3 );              //    = r^2
@@ -362,10 +387,10 @@ void bls12_381_G1_jac_madd_jac_aff( const uint64_t *src1, const uint64_t *src2, 
   bls12_381_p_mont_sub_inplace( X3, V );      //    = r^2 - J - V
   bls12_381_p_mont_sub_inplace( X3, V );      // X3 = r^2 - J - 2*V
   bls12_381_p_mont_sub( V, X3, Y3 );          //    = V-X3
-  bls12_381_p_mont_mul_inplace( X3, r );      //    = r*(V-X3)
+  bls12_381_p_mont_mul_inplace( Y3, r );      //    = r*(V-X3)
   bls12_381_p_mont_mul_inplace( J, Y1 );      // J := Y1*J
-  bls12_381_p_mont_sub_inplace( Y3, J );      //    = r*(V-X3) - S1*J
-  bls12_381_p_mont_sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*S1*J
+  bls12_381_p_mont_sub_inplace( Y3, J );      //    = r*(V-X3) - Y1*J
+  bls12_381_p_mont_sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*Y1*J
   bls12_381_p_mont_add( Z1, H , Z3 );         //    = Z1+H
   bls12_381_p_mont_sqr_inplace( Z3 );         //    = (Z1+H)^2
   bls12_381_p_mont_sub_inplace( Z3, Z1Z1 );   //    = (Z1+H)^2-Z1Z1

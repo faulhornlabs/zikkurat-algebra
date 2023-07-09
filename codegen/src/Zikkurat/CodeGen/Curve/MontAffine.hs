@@ -89,13 +89,27 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
 -- | @.hs-boot@ file
 hsBoot  :: Curve -> CodeGenParams -> Code
 hsBoot (Curve{..}) (CodeGenParams{..}) =
-  [ "module " ++ hsModule hs_path ++ " where"
+  [ "{-# OPTIONS_GHC -fno-warn-missing-methods #-}"
+  , "module " ++ hsModule hs_path ++ " where"
   , ""
   , "import Data.Word"
   , "import Foreign.ForeignPtr"
   , ""
+  , "import " ++ hsModule hs_path_p ++ " ( Fp(..) )"
+  , "import " ++ hsModule hs_path_r ++ " ( Fr(..) )"
+  , "import qualified ZK.Algebra.Class.Field as F"
+  , "import qualified ZK.Algebra.Class.Curve as C"
+  , ""
   , "-- | An elliptic curve point, in affine coordinates"
   , "newtype " ++ typeName ++ " = Mk" ++ typeName ++ " (ForeignPtr Word64)"
+  , ""
+  , "instance   Eq          " ++ typeName 
+  , "instance   Show        " ++ typeName 
+  , "instance C.StrictEq    " ++ typeName 
+  , "instance F.Rnd         " ++ typeName 
+  , "instance C.Group       " ++ typeName 
+  , "instance C.Curve       " ++ typeName 
+  , "instance C.AffineCurve " ++ typeName
   , ""
   ]
 
@@ -255,6 +269,10 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  infinity    = " ++ hsModule hs_path_affine ++ ".infinity"
   , "  subgroupGen = " ++ hsModule hs_path_affine ++ ".genG1"
   , "  scalarMul   = " ++ hsModule hs_path_affine ++ ".sclFr"
+  , ""
+  , "instance C.AffineCurve " ++ typeName ++ " where"
+  , "  coords2    = " ++ hsModule hs_path_affine ++ ".coords"
+  , "  mkPoint2   = " ++ hsModule hs_path_affine ++ ".mkPoint"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
