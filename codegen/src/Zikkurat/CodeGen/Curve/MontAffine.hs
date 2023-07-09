@@ -97,6 +97,7 @@ hsBoot (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "import " ++ hsModule hs_path_p ++ " ( Fp(..) )"
   , "import " ++ hsModule hs_path_r ++ " ( Fr(..) )"
+  , "import qualified ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Curve as C"
   , ""
@@ -105,6 +106,7 @@ hsBoot (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "instance   Eq          " ++ typeName 
   , "instance   Show        " ++ typeName 
+  , "instance L.Flat        " ++ typeName 
   , "instance C.StrictEq    " ++ typeName 
   , "instance F.Rnd         " ++ typeName 
   , "instance C.Group       " ++ typeName 
@@ -156,6 +158,7 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "import qualified " ++ hsModule hs_path_big_p ++ " as BigP"
   , "import qualified " ++ hsModule hs_path_proj  ++ " as Proj    -- note: be careful with cyclic imports!"
   , ""
+  , "import qualified ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Curve as C"
   , ""
@@ -244,6 +247,10 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "    | isInfinity pt = \"<point-at-infinity>\""
   , "    | otherwise = case coords pt of"
   , "        (x,y) -> \"( \" ++ show x ++ \" , \" ++ show y ++ \" )\""
+  , ""
+  , "instance L.Flat " ++ typeName ++ " where"
+  , "  sizeInBytes  _pxy = " ++ show (8*2*nlimbs_p)
+  , "  sizeInQWords _pxy = " ++ show (  2*nlimbs_p)
   , ""
   , "instance F.Rnd " ++ typeName ++ " where"
   , "  rndIO = rndG1"

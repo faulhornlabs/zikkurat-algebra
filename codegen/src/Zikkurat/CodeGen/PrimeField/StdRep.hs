@@ -115,6 +115,8 @@ hsBegin (Params{..}) =
   , ""
   , "import ZK.Algebra.BigInt." ++ bigintType ++ "( " ++ bigintType ++ "(..) )"
   , "import qualified ZK.Algebra.BigInt." ++ bigintType ++ " as B"
+  , ""
+  , "import qualified ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as C"
   , ""
   , "--------------------------------------------------------------------------------  "
@@ -157,6 +159,10 @@ hsBegin (Params{..}) =
   , ""
   , "instance Show " ++ typeName ++ " where"
   , "  show = show . from" ++ postfix
+  , ""
+  , "instance L.Flat " ++ typeName ++ " where"
+  , "  sizeInBytes  _pxy = " ++ show (8*nlimbs)
+  , "  sizeInQWords _pxy = " ++ show (  nlimbs)
   , ""
   , "rnd :: IO " ++ typeName
   , "rnd = do"

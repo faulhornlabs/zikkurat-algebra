@@ -18,11 +18,12 @@ import Zikkurat.CodeGen.Misc
 
 import Zikkurat.CodeGen.Curve.Params
 import Zikkurat.CodeGen.Curve.CurveFFI
+import Zikkurat.CodeGen.Curve.MSM
 
 --------------------------------------------------------------------------------
 
 c_header :: Curve -> CodeGenParams -> Code
-c_header (Curve{..}) (CodeGenParams{..}) =
+c_header curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
   [ "#include <stdint.h>"
   , ""
   , "extern void " ++ prefix ++ "normalize         ( const uint64_t *src , uint64_t *tgt );"
@@ -61,8 +62,10 @@ c_header (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "extern void " ++ prefix ++ "scl_naive   ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
   , "extern void " ++ prefix ++ "scl_windowed( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
-  ]
-
+  , ""
+  ] ++
+  (msm_c_header curve cgparams)
+  
 --------------------------------------------------------------------------------
 
 hsFFI :: Curve -> CodeGenParams -> Code
@@ -134,6 +137,7 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  , sclFr , sclBig , sclSmall"
   , "  , rndG1 , rndG1_naive"
 --  , "  , scaleByA , scaleByB , scaleBy3B    -- temp for debugging"
+  , "  , msm , msmStd"
   , "  )"  
   , "  where"  
   , ""
@@ -156,10 +160,13 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "import " ++ hsModule hs_path_r ++ " ( Fr(..) )"
   , "import qualified " ++ hsModule hs_path_p ++ " as Fp"
   , "import qualified " ++ hsModule hs_path_r ++ " as Fr"
+  , "import qualified " ++ hsModule hs_path_r_std 
   , "import qualified " ++ hsModule hs_path_big_p ++ " as BigP"
   , ""
   , "import {-# SOURCE #-} qualified " ++ hsModule hs_path_affine  -- ++ " as Affine" 
   , ""
+  , "import           ZK.Algebra.Class.Flat ( FlatArray(..) )"
+  , "import qualified ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Curve as C"
   , ""
@@ -253,6 +260,10 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  show pt = case coords pt of"
   , "     (x,y,z) -> \"[ \" ++ show x ++ \" : \" ++ show y ++ \" : \" ++ show z ++ \" ]\""
   , ""
+  , "instance L.Flat " ++ typeName ++ " where"
+  , "  sizeInBytes  _pxy = " ++ show (8*3*nlimbs_p)
+  , "  sizeInQWords _pxy = " ++ show (  3*nlimbs_p)
+  , ""
   , "instance F.Rnd " ++ typeName ++ " where"
   , "  rndIO = rndG1"
   , ""
@@ -314,6 +325,8 @@ c_begin curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
   , "#include <string.h>"
   , "#include <stdint.h>"
   , "#include <x86intrin.h>"
+  , "#include <assert.h>"
+  , "#include <math.h>         // used only for log2()"
   , ""
   , "#include \"" ++ pathBaseName c_path_proj   ++ ".h\""
   , "#include \"" ++ pathBaseName c_path_affine ++ ".h\""
@@ -1085,14 +1098,17 @@ c_code curve params = concat $ map ("":)
   , scaleNaive    curve params
   , scaleWindowed curve params
   , scaleFpFr     curve params
+    --
+  , msmCurve      curve params
   ]
 
 hs_code :: Curve -> CodeGenParams -> Code
 hs_code curve params@(CodeGenParams{..}) = concat $ map ("":)
-  [ hsBegin      curve params
+  [ hsBegin        curve params
  -- , hsMiscTmp
- -- , hsConvert    curve params
-  , hsFFI        curve params
+ -- , hsConvert      curve params
+  , msm_hs_binding curve params
+  , hsFFI          curve params
   ]
 
 --------------------------------------------------------------------------------

@@ -37,6 +37,8 @@ import System.IO.Unsafe
 import ZK.Algebra.BigInt.BigInt256( BigInt256(..) )
 import qualified ZK.Algebra.BigInt.BigInt256 as B
 import qualified ZK.Algebra.Curves.BN128.Fp.Std as Std
+
+import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
 
 --------------------------------------------------------------------------------  
@@ -79,6 +81,10 @@ instance Fractional Fp where
 
 instance Show Fp where
   show = show . from
+
+instance L.Flat Fp where
+  sizeInBytes  _pxy = 32
+  sizeInQWords _pxy = 4
 
 rnd :: IO Fp
 rnd = do

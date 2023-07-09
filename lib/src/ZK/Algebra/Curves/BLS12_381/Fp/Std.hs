@@ -36,6 +36,8 @@ import System.IO.Unsafe
 
 import ZK.Algebra.BigInt.BigInt384( BigInt384(..) )
 import qualified ZK.Algebra.BigInt.BigInt384 as B
+
+import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
 
 --------------------------------------------------------------------------------  
@@ -78,6 +80,10 @@ instance Fractional Fp where
 
 instance Show Fp where
   show = show . from
+
+instance L.Flat Fp where
+  sizeInBytes  _pxy = 48
+  sizeInQWords _pxy = 6
 
 rnd :: IO Fp
 rnd = do

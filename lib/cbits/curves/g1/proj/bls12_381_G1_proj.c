@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <x86intrin.h>
+#include <assert.h>
+#include <math.h>         // used only for log2()
 
 #include "bls12_381_G1_proj.h"
 #include "bls12_381_G1_affine.h"
@@ -460,3 +462,178 @@ void bls12_381_G1_proj_scl_small(uint64_t expo, const uint64_t *grp, uint64_t *t
   expo_vec[0] = expo;
   bls12_381_G1_proj_scl_generic(expo_vec, grp, tgt, 1);
 }
+
+//------------------------------------------------------------------------------
+
+#define SIDX(b) (SUMS + (b-1)*(3*NLIMBS_P))
+
+// Multi-Scalar Multiplication (MSM)
+// standard coefficients (NOT montgomery!)
+// straightforward Pippenger bucketing method
+// parametric bucket size
+void bls12_381_G1_proj_MSM_std_coeff_proj_out_variable(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs, int window_size) {
+
+  assert( (window_size > 0) && (window_size <= 64) );
+
+  int nwindows = (64*expo_nlimbs + window_size - 1) / window_size;
+  int nbuckets = (1 << window_size);
+
+  bls12_381_G1_proj_set_infinity(tgt);
+
+  // allocate memory for bucket sums
+  uint64_t *SUMS = malloc( 3*8*NLIMBS_P * (nbuckets-1) );
+  assert( SUMS !=0 );
+
+  // loop over the windows
+  for(int K=nwindows-1; K >= 0; K-- ) {
+
+    // K-th window
+    int A = K*window_size;
+    int B = A + window_size;
+    if (B > 64*expo_nlimbs ) { B = 64*expo_nlimbs; }
+
+    uint64_t mask = (1<<(B-A)) - 1;
+
+    int Adiv = (A >> 6);    // A / 64
+    int Amod = (A & 0x3f);  // A mod 64
+
+    int Bdiv = Adiv;
+    int Bshl = 0;
+    if (((B-1)>>6) != Adiv) { 
+      // the window intersects qword boundary...
+      Bdiv = Adiv + 1; 
+      Bshl = 64*Bdiv - A; 
+    }
+
+    // we could do this in constant memory, but then would have 
+    // to we go over the points way many (=bucket_size) times...
+
+    // initalize bucket sums
+    for( int b=nbuckets-1; b>0; b-- ) { 
+      bls12_381_G1_proj_set_infinity( SIDX(b) );
+    }
+
+    // compute bucket sums
+    for(int j=0; j<npoints; j++) {
+
+      int ofs = expo_nlimbs*j + Adiv;
+      uint64_t e = (expos[ofs] >> Amod);
+      if (Bdiv != Adiv) {
+        e |= (expos[ofs+1] << Bshl);
+      }
+      e &= mask;   // bucket coeff
+
+      if (e>0) {
+        bls12_381_G1_proj_madd_proj_aff( SIDX(e) , grps + (2*NLIMBS_P*j) , SIDX(e) );
+      }
+    }
+
+    // compute running sums
+
+    uint64_t T[3*NLIMBS_P];   // cumulative sum of S-es
+    uint64_t R[3*NLIMBS_P];   // running sum = sum of T-s
+
+    bls12_381_G1_proj_set_infinity(T);
+    bls12_381_G1_proj_set_infinity(R);
+
+    for( int b=nbuckets-1; b>0; b-- ) { 
+      bls12_381_G1_proj_add_inplace( T , SIDX(b) );
+      bls12_381_G1_proj_add_inplace( R , T       );
+    }
+
+    if (!bls12_381_G1_proj_is_infinity(tgt)) {    // we can skip doubling when infinity
+      for(int i=0; i<window_size; i++) {
+        bls12_381_G1_proj_dbl_inplace(tgt);
+      }
+    }
+
+    bls12_381_G1_proj_add_inplace( tgt, R );
+  }
+
+  free(SUMS);
+}
+
+//------------------------------------------------------------------------------
+
+// Multi-Scalar Multiplication (MSM)
+// inputs: 
+//  - standard coefficients (1 field element per point)
+//  - affine Montgomery points (2 field elements per point)
+// output:
+//  - weighted projective Montgomery point
+void bls12_381_G1_proj_MSM_std_coeff_proj_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
+
+  // guess optimal window size
+  int c = round( log2(npoints) - 3.5 );
+  if (c < 1 ) { c = 1;  }
+  if (c > 64) { c = 64; }
+
+  bls12_381_G1_proj_MSM_std_coeff_proj_out_variable(npoints, expos, grps, tgt, expo_nlimbs, c);  
+}
+
+//------------------------------------------------------------------------------
+
+// reference (slow) implementation of MSM
+// for testing purposes
+void bls12_381_G1_proj_MSM_std_coeff_proj_out_slow_reference(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
+  uint64_t grp[3*NLIMBS_P];
+  uint64_t tmp[3*NLIMBS_P];
+  bls12_381_G1_proj_set_infinity( tgt );
+  for(int i=0; i<npoints; i++) { 
+    bls12_381_G1_proj_from_affine( grps  + i*2*NLIMBS_P , grp );                      // convert to proj coords
+    bls12_381_G1_proj_scl_generic( expos + i*expo_nlimbs , grp , tmp , expo_nlimbs );     // exponentiate
+    bls12_381_G1_proj_add_inplace( tgt , tmp );                                     // add to the running sum
+  }
+}
+
+//------------------------------------------------------------------------------
+
+// Multi-Scalar Multiplication (MSM)
+// inputs: 
+//  - Montgomery coefficients (1 field element per point)
+//  - affine Montgomery points (2 field elements per point)
+// output:
+//  - weighted projective Montgomery point
+void bls12_381_G1_proj_MSM_mont_coeff_proj_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
+  uint64_t *std_expos = malloc(8*NLIMBS_P*npoints);
+  assert( std_expos != 0);
+  const uint64_t *p;
+  uint64_t *q;
+  p = expos;
+  q = std_expos;
+  for(int i=0; i<npoints; i++) {
+    bls12_381_r_mont_to_std( p , q );
+    p += NLIMBS_P;
+    q += NLIMBS_P;
+  }
+  bls12_381_G1_proj_MSM_std_coeff_proj_out(npoints, std_expos, grps, tgt, expo_nlimbs);
+  free(std_expos);
+}
+
+//------------------------------------------------------------------------------
+
+// Multi-Scalar Multiplication (MSM)
+// inputs: 
+//  - standard coefficients (1 field element per point)
+//  - affine Montgomery points (2 field elements per point)
+// output:
+//  - affine Montgomery point
+void bls12_381_G1_proj_MSM_std_coeff_affine_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
+  uint64_t tmp[3*NLIMBS_P];
+  bls12_381_G1_proj_MSM_std_coeff_proj_out(npoints, expos, grps, tmp, expo_nlimbs);
+  bls12_381_G1_proj_to_affine(tmp, tgt);
+}
+
+// Multi-Scalar Multiplication (MSM)
+// inputs: 
+//  - Montgomery coefficients (1 field element per point)
+//  - affine Montgomery points (2 field elements per point)
+// output:
+//  - affine Montgomery point
+void bls12_381_G1_proj_MSM_mont_coeff_affine_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
+  uint64_t tmp[3*NLIMBS_P];
+  bls12_381_G1_proj_MSM_mont_coeff_proj_out(npoints, expos, grps, tmp, expo_nlimbs);
+  bls12_381_G1_proj_to_affine(tmp, tgt);
+}
+
+//------------------------------------------------------------------------------

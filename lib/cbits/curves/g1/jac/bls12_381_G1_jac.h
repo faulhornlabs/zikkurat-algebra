@@ -36,3 +36,9 @@ extern void bls12_381_G1_jac_scl_small  (       uint64_t  kst , const uint64_t *
 
 extern void bls12_381_G1_jac_scl_naive   ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );
 extern void bls12_381_G1_jac_scl_windowed( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );
+
+extern void bls12_381_G1_jac_MSM_std_coeff_jac_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bls12_381_G1_jac_MSM_mont_coeff_jac_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bls12_381_G1_jac_MSM_std_coeff_affine_out (int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bls12_381_G1_jac_MSM_mont_coeff_affine_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bls12_381_G1_jac_MSM_std_coeff_jacc_out_slow_reference(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);

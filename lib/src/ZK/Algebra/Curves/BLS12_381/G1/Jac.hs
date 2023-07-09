@@ -17,6 +17,7 @@ module ZK.Algebra.Curves.BLS12_381.G1.Jac
   , neg , add , madd, dbl , sub
   , sclFr , sclBig , sclSmall
   , rndG1 , rndG1_naive
+  , msm , msmStd
   )
   where
 
@@ -39,10 +40,13 @@ import ZK.Algebra.Curves.BLS12_381.Fp.Mont ( Fp(..) )
 import ZK.Algebra.Curves.BLS12_381.Fr.Mont ( Fr(..) )
 import qualified ZK.Algebra.Curves.BLS12_381.Fp.Mont as Fp
 import qualified ZK.Algebra.Curves.BLS12_381.Fr.Mont as Fr
+import qualified ZK.Algebra.Curves.BLS12_381.Fr.Std
 import qualified ZK.Algebra.BigInt.BigInt384 as BigP
 
 import {-# SOURCE #-} qualified ZK.Algebra.Curves.BLS12_381.G1.Affine
 
+import           ZK.Algebra.Class.Flat ( FlatArray(..) )
+import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as F
 import qualified ZK.Algebra.Class.Curve as C
 
@@ -136,6 +140,10 @@ instance Show G1 where
   show pt = case coords pt of
      (x,y,z) -> "{ " ++ show x ++ " : " ++ show y ++ " : " ++ show z ++ " }"
 
+instance L.Flat G1 where
+  sizeInBytes  _pxy = 144
+  sizeInQWords _pxy = 18
+
 instance F.Rnd G1 where
   rndIO = rndG1
 
@@ -184,6 +192,45 @@ sclBig k pt
   | otherwise =       sclBigNonNeg (fromInteger $        k) pt
 
 --------------------------------------------------------------------------------
+
+
+foreign import ccall unsafe "bls12_381_G1_jac_MSM_std_coeff_jac_out" c_bls12_381_G1_jac_MSM_std_coeff_jac_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
+foreign import ccall unsafe "bls12_381_G1_jac_MSM_mont_coeff_jac_out" c_bls12_381_G1_jac_MSM_mont_coeff_jac_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
+
+{-# NOINLINE msm #-}
+-- | Multi-Scalar Multiplication (MSM), with the coefficients in Montgomery representation,
+-- and the curve points in affine coordinates
+-- 
+-- > msmStd :: FlatArray Fr -> FlatArray Affine.G1 -> G1
+-- 
+msm :: FlatArray Fr -> FlatArray ZK.Algebra.Curves.BLS12_381.G1.Affine.G1 -> G1
+msm (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "msm: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray 18
+      withForeignPtr fptr1 $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_bls12_381_G1_jac_MSM_mont_coeff_jac_out (fromIntegral n1) ptr1 ptr2 ptr3 4
+      return (MkG1 fptr3)
+
+{-# NOINLINE msmStd #-}
+-- | Multi-Scalar Multiplication (MSM), with the coefficients in standard representation,
+-- and the curve points in affine coordinates
+-- 
+-- > msmStd :: FlatArray Std.Fr -> FlatArray Affine.G1 -> G1
+-- 
+msmStd :: FlatArray ZK.Algebra.Curves.BLS12_381.Fr.Std.Fr -> FlatArray ZK.Algebra.Curves.BLS12_381.G1.Affine.G1 -> G1
+msmStd (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "msm: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray 18
+      withForeignPtr fptr1 $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_bls12_381_G1_jac_MSM_mont_coeff_jac_out (fromIntegral n1) ptr1 ptr2 ptr3 4
+      return (MkG1 fptr3)
+
 
 foreign import ccall unsafe "bls12_381_G1_jac_is_on_curve" c_bls12_381_G1_jac_is_on_curve :: Ptr Word64 -> IO Word8
 

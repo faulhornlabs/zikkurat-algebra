@@ -40,6 +40,7 @@ import qualified ZK.Algebra.Curves.BLS12_381.Fr.Mont as Fr
 import qualified ZK.Algebra.BigInt.BigInt384 as BigP
 import qualified ZK.Algebra.Curves.BLS12_381.G1.Proj as Proj    -- note: be careful with cyclic imports!
 
+import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as F
 import qualified ZK.Algebra.Class.Curve as C
 
@@ -128,6 +129,10 @@ instance Show G1 where
     | isInfinity pt = "<point-at-infinity>"
     | otherwise = case coords pt of
         (x,y) -> "( " ++ show x ++ " , " ++ show y ++ " )"
+
+instance L.Flat G1 where
+  sizeInBytes  _pxy = 96
+  sizeInQWords _pxy = 12
 
 instance F.Rnd G1 where
   rndIO = rndG1

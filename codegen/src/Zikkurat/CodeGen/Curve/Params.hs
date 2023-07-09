@@ -27,11 +27,13 @@ data CodeGenParams = CodeGenParams
   , prefix_proj    :: String       -- ^ prefix for C names
   , prefix_jac     :: String       -- ^ prefix for C names
   , prefix_p       :: String       -- ^ prefix for C names for Fp
-  , prefix_r       :: String       -- ^ prefix for C names for Fq
+  , prefix_r       :: String       -- ^ prefix for C names for Fr
+  , point_repr     :: String       -- one of "affine", "proj" or "jac"
   , nlimbs_p       :: Int          -- ^ number of 64-bit limbs in p
   , nlimbs_r       :: Int          -- ^ number of 64-bit limbs in r
   , hs_path_p      :: Path         -- ^ path of the Haskell module for Fp
-  , hs_path_r      :: Path         -- ^ path of the Haskell module for Fr
+  , hs_path_r      :: Path         -- ^ path of the Haskell module for Fr (Montgomery repr)
+  , hs_path_r_std  :: Path         -- ^ path of the Haskell module for Fr (standard repr)
   , hs_path_big_p  :: Path         -- ^ path fot the Fp-sized BigInt module
   , c_path         :: Path         -- ^ path of the C file (what we are generating)
   , c_path_affine  :: Path         -- ^ path of the C file

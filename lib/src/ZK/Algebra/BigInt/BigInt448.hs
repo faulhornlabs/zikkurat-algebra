@@ -36,6 +36,8 @@ import System.Random
 import System.IO.Unsafe
 
 import ZK.Algebra.BigInt.Types
+
+import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
 
 --------------------------------------------------------------------------------  
@@ -65,6 +67,10 @@ instance Num BigInt448 where
 
 instance Show BigInt448 where
   show = show . from
+
+instance L.Flat BigInt448 where
+  sizeInBytes  _pxy = 56
+  sizeInQWords _pxy = 7
 
 rnd :: IO BigInt448
 rnd = do

@@ -36,3 +36,9 @@ extern void bn128_G1_proj_scl_small  (       uint64_t  kst , const uint64_t *src
 
 extern void bn128_G1_proj_scl_naive   ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );
 extern void bn128_G1_proj_scl_windowed( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );
+
+extern void bn128_G1_proj_MSM_std_coeff_proj_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bn128_G1_proj_MSM_mont_coeff_proj_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bn128_G1_proj_MSM_std_coeff_affine_out (int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bn128_G1_proj_MSM_mont_coeff_affine_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bn128_G1_proj_MSM_std_coeff_projc_out_slow_reference(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);

@@ -108,6 +108,8 @@ hsBegin (Params{..}) =
   , "import System.IO.Unsafe"
   , ""
   , "import ZK.Algebra.BigInt.Types"
+  , ""
+  , "import qualified ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as C"
   , ""
   , "--------------------------------------------------------------------------------  "
@@ -141,6 +143,10 @@ hsBegin (Params{..}) =
   , ""
   , "instance Show " ++ typeName ++ " where"
   , "  show = show . from" ++ postfix
+  , ""
+  , "instance L.Flat " ++ typeName ++ " where"
+  , "  sizeInBytes  _pxy = " ++ show (8*nlimbs)
+  , "  sizeInQWords _pxy = " ++ show (  nlimbs)
   , ""
   , "rnd :: IO " ++ typeName
   , "rnd = do"

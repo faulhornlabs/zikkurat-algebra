@@ -36,6 +36,8 @@ import System.Random
 import System.IO.Unsafe
 
 import ZK.Algebra.BigInt.Types
+
+import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
 
 --------------------------------------------------------------------------------  
@@ -65,6 +67,10 @@ instance Num BigInt320 where
 
 instance Show BigInt320 where
   show = show . from
+
+instance L.Flat BigInt320 where
+  sizeInBytes  _pxy = 40
+  sizeInQWords _pxy = 5
 
 rnd :: IO BigInt320
 rnd = do

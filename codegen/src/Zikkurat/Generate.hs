@@ -176,11 +176,13 @@ bn128_cgParams = CodeGenParams
   , prefix_proj    = "bn128_G1_proj_"                                            -- prefix for C names
   , prefix_jac     = "bn128_G1_jac_"                                             -- prefix for C names
   , prefix_p       = "bn128_p_mont_"                                             -- prefix for C names for Fp
-  , prefix_r       = "bn128_q_mont_"                                             -- prefix for C names for Fq
+  , prefix_r       = "bn128_r_mont_"                                             -- prefix for C names for Fq
+  , point_repr     = error "bn128 / point_repr"                                  -- one of "affine", "proj" or "jac"
   , nlimbs_p       = 4                                                           -- number of 64-bit limbs in p
   , nlimbs_r       = 4                                                           -- number of 64-bit limbs in r
   , hs_path_p      = Path ["ZK","Algebra","Curves","BN128","Fp","Mont"]          -- path of the Haskell module for Fp
   , hs_path_r      = Path ["ZK","Algebra","Curves","BN128","Fr","Mont"]          -- path of the Haskell module for Fr
+  , hs_path_r_std  = Path ["ZK","Algebra","Curves","BN128","Fr","Std"]           -- path of the Haskell module for Fr (standard repr)
   , hs_path_big_p  = Path ["ZK","Algebra","BigInt","BigInt256"]                  
   , c_path         = error "bn128 / c_path"
   , c_path_affine  = Path ["curves","g1","affine","bn128_G1_affine"]               -- path of the C file
@@ -202,11 +204,13 @@ bls12_381_cgParams = CodeGenParams
   , prefix_proj    = "bls12_381_G1_proj_"                                        -- prefix for C names
   , prefix_jac     = "bls12_381_G1_jac_"                                         -- prefix for C names
   , prefix_p       = "bls12_381_p_mont_"                                         -- prefix for C names for Fp
-  , prefix_r       = "bls12_381_q_mont_"                                         -- prefix for C names for Fq
+  , prefix_r       = "bls12_381_r_mont_"                                         -- prefix for C names for Fq
+  , point_repr     = error "bn128 / point_repr"                                  -- one of "affine", "proj" or "jac"
   , nlimbs_p       = 6                                                           -- number of 64-bit limbs in p
   , nlimbs_r       = 4                                                           -- number of 64-bit limbs in r
   , hs_path_p      = Path ["ZK","Algebra","Curves","BLS12_381","Fp","Mont"]      -- path of the Haskell module for Fp
   , hs_path_r      = Path ["ZK","Algebra","Curves","BLS12_381","Fr","Mont"]      -- path of the Haskell module for Fr
+  , hs_path_r_std  = Path ["ZK","Algebra","Curves","BLS12_381","Fr","Std"]       -- path of the Haskell module for Fr (standard repr)
   , hs_path_big_p  = Path ["ZK","Algebra","BigInt","BigInt384"]                  
   , c_path         = error "bls12_381 / c_path"
   , c_path_affine  = Path ["curves","g1","affine","bls12_381_G1_affine"]           -- path of the C file
@@ -234,6 +238,7 @@ generate_curves_proj hsOrC tgtdir = do
           { prefix  = prefix_proj  cgparams0
           , c_path  = c_path_proj  cgparams0 
           , hs_path = hs_path_proj cgparams0 
+          , point_repr = "proj"
           }
     case hsOrC of 
       C  -> Proj.curve_MontProj_c_codegen  tgtdir curve cgparams
@@ -246,6 +251,7 @@ generate_curves_jac hsOrC tgtdir = do
           { prefix  = prefix_jac  cgparams0
           , c_path  = c_path_jac  cgparams0 
           , hs_path = hs_path_jac cgparams0 
+          , point_repr = "jac"
           }
     case hsOrC of 
       C  -> Jac.curve_MontJac_c_codegen  tgtdir curve cgparams
@@ -258,6 +264,7 @@ generate_curves_affine hsOrC tgtdir = do
           { prefix  = prefix_affine  cgparams0 
           , c_path  = c_path_affine  cgparams0 
           , hs_path = hs_path_affine cgparams0 
+          , point_repr = "affine"
           }
     case hsOrC of 
       C  -> Affine.curve_MontAffine_c_codegen  tgtdir curve cgparams
