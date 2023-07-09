@@ -51,7 +51,7 @@ void bigint512_set_small(uint64_t *tgt, uint64_t s) {
 }
 
 void bigint512_copy(const uint64_t *src, uint64_t *tgt) {
-  memcpy( tgt, src, 64 );
+  if (src != tgt) { memcpy( tgt, src, 64 ); }
 }
 
 void bigint512_print(const uint64_t *what, int underscore_separators) {

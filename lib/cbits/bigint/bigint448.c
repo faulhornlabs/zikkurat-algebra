@@ -51,7 +51,7 @@ void bigint448_set_small(uint64_t *tgt, uint64_t s) {
 }
 
 void bigint448_copy(const uint64_t *src, uint64_t *tgt) {
-  memcpy( tgt, src, 56 );
+  if (src != tgt) { memcpy( tgt, src, 56 ); }
 }
 
 void bigint448_print(const uint64_t *what, int underscore_separators) {

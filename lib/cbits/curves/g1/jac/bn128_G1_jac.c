@@ -386,9 +386,9 @@ void bn128_G1_jac_madd_jac_aff( const uint64_t *src1, const uint64_t *src2, uint
   bn128_p_mont_sub_inplace( X3, J );      //    = r^2 - J
   bn128_p_mont_sub_inplace( X3, V );      //    = r^2 - J - V
   bn128_p_mont_sub_inplace( X3, V );      // X3 = r^2 - J - 2*V
+  bn128_p_mont_mul_inplace( J, Y1 );      // J := Y1*J - careful, in the next row we possibly overwrite Y1!
   bn128_p_mont_sub( V, X3, Y3 );          //    = V-X3
-  bn128_p_mont_mul_inplace( Y3, r );      //    = r*(V-X3)
-  bn128_p_mont_mul_inplace( J, Y1 );      // J := Y1*J
+  bn128_p_mont_mul_inplace( Y3, r );      // Y3 = r*(V-X3)
   bn128_p_mont_sub_inplace( Y3, J );      //    = r*(V-X3) - Y1*J
   bn128_p_mont_sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*Y1*J
   bn128_p_mont_add( Z1, H , Z3 );         //    = Z1+H

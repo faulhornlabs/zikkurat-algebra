@@ -51,7 +51,7 @@ void bigint192_set_small(uint64_t *tgt, uint64_t s) {
 }
 
 void bigint192_copy(const uint64_t *src, uint64_t *tgt) {
-  memcpy( tgt, src, 24 );
+  if (src != tgt) { memcpy( tgt, src, 24 ); }
 }
 
 void bigint192_print(const uint64_t *what, int underscore_separators) {

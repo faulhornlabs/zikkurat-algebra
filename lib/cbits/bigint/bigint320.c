@@ -51,7 +51,7 @@ void bigint320_set_small(uint64_t *tgt, uint64_t s) {
 }
 
 void bigint320_copy(const uint64_t *src, uint64_t *tgt) {
-  memcpy( tgt, src, 40 );
+  if (src != tgt) { memcpy( tgt, src, 40 ); }
 }
 
 void bigint320_print(const uint64_t *what, int underscore_separators) {

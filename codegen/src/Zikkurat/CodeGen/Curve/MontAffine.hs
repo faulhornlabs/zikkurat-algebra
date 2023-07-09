@@ -422,7 +422,7 @@ isOnCurve (Curve{..}) (CodeGenParams{..}) =
   , "}"
   , ""
   , "void " ++ prefix ++ "copy( const uint64_t *src1 , uint64_t *tgt ) {"
-  , "  memcpy( tgt, src1, " ++ show (8*2*nlimbs_p) ++ " );"
+  , "  if (tgt != src1) { memcpy( tgt, src1, " ++ show (8*2*nlimbs_p) ++ " ); }"
   , "}"  
   ]
 

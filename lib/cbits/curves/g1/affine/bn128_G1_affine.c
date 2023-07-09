@@ -107,7 +107,7 @@ uint8_t bn128_G1_affine_is_in_subgroup ( const uint64_t *src1 ) {
 }
 
 void bn128_G1_affine_copy( const uint64_t *src1 , uint64_t *tgt ) {
-  memcpy( tgt, src1, 64 );
+  if (tgt != src1) { memcpy( tgt, src1, 64 ); }
 }
 
 // negates an elliptic curve point in affine coordinates

@@ -357,7 +357,7 @@ small (Params{..}) =
   , "}" 
   , ""
   , "void " ++ prefix ++ "copy(const uint64_t *src, uint64_t *tgt) {"
-  , "  memcpy( tgt, src, " ++ show (8*nlimbs) ++ " );"
+  , "  if (src != tgt) { memcpy( tgt, src, " ++ show (8*nlimbs) ++ " ); }"
   , "}" 
   ]
 
