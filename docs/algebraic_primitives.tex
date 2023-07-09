@@ -253,7 +253,8 @@ For extension fields, we also have:
 Addition, subtraction and negation is simple: Since we assume canonical representation
 (though an implementation must take care to actually enforce this!), we can
 just add / subtract big integers and check for overflow / underflow. Note:
-in practice subtraction is a tiny bit faster, because 
+in practice subtraction is a tiny bit faster, because checking for underflow
+does not need any comparision, it's enough to check the final carry flag.
 Negation of $[x]$ is $[p-x]$.
 
 \subsection{Multiplication and squaring}
@@ -320,7 +321,7 @@ For multiplication, we can use the Montgomery reduction algorithm. Wikipedia
 has reasonable explanation of these.\\
 
 For division and inversion you can reuse the standard representation division and inversion
-algorithm but needs to add a Montgomery reduction step.\\
+algorithm but need to add a Montgomery reduction step.\\
 
 For conversion between standard form and Montgomery form, again you can use
 the Montgomery reduction algorithm.\\
@@ -476,7 +477,7 @@ An even better approach is using the so-called SWU map.
 
 \section{Scalar multiplication}
 
-For an integer $k\in Z$ and a group element $g\in\G$ we can define
+For an integer $k\in \Z$ and a group element $g\in\G$ we can define
 \[ k*g := \left\{\begin{array}{llll}
 g+g+g+\cdots +g  &(k   \textrm{ times}&\textrm{if}& k > 0 \\
 -g-g-g-\cdots -g &(|k| \textrm{ times}&\textrm{if}& k < 0 \\
@@ -588,16 +589,16 @@ Of course one can generalize for more points.
 
 \subsection{Multiple exponents at the same time}
 For the situations when we want to compute $g^{k_1},\dots, g^{k_2}$ at the same
-time, we can do better. See Pippenger's algorithm in Bernstein's review articel 
+time, we can do better. See Pippenger's algorithm in Bernstein's review article. 
 
 %-------------------------------------------------------------------------------
 
 \section{Multi-scalar multiplication (MSM)}
 
 Here the task is to compute the ``linear combination''
-\[ \sum_{j=1}^N k_j*g_j := k_1 * g_1 + k_2 * g_2 + \cdots + k_N * g_N \]
+\[ \sum_{j=1}^N (k_j*g_j) := k_1 * g_1 + k_2 * g_2 + \cdots + k_N * g_N \]
 where $k_j\in\Z$ are numbers and $g_j\in\G$ are group elements.
-Often $N$ is very big, say $10^5$ or even bigger.
+Often $N$ is very big, say $10^5--10^6$ or even bigger.
 Somewhat surprisingly, this can be done faster than just naively doing $N$
 scalar multiplications and summing the results!\\
 
@@ -739,10 +740,10 @@ The canonical generator in $\G_1$ (see the above link on how this was determined
 G_1 &= (\;3685416753713387016781088315183077757961620795782546409894578378\dots \\
     &   \quad\dots 688607592378376318836054947676345821548104185464507  \\ 
     &\;\;  ,\;1339506544944476473020471379941921221584933875938349620426543736\dots \\
-    &   \quad\dots 416511423956333506472724655353366534992391756441569\;) \in G_1\\
+    &   \quad\dots 416511423956333506472724655353366534992391756441569\;) \in \G_1\\
 \end{align*}
 
-We can use the GLV trick $\lambda*(x,y)=(\beta x,y)$:
+We can use the GLV trick (in the $r$-sized subgroup, that is): $\lambda*(x,y)=(\beta x,y)$:
 \begin{align*}
 \beta &= 40024095552216673926243104350066886439355031183055864382711 \dots \\
       &\quad \dots 71395842971157480381377015405980053539358417135540939436\\
