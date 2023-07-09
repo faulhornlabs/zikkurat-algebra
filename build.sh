@@ -10,7 +10,7 @@ error_exit() {
   exit 1
 }
 
-cd ${ROOT}/meta
+cd ${ROOT}/codegen
 echo "===================="
 echo "building the codegen"
 echo "===================="

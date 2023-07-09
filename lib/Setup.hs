@@ -1,4 +1,9 @@
 
+{-# LANGUAGE PackageImports #-}
+module Main where
+
+--------------------------------------------------------------------------------
+
 import Control.Monad
 
 import Distribution.Simple
@@ -7,7 +12,7 @@ import Distribution.Types.HookedBuildInfo
 import System.Directory
 import System.FilePath
 
-import Zikkurat.Generate
+import "zikkurat-algebra-codegen" Zikkurat.Generate
 
 --------------------------------------------------------------------------------
 

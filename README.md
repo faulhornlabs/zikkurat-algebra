@@ -37,7 +37,7 @@ Project organization
 Sub-projects:
 
 - `docs` - description of the algorithms
-- `meta` - the code generator
+- `codegen` - the code generator
 - `lib` - the Haskell library
 - `test` - testing
 - `examples` - examples of using the library
@@ -84,11 +84,11 @@ TODO
 
 - [x] implement bigints
 - [x] implement prime fields
-- [ ] implement curves
+- [x] implement curves
 - [ ] implement polynomials
-- [ ] add pure Haskell reference implementations
 - [ ] create a test framework
-- [ ] benchmarking
+- [ ] add pure Haskell reference implementations
+- [ ] add benchmarking
 - [ ] figure out a better meta-programming story
 - [ ] try to optimize a bit more
 - [ ] add an explicit discrete logarithm type (integers modulo `p-1`)
