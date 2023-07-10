@@ -45,7 +45,8 @@ c_header (Curve{..}) (CodeGenParams{..}) =
   , "extern void " ++ prefix ++ "sub_inplace(       uint64_t *tgt , const uint64_t *src2 );"
   , ""
   , "extern void " ++ prefix ++ "scl_generic( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
-  , "extern void " ++ prefix ++ "scl_Fr     ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "scl_Fr_std ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "scl_Fr_mont( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "scl_big    ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "scl_small  (       uint64_t  kst , const uint64_t *src , uint64_t *tgt );"
   ]
@@ -66,7 +67,7 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
   , mkffi "add"          $ cfun "add"              (CTyp [CArgInAffine , CArgInAffine , CArgOutAffine ] CRetVoid)
   , mkffi "sub"          $ cfun "sub"              (CTyp [CArgInAffine , CArgInAffine , CArgOutAffine ] CRetVoid)
     --
-  , mkffi "sclFr"          $ cfun "scl_Fr"           (CTyp [CArgInScalarR , CArgInAffine , CArgOutAffine ] CRetVoid)
+  , mkffi "sclFr"          $ cfun "scl_Fr_mont"      (CTyp [CArgInScalarR , CArgInAffine , CArgOutAffine ] CRetVoid)
   , mkffi "sclBigNonNeg"   $ cfun "scl_big"          (CTyp [CArgInBigIntP , CArgInAffine , CArgOutAffine ] CRetVoid)
   , mkffi "sclSmallNonNeg" $ cfun "scl_small"        (CTyp [CArgInt       , CArgInAffine , CArgOutAffine ] CRetVoid)
   ]
@@ -251,6 +252,8 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "instance L.Flat " ++ typeName ++ " where"
   , "  sizeInBytes  _pxy = " ++ show (8*2*nlimbs_p)
   , "  sizeInQWords _pxy = " ++ show (  2*nlimbs_p)
+  , "  withFlat (Mk" ++ typeName ++ " fptr) = withForeignPtr fptr"
+  , "  makeFlat = L.makeFlatGeneric Mk" ++ typeName ++ " " ++ show (2*nlimbs_p)
   , ""
   , "instance F.Rnd " ++ typeName ++ " where"
   , "  rndIO = rndG1"
@@ -422,7 +425,7 @@ isOnCurve (Curve{..}) (CodeGenParams{..}) =
   , "      uint64_t proj[" ++ show (3*nlimbs_p) ++ "];"
   , "      uint64_t tmp [" ++ show (3*nlimbs_p) ++ "];"
   , "      " ++ prefix_proj ++ "from_affine( src1, proj );"
-  , "      " ++ prefix_proj ++ "scl_Fr( " ++ prefix ++ "cofactor , proj , tmp );"
+  , "      " ++ prefix_proj ++ "scl_Fr_std( " ++ prefix ++ "cofactor , proj , tmp );"
   , "      return " ++ prefix_proj ++ "is_infinity( tmp );"
   , "    }"
   , "  }"
@@ -594,12 +597,22 @@ scaleCurve (Curve{..}) (CodeGenParams{..}) =
   , "}"
   , ""
   , "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
-  , "// where `grp` is a group element in G1, and `expo` is in Fr"
-  , "void " ++ prefix ++ "scl_Fr(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
+  , "// where `grp` is a group element in G1, and `expo` is in Fr (standard repr)"
+  , "void " ++ prefix ++ "scl_Fr_std(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
   , "  uint64_t proj1[3*NLIMBS_P];"
   , "  uint64_t proj2[3*NLIMBS_P];"
   , "  " ++ prefix_proj ++ "from_affine( grp, proj1 );"
-  , "  " ++ prefix_proj ++ "scl_Fr( expo, proj1, proj2);"
+  , "  " ++ prefix_proj ++ "scl_Fr_std( expo, proj1, proj2);"
+  , "  " ++ prefix_proj ++ "to_affine( proj2, tgt );"
+  , "}"
+  , ""
+  , "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
+  , "// where `grp` is a group element in G1, and `expo` is in Fr (Montgomery repr)"
+  , "void " ++ prefix ++ "scl_Fr_mont(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
+  , "  uint64_t proj1[3*NLIMBS_P];"
+  , "  uint64_t proj2[3*NLIMBS_P];"
+  , "  " ++ prefix_proj ++ "from_affine( grp, proj1 );"
+  , "  " ++ prefix_proj ++ "scl_Fr_mont( expo, proj1, proj2);"
   , "  " ++ prefix_proj ++ "to_affine( proj2, tgt );"
   , "}"
   , ""

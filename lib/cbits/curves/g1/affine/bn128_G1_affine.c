@@ -100,7 +100,7 @@ uint8_t bn128_G1_affine_is_in_subgroup ( const uint64_t *src1 ) {
       uint64_t proj[12];
       uint64_t tmp [12];
       bn128_G1_proj_from_affine( src1, proj );
-      bn128_G1_proj_scl_Fr( bn128_G1_affine_cofactor , proj , tmp );
+      bn128_G1_proj_scl_Fr_std( bn128_G1_affine_cofactor , proj , tmp );
       return bn128_G1_proj_is_infinity( tmp );
     }
   }
@@ -234,12 +234,22 @@ void bn128_G1_affine_scl_generic(const uint64_t *expo, const uint64_t *grp, uint
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
-// where `grp` is a group element in G1, and `expo` is in Fr
-void bn128_G1_affine_scl_Fr(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
+// where `grp` is a group element in G1, and `expo` is in Fr (standard repr)
+void bn128_G1_affine_scl_Fr_std(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
   uint64_t proj1[3*NLIMBS_P];
   uint64_t proj2[3*NLIMBS_P];
   bn128_G1_proj_from_affine( grp, proj1 );
-  bn128_G1_proj_scl_Fr( expo, proj1, proj2);
+  bn128_G1_proj_scl_Fr_std( expo, proj1, proj2);
+  bn128_G1_proj_to_affine( proj2, tgt );
+}
+
+// computes `expo*grp` (or `grp^expo` in multiplicative notation)
+// where `grp` is a group element in G1, and `expo` is in Fr (Montgomery repr)
+void bn128_G1_affine_scl_Fr_mont(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
+  uint64_t proj1[3*NLIMBS_P];
+  uint64_t proj2[3*NLIMBS_P];
+  bn128_G1_proj_from_affine( grp, proj1 );
+  bn128_G1_proj_scl_Fr_mont( expo, proj1, proj2);
   bn128_G1_proj_to_affine( proj2, tgt );
 }
 

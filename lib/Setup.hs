@@ -26,8 +26,8 @@ myUserHooks = simpleUserHooks
 -- myPreBuild :: Args -> BuildFlags -> IO HookedBuildInfo
 myPreBuildHook args buildflags = do
 
-  generate_bigints C  "cbits" -- "/bigint"
-  generate_bigints Hs "src"   -- "/ZK/Algebra/BigInt"
+  generate_bigints C  "cbits" 
+  generate_bigints Hs "src"   
 
   generate_primefields_std C  "cbits"
   generate_primefields_std Hs "src"
@@ -46,15 +46,17 @@ myPreBuildHook args buildflags = do
 
   return $ emptyHookedBuildInfo  
 
-myRemoveDirectory :: FilePath -> IO ()
-myRemoveDirectory fpath = do
-  b <- doesDirectoryExist fpath
-  when b (removeDirectoryRecursive fpath)
-
 -- myPostCleanHook :: Args -> CleanFlags -> PackageDescription -> () -> IO ()
 myPostCleanHook args cleanflags pdep mlocalbuildinfo = do
    myRemoveDirectory "src/ZK/Algebra/BigInt"
    myRemoveDirectory "src/ZK/Algebra/Curves"
    myRemoveDirectory "cbits/bigint"
    myRemoveDirectory "cbits/curves"
+
+--------------------------------------------------------------------------------
+
+myRemoveDirectory :: FilePath -> IO ()
+myRemoveDirectory fpath = do
+  b <- doesDirectoryExist fpath
+  when b (removeDirectoryRecursive fpath)
 

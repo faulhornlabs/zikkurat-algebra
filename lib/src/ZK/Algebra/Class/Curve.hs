@@ -6,6 +6,7 @@ module ZK.Algebra.Class.Curve where
 
 import Data.Bits
 import Data.Proxy
+import Data.List
 
 import ZK.Algebra.Class.Field
 
@@ -41,6 +42,10 @@ class (Eq a, StrictEq a, Show a, Rnd a) => Group a where
   grpScale_    :: Int     -> a -> a
 
   -- grpSize :: Proxy a -> Integer
+
+grpSum :: Group a => [a] -> a
+grpSum []     = grpUnit
+grpSum (x:xs) = foldl' grpAdd x xs
 
 --------------------------------------------------------------------------------
 -- * Elliptic curves

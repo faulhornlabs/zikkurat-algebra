@@ -71,6 +71,8 @@ instance Show BigInt256 where
 instance L.Flat BigInt256 where
   sizeInBytes  _pxy = 32
   sizeInQWords _pxy = 4
+  withFlat (MkBigInt256 fptr) = withForeignPtr fptr
+  makeFlat = L.makeFlatGeneric MkBigInt256 4
 
 rnd :: IO BigInt256
 rnd = do

@@ -133,6 +133,8 @@ instance Show G1 where
 instance L.Flat G1 where
   sizeInBytes  _pxy = 64
   sizeInQWords _pxy = 8
+  withFlat (MkG1 fptr) = withForeignPtr fptr
+  makeFlat = L.makeFlatGeneric MkG1 8
 
 instance F.Rnd G1 where
   rndIO = rndG1
@@ -272,7 +274,7 @@ sub (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr1) (ZK.Algebra.Curves.BN128.G1.A
         c_bn128_G1_affine_sub ptr1 ptr2 ptr3
   return (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr3)
 
-foreign import ccall unsafe "bn128_G1_affine_scl_Fr" c_bn128_G1_affine_scl_Fr :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_G1_affine_scl_Fr_mont" c_bn128_G1_affine_scl_Fr_mont :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sclFr #-}
 sclFr :: Fr -> ZK.Algebra.Curves.BN128.G1.Affine.G1 -> ZK.Algebra.Curves.BN128.G1.Affine.G1
@@ -281,7 +283,7 @@ sclFr (MkFr fptr1) (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr2) = unsafePerfor
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bn128_G1_affine_scl_Fr ptr1 ptr2 ptr3
+        c_bn128_G1_affine_scl_Fr_mont ptr1 ptr2 ptr3
   return (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr3)
 
 foreign import ccall unsafe "bn128_G1_affine_scl_big" c_bn128_G1_affine_scl_big :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()

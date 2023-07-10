@@ -71,6 +71,8 @@ instance Show BigInt192 where
 instance L.Flat BigInt192 where
   sizeInBytes  _pxy = 24
   sizeInQWords _pxy = 3
+  withFlat (MkBigInt192 fptr) = withForeignPtr fptr
+  makeFlat = L.makeFlatGeneric MkBigInt192 3
 
 rnd :: IO BigInt192
 rnd = do

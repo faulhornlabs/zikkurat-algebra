@@ -56,7 +56,8 @@ c_header curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
   , "extern void " ++ prefix ++ "madd_inplace (       uint64_t *tgt , const uint64_t *src2 );"
   , ""
   , "extern void " ++ prefix ++ "scl_generic( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
-  , "extern void " ++ prefix ++ "scl_Fr     ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "scl_Fr_std ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "scl_Fr_mont( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "scl_big    ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "scl_small  (       uint64_t  kst , const uint64_t *src , uint64_t *tgt );"
   , ""
@@ -89,7 +90,7 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
     --
   , mkffi "madd"        $ cfun "madd_jac_aff"     (CTyp [CArgInProj , CArgInAffine , CArgOutProj ] CRetVoid)
     --
-  , mkffi "sclFr"          $ cfun "scl_Fr"        (CTyp [CArgInScalarR , CArgInProj , CArgOutProj ] CRetVoid)
+  , mkffi "sclFr"          $ cfun "scl_Fr_mont"   (CTyp [CArgInScalarR , CArgInProj , CArgOutProj ] CRetVoid)
   , mkffi "sclBigNonNeg"   $ cfun "scl_big"       (CTyp [CArgInBigIntP , CArgInProj , CArgOutProj ] CRetVoid)
   , mkffi "sclSmallNonNeg" $ cfun "scl_small"     (CTyp [CArgInt       , CArgInProj , CArgOutProj ] CRetVoid)
    --
@@ -263,6 +264,8 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "instance L.Flat " ++ typeName ++ " where"
   , "  sizeInBytes  _pxy = " ++ show (8*3*nlimbs_p)
   , "  sizeInQWords _pxy = " ++ show (  3*nlimbs_p)
+  , "  withFlat (Mk" ++ typeName ++ " fptr) = withForeignPtr fptr"
+  , "  makeFlat = L.makeFlatGeneric Mk" ++ typeName ++ " " ++ show (3*nlimbs_p)
   , ""
   , "instance F.Rnd " ++ typeName ++ " where"
   , "  rndIO = rndG1"
@@ -631,7 +634,7 @@ isOnCurve (Curve{..}) (CodeGenParams{..}) =
   , "    return 0;"
   , "  }"
   , "  else {"
-  , "    " ++ prefix ++ "scl_Fr( " ++ prefix ++ "cofactor , src1 , tmp );"
+  , "    " ++ prefix ++ "scl_Fr_std( " ++ prefix ++ "cofactor , src1 , tmp );"
   , "    return " ++ prefix ++ "is_infinity( tmp );"
   , "  }"
   , "}"
@@ -1053,9 +1056,17 @@ scaleFpFr (Curve{..}) (CodeGenParams{..}) =
   , "}"
   , ""
   , "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
-  , "// where `grp` is a group element in G1, and `expo` is in Fr"
-  , "void " ++ prefix ++ "scl_Fr(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
+  , "// where `grp` is a group element in G1, and `expo` is in Fr *in standard repr*"
+  , "void " ++ prefix ++ "scl_Fr_std(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
   , "  " ++ prefix ++ "scl_generic(expo, grp, tgt, NLIMBS_R);"
+  , "}"
+  , ""
+  , "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
+  , "// where `grp` is a group element in G1, and `expo` is in Fr *in Montgomery repr*"
+  , "void " ++ prefix ++ "scl_Fr_mont(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {"
+  , "  uint64_t expo_std[NLIMBS_R];"
+  , "  " ++ prefix_r ++ "to_std(expo, expo_std);"
+  , "  " ++ prefix   ++ "scl_generic(expo_std, grp, tgt, NLIMBS_R);"
   , "}"
   , ""
   , "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"

@@ -30,7 +30,8 @@ extern void bn128_G1_proj_madd_aff_proj ( const uint64_t *src1, const uint64_t *
 extern void bn128_G1_proj_madd_inplace(         uint64_t *tgt , const uint64_t *src2 );
 
 extern void bn128_G1_proj_scl_generic( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );
-extern void bn128_G1_proj_scl_Fr     ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
+extern void bn128_G1_proj_scl_Fr_std ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
+extern void bn128_G1_proj_scl_Fr_mont( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
 extern void bn128_G1_proj_scl_big    ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
 extern void bn128_G1_proj_scl_small  (       uint64_t  kst , const uint64_t *src , uint64_t *tgt );
 

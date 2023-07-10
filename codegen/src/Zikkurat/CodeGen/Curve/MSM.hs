@@ -67,7 +67,7 @@ msm_hs_binding (Curve{..}) (CodeGenParams{..}) =
   , "      withForeignPtr fptr1 $ \\ptr1 -> do"
   , "        withForeignPtr fptr2 $ \\ptr2 -> do"
   , "          withForeignPtr fptr3 $ \\ptr3 -> do"
-  , "            c_" ++ prefix ++ "MSM_mont_coeff_" ++ point_repr ++ "_out (fromIntegral n1) ptr1 ptr2 ptr3 " ++ show nlimbs_r
+  , "            c_" ++ prefix ++ "MSM_std_coeff_" ++ point_repr ++ "_out (fromIntegral n1) ptr1 ptr2 ptr3 " ++ show nlimbs_r
   , "      return (Mk" ++ typeName ++ " fptr3)"
   , ""
   ]
@@ -207,7 +207,7 @@ msmCurve (Curve{..}) (CodeGenParams{..}) =
   , "// output:"
   , "//  - weighted projective Montgomery point"
   , "void " ++ prefix ++ "MSM_mont_coeff_" ++ point_repr ++ "_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {"
-  , "  uint64_t *std_expos = malloc(8*NLIMBS_P*npoints);"
+  , "  uint64_t *std_expos = malloc(8*expo_nlimbs*npoints);"
   , "  assert( std_expos != 0);"
   , "  const uint64_t *p;"
   , "  uint64_t *q;"
@@ -215,8 +215,8 @@ msmCurve (Curve{..}) (CodeGenParams{..}) =
   , "  q = std_expos;"
   , "  for(int i=0; i<npoints; i++) {"
   , "    " ++ prefix_r ++ "to_std( p , q );"
-  , "    p += NLIMBS_P;"
-  , "    q += NLIMBS_P;"
+  , "    p += expo_nlimbs;"
+  , "    q += expo_nlimbs;"
   , "  }"
   , "  " ++ prefix ++ "MSM_std_coeff_" ++ point_repr ++ "_out(npoints, std_expos, grps, tgt, expo_nlimbs);"
   , "  free(std_expos);"

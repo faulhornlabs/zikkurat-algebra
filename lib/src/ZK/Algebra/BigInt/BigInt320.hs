@@ -71,6 +71,8 @@ instance Show BigInt320 where
 instance L.Flat BigInt320 where
   sizeInBytes  _pxy = 40
   sizeInQWords _pxy = 5
+  withFlat (MkBigInt320 fptr) = withForeignPtr fptr
+  makeFlat = L.makeFlatGeneric MkBigInt320 5
 
 rnd :: IO BigInt320
 rnd = do

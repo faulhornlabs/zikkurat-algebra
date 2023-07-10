@@ -193,7 +193,7 @@ uint8_t bn128_G1_jac_is_in_subgroup ( const uint64_t *src1 ) {
     return 0;
   }
   else {
-    bn128_G1_jac_scl_Fr( bn128_G1_jac_cofactor , src1 , tmp );
+    bn128_G1_jac_scl_Fr_std( bn128_G1_jac_cofactor , src1 , tmp );
     return bn128_G1_jac_is_infinity( tmp );
   }
 }
@@ -495,9 +495,17 @@ void bn128_G1_jac_scl_generic(const uint64_t *expo, const uint64_t *grp, uint64_
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
-// where `grp` is a group element in G1, and `expo` is in Fr
-void bn128_G1_jac_scl_Fr(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
+// where `grp` is a group element in G1, and `expo` is in Fr *in standard repr*
+void bn128_G1_jac_scl_Fr_std(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
   bn128_G1_jac_scl_generic(expo, grp, tgt, NLIMBS_R);
+}
+
+// computes `expo*grp` (or `grp^expo` in multiplicative notation)
+// where `grp` is a group element in G1, and `expo` is in Fr *in Montgomery repr*
+void bn128_G1_jac_scl_Fr_mont(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
+  uint64_t expo_std[NLIMBS_R];
+  bn128_r_mont_to_std(expo, expo_std);
+  bn128_G1_jac_scl_generic(expo_std, grp, tgt, NLIMBS_R);
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
@@ -646,7 +654,7 @@ void bn128_G1_jac_MSM_std_coeff_jac_out_slow_reference(int npoints, const uint64
 // output:
 //  - weighted projective Montgomery point
 void bn128_G1_jac_MSM_mont_coeff_jac_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
-  uint64_t *std_expos = malloc(8*NLIMBS_P*npoints);
+  uint64_t *std_expos = malloc(8*expo_nlimbs*npoints);
   assert( std_expos != 0);
   const uint64_t *p;
   uint64_t *q;
@@ -654,8 +662,8 @@ void bn128_G1_jac_MSM_mont_coeff_jac_out(int npoints, const uint64_t *expos, con
   q = std_expos;
   for(int i=0; i<npoints; i++) {
     bn128_r_mont_to_std( p , q );
-    p += NLIMBS_P;
-    q += NLIMBS_P;
+    p += expo_nlimbs;
+    q += expo_nlimbs;
   }
   bn128_G1_jac_MSM_std_coeff_jac_out(npoints, std_expos, grps, tgt, expo_nlimbs);
   free(std_expos);

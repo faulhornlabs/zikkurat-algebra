@@ -85,6 +85,8 @@ instance Show Fp where
 instance L.Flat Fp where
   sizeInBytes  _pxy = 32
   sizeInQWords _pxy = 4
+  withFlat (MkFp fptr) = withForeignPtr fptr
+  makeFlat = L.makeFlatGeneric MkFp 4
 
 rnd :: IO Fp
 rnd = do

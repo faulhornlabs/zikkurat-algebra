@@ -21,6 +21,7 @@ extern void bn128_G1_affine_add_inplace(       uint64_t *tgt , const uint64_t *s
 extern void bn128_G1_affine_sub_inplace(       uint64_t *tgt , const uint64_t *src2 );
 
 extern void bn128_G1_affine_scl_generic( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );
-extern void bn128_G1_affine_scl_Fr     ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
+extern void bn128_G1_affine_scl_Fr_std ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
+extern void bn128_G1_affine_scl_Fr_mont( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
 extern void bn128_G1_affine_scl_big    ( const uint64_t *kst , const uint64_t *src , uint64_t *tgt );
 extern void bn128_G1_affine_scl_small  (       uint64_t  kst , const uint64_t *src , uint64_t *tgt );

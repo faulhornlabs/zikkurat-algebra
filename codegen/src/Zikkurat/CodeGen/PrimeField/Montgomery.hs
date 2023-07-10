@@ -162,6 +162,8 @@ hsBegin (Params{..}) =
   , "instance L.Flat " ++ typeName ++ " where"
   , "  sizeInBytes  _pxy = " ++ show (8*nlimbs)
   , "  sizeInQWords _pxy = " ++ show (  nlimbs)
+  , "  withFlat (Mk" ++ typeName ++ " fptr) = withForeignPtr fptr"
+  , "  makeFlat = L.makeFlatGeneric Mk" ++ typeName ++ " " ++ show nlimbs
   , ""
   , "rnd :: IO " ++ typeName
   , "rnd = do"

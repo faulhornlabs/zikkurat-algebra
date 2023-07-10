@@ -143,6 +143,8 @@ instance Show G1 where
 instance L.Flat G1 where
   sizeInBytes  _pxy = 144
   sizeInQWords _pxy = 18
+  withFlat (MkG1 fptr) = withForeignPtr fptr
+  makeFlat = L.makeFlatGeneric MkG1 18
 
 instance F.Rnd G1 where
   rndIO = rndG1
@@ -228,7 +230,7 @@ msmStd (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
       withForeignPtr fptr1 $ \ptr1 -> do
         withForeignPtr fptr2 $ \ptr2 -> do
           withForeignPtr fptr3 $ \ptr3 -> do
-            c_bls12_381_G1_proj_MSM_mont_coeff_proj_out (fromIntegral n1) ptr1 ptr2 ptr3 4
+            c_bls12_381_G1_proj_MSM_std_coeff_proj_out (fromIntegral n1) ptr1 ptr2 ptr3 4
       return (MkG1 fptr3)
 
 
@@ -370,7 +372,7 @@ madd (MkG1 fptr1) (ZK.Algebra.Curves.BLS12_381.G1.Affine.MkG1 fptr2) = unsafePer
         c_bls12_381_G1_proj_madd_proj_aff ptr1 ptr2 ptr3
   return (MkG1 fptr3)
 
-foreign import ccall unsafe "bls12_381_G1_proj_scl_Fr" c_bls12_381_G1_proj_scl_Fr :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_proj_scl_Fr_mont" c_bls12_381_G1_proj_scl_Fr_mont :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sclFr #-}
 sclFr :: Fr -> G1 -> G1
@@ -379,7 +381,7 @@ sclFr (MkFr fptr1) (MkG1 fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_G1_proj_scl_Fr ptr1 ptr2 ptr3
+        c_bls12_381_G1_proj_scl_Fr_mont ptr1 ptr2 ptr3
   return (MkG1 fptr3)
 
 foreign import ccall unsafe "bls12_381_G1_proj_scl_big" c_bls12_381_G1_proj_scl_big :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
