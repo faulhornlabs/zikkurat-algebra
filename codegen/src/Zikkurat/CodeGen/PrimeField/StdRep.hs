@@ -85,14 +85,20 @@ hsBegin (Params{..}) =
   , "module " ++ hsModule hs_path
   , "  ( " ++ typeName ++ "(..)"
   , "  , prime"
+  , "    -- * conversion"
   , "  , to" ++ postfix 
   , "  , from" ++ postfix 
+  , "    -- * field elements"
   , "  , small , zero , one , two , primGen"
+  , "    -- * predicates"
   , "  , isValid , isZero , isOne , isEqual"
+  , "    -- * field operations"
   , "  , neg , add , sub"
   , "  , sqr , mul"
   , "  , inv , div , div_by_2"
+  , "    -- * exponentiation"
   , "  , pow , pow_"
+  , "    -- * random"
   , "  , rnd"
   , "  )"  
   , "  where"

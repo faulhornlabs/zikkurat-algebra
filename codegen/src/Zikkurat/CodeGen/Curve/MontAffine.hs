@@ -126,14 +126,22 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}"
   , "module " ++ hsModule hs_path
   , "  ( " ++ typeName ++ "(..)"
+  , "    -- * parameters"
   , "  , primeP , primeR , cofactor , curveA , curveB"
   , "  , genG1 , infinity"
+  , "    -- * curve points"
   , "  , coords , mkPoint , mkPointMaybe , unsafeMkPoint"
+  , "    -- * predicates"
   , "  , isEqual , isSame"
   , "  , isInfinity , isOnCurve , isInSubgroup"
+  , "    -- * addition and doubling"
   , "  , neg , add , dbl , sub"
+  , "    -- * scaling"
   , "  , sclFr , sclBig , sclSmall"
+  , "    -- * random"
   , "  , rndG1"
+  , "    -- * Sage"
+  , "  , sageSetup , printSageSetup"
   , "  )"  
   , "  where"  
   , ""
@@ -639,6 +647,21 @@ scaleCurve (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
+hsSage :: Curve -> CodeGenParams -> Code
+hsSage curve params = 
+  [ "-- | Sage setup code to experiment with this curve"
+  , "sageSetup :: [String]"
+  , "sageSetup = "
+  ] ++ 
+  (hsQuoteListOfStrings (curveSageSetup curve)) ++
+  [ ""
+  , "-- | Prints the Sage code"
+  , "printSageSetup :: IO ()"
+  , "printSageSetup = mapM_ putStrLn sageSetup"
+  ]
+
+--------------------------------------------------------------------------------
+
 c_code :: Curve -> CodeGenParams -> Code
 c_code curve params = concat $ map ("":)
   [ c_begin     curve params
@@ -658,6 +681,7 @@ hs_code curve params@(CodeGenParams{..}) = concat $ map ("":)
   [ hsBegin      curve params
  -- , hsMiscTmp
  -- , hsConvert    curve params
+  , hsSage       curve params
   , hsFFI        curve params
   ]
 

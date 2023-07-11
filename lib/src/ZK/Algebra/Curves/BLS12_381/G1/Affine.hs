@@ -7,14 +7,22 @@
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
 module ZK.Algebra.Curves.BLS12_381.G1.Affine
   ( G1(..)
+    -- * parameters
   , primeP , primeR , cofactor , curveA , curveB
   , genG1 , infinity
+    -- * curve points
   , coords , mkPoint , mkPointMaybe , unsafeMkPoint
+    -- * predicates
   , isEqual , isSame
   , isInfinity , isOnCurve , isInSubgroup
+    -- * addition and doubling
   , neg , add , dbl , sub
+    -- * scaling
   , sclFr , sclBig , sclSmall
+    -- * random
   , rndG1
+    -- * Sage
+  , sageSetup , printSageSetup
   )
   where
 
@@ -180,6 +188,38 @@ sclBig k pt
   | otherwise =       sclBigNonNeg (fromInteger $        k) pt
 
 --------------------------------------------------------------------------------
+
+-- | Sage setup code to experiment with this curve
+sageSetup :: [String]
+sageSetup = 
+  [ "# BLS12-381 elliptic curve"
+  , "p  = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787"
+  , "r  = 52435875175126190479447740508185965837690552500527637822603658699938581184513"
+  , "h  = 76329603384216526031706109802092473003"
+  , "Fp = GF(p)"
+  , "Fr = GF(r)"
+  , "A  = Fp(0)"
+  , "B  = Fp(4)"
+  , "E  = EllipticCurve(Fp,[A,B])"
+  , "gx = Fp(3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507)"
+  , "gy = Fp(1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569)"
+  , "gen = E(gx,gy)  # subgroup generator"
+  , "print(\"scalar field check: \", gen.additive_order() == r )"
+  , "print(\"cofactor check:     \", E.cardinality() == r*h )"
+  , ""
+  , "# GLV beta and gamma parameters"
+  , "beta = Fp(4002409555221667392624310435006688643935503118305586438271171395842971157480381377015405980053539358417135540939436)"
+  , "lam  = 228988810152649578064853576960394133503"
+  , "pt   = 1234567 * gen;"
+  , "pt2  = E( beta*pt[0] , pt[1], pt[2] )"
+  , "print(\"beta check:   \", beta^3 == 1 )"
+  , "print(\"lambda check: \", Fr(lam)^3 == 1 )"
+  , "print(\"GLV check:    \", lam * pt == pt2 )"
+  ]
+
+-- | Prints the Sage code
+printSageSetup :: IO ()
+printSageSetup = mapM_ putStrLn sageSetup
 
 foreign import ccall unsafe "bls12_381_G1_affine_is_on_curve" c_bls12_381_G1_affine_is_on_curve :: Ptr Word64 -> IO Word8
 

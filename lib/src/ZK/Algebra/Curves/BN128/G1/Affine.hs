@@ -7,14 +7,22 @@
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
 module ZK.Algebra.Curves.BN128.G1.Affine
   ( G1(..)
+    -- * parameters
   , primeP , primeR , cofactor , curveA , curveB
   , genG1 , infinity
+    -- * curve points
   , coords , mkPoint , mkPointMaybe , unsafeMkPoint
+    -- * predicates
   , isEqual , isSame
   , isInfinity , isOnCurve , isInSubgroup
+    -- * addition and doubling
   , neg , add , dbl , sub
+    -- * scaling
   , sclFr , sclBig , sclSmall
+    -- * random
   , rndG1
+    -- * Sage
+  , sageSetup , printSageSetup
   )
   where
 
@@ -180,6 +188,38 @@ sclBig k pt
   | otherwise =       sclBigNonNeg (fromInteger $        k) pt
 
 --------------------------------------------------------------------------------
+
+-- | Sage setup code to experiment with this curve
+sageSetup :: [String]
+sageSetup = 
+  [ "# BN128 elliptic curve"
+  , "p  = 21888242871839275222246405745257275088696311157297823662689037894645226208583"
+  , "r  = 21888242871839275222246405745257275088548364400416034343698204186575808495617"
+  , "h  = 1"
+  , "Fp = GF(p)"
+  , "Fr = GF(r)"
+  , "A  = Fp(0)"
+  , "B  = Fp(3)"
+  , "E  = EllipticCurve(Fp,[A,B])"
+  , "gx = Fp(1)"
+  , "gy = Fp(2)"
+  , "gen = E(gx,gy)  # subgroup generator"
+  , "print(\"scalar field check: \", gen.additive_order() == r )"
+  , "print(\"cofactor check:     \", E.cardinality() == r*h )"
+  , ""
+  , "# GLV beta and gamma parameters"
+  , "beta = Fp(2203960485148121921418603742825762020974279258880205651966)"
+  , "lam  = 4407920970296243842393367215006156084916469457145843978461"
+  , "pt   = 1234567 * gen;"
+  , "pt2  = E( beta*pt[0] , pt[1], pt[2] )"
+  , "print(\"beta check:   \", beta^3 == 1 )"
+  , "print(\"lambda check: \", Fr(lam)^3 == 1 )"
+  , "print(\"GLV check:    \", lam * pt == pt2 )"
+  ]
+
+-- | Prints the Sage code
+printSageSetup :: IO ()
+printSageSetup = mapM_ putStrLn sageSetup
 
 foreign import ccall unsafe "bn128_G1_affine_is_on_curve" c_bn128_G1_affine_is_on_curve :: Ptr Word64 -> IO Word8
 

@@ -5,17 +5,24 @@
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
 module ZK.Algebra.BigInt.BigInt448
   ( BigInt448(..)
+    -- * conversion
   , to
   , from
+    -- * some numbers
   , small , zero , one , two
+    -- * predicates
   , isZero , isOne , isEqual
+    -- * ring operations
   , neg , add , sub
   , sqr , mul
+    -- * shifts
   , shiftLeft1 , shiftRight1
   , shiftLeft  , shiftRight
+    -- * extended multiplication
   , sqrExt
   , mulExt
   , scaleExt
+    -- * random
   , rnd
   )
   where

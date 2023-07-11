@@ -6,14 +6,20 @@
 module ZK.Algebra.Curves.BN128.Fp.Std
   ( Fp(..)
   , prime
+    -- * conversion
   , to
   , from
+    -- * field elements
   , small , zero , one , two , primGen
+    -- * predicates
   , isValid , isZero , isOne , isEqual
+    -- * field operations
   , neg , add , sub
   , sqr , mul
   , inv , div , div_by_2
+    -- * exponentiation
   , pow , pow_
+    -- * random
   , rnd
   )
   where
