@@ -2,9 +2,14 @@
 zikkurat-algebra
 ================
 
-This is (will be) a Haskell / C library implementing algebraic primitives 
+This is a Haskell / C library implementing algebraic primitives 
 (finite fields, elliptic curves, polynomials) commonly used in zero-knowledge 
 proof systems and related technologies.
+
+The core idea is that we generate C code specialized to standard fields / curve;
+and also Haskell bindings to this C code, presenting a proper API while retaining 
+relatively good performance. Other high-level language bindings could be added 
+in the future if there is demand.
 
 Project goals:
 
@@ -16,8 +21,8 @@ Project goals:
 - no external dependencies
 - comprehensive testing
 - the code should stay simple enough (and documented enough) so that auditing 
-  the correctness wouldn't be a nightmarishly daunting task 
-  (this is very much not satisfied at the moment, as the code generator is very hackish)
+  correctness wouldn't be a nightmarishly daunting task 
+  (this one is very much not satisfied at the moment, as the code generator is very hackish)
 
 
 Metadata
@@ -41,6 +46,7 @@ Sub-projects:
 - `lib` - the Haskell library
 - `test` - testing
 - `examples` - examples of using the library
+- `bench` - benchmarks (TODO)
 
 The essential parts of the code are written in (generated) C, maybe with some assembly.
 This C code (under `lib/cbits`) is self-contained, and can be also used without the Haskell bindings.
@@ -92,13 +98,25 @@ TODO
 - [ ] square roots in prime fields 
 - [ ] hash-to-curve & better random curve points  
 - [ ] add benchmarking
-- [ ] add pure Haskell reference implementations
 - [ ] figure out a better meta-programming story
+- [ ] add pure Haskell reference implementations
 - [ ] try to optimize a bit more
 - [ ] add an explicit discrete logarithm type (integers modulo `p-1`)
 - [ ] implement field extensions
 - [ ] implement pairings
 - [ ] implement multivariate polynomials
+
+
+Optimization opportunities
+--------------------------
+
+- implement fused multiply-and-add for prime fields
+- implement addition and multiplication of prime fields directly in assembly
+- deeper study of algorithmic tricks
+- check out what others do (eg. constantine)
+- specialize for finite fields fitting into a single qword (but this is not relevant for elliptic curves)
+
+Note: The main bottleneck for KZG-based proof systems is MSM.
 
 
 Similar projects

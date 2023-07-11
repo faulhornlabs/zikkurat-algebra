@@ -14,7 +14,7 @@ import ZK.Algebra.Curves.BLS12_381.Fr.Mont ( Fr , toStd , fromStd )
 
 import qualified ZK.Algebra.Curves.BLS12_381.Fr.Std as Std
 
-import           ZK.Algebra.Curves.BLS12_381.G1.Jac ( genG1 , G1 , msm , msmStd )
+import           ZK.Algebra.Curves.BLS12_381.G1.Proj ( genG1 , G1 , msm , msmStd )
 import qualified ZK.Algebra.Curves.BLS12_381.G1.Affine as Affine
 
 --------------------------------------------------------------------------------
