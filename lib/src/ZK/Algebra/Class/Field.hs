@@ -1,4 +1,6 @@
 
+-- | Polymorphic interface for finite fields
+
 {-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 module ZK.Algebra.Class.Field where
 

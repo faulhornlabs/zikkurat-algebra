@@ -1,6 +1,11 @@
 
--- NOTE 1: This module is intented to be imported qualified
--- NOTE 2: Generated code, do not edit!
+-- | Prime field (Montgomery representation) with
+--
+-- > p = 21888242871839275222246405745257275088696311157297823662689037894645226208583
+--
+-- * NOTE 1: This module is intented to be imported qualified
+--
+-- * NOTE 2: Generated code, do not edit!
 
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
 module ZK.Algebra.Curves.BN128.Fp.Mont

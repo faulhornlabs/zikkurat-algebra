@@ -29,14 +29,15 @@ Library
                         directory >= 1.2
 
   Exposed-Modules:      Zikkurat.Generate
-                        Zikkurat.CodeGen.PrimeField.StdRep
-                        Zikkurat.CodeGen.PrimeField.Montgomery
+                        Zikkurat.CodeGen.Poly
                         Zikkurat.CodeGen.Curve.MontAffine
                         Zikkurat.CodeGen.Curve.MontProj
                         Zikkurat.CodeGen.Curve.MontJac
                         Zikkurat.CodeGen.Curve.MSM
                         Zikkurat.CodeGen.Curve.Params
                         Zikkurat.CodeGen.Curve.CurveFFI
+                        Zikkurat.CodeGen.PrimeField.StdRep
+                        Zikkurat.CodeGen.PrimeField.Montgomery
                         Zikkurat.CodeGen.BigInt
                         Zikkurat.CodeGen.FFI
                         Zikkurat.CodeGen.Misc

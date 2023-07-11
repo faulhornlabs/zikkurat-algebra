@@ -58,7 +58,7 @@ a generic Haskell reference implementation for testing purposes.
 Supported primitives
 --------------------
 
-It's very easy to add new fields or curves, just specify the required parameters.
+It's easy to add new fields or curves, just specify the required parameters.
 Currently, we have the following ones.
 
 ### Supported elliptic curves
@@ -78,8 +78,8 @@ Currently, we have the following ones.
 
 All the base and scalar fields of the curves, plus:
 
-- some prime fields selected specifically for testing purposes
 - TODO:
+    - some prime fields selected specifically for testing purposes
     - the field extensions required for pairing
     - Goldilocks: `p = 2^64 - 2^32 + 1`
     - ...
@@ -91,7 +91,7 @@ TODO
 - [x] implement bigints
 - [x] implement prime fields
 - [x] implement curves
-- [ ] implement univariate polynomials
+- [x] implement univariate polynomials
 - [x] property-based test framework
 - [ ] unit-test framework
 - [ ] long division of bigints
@@ -129,8 +129,8 @@ You should also check out the following projects:
 - [arkworks](https://github.com/arkworks-rs) - Rust ecosystem for programming (zk-)SNARKs
 - [mcl](https://github.com/herumi/mcl) - C++ library for pairing-based cryptography
 
-These all have similar goals, with slightly different targets, tradeoffs 
-and implementation details.
+These all have similar goals, with slightly different targets, tradeoffs,
+programming languages and implementation details.
 
 
 

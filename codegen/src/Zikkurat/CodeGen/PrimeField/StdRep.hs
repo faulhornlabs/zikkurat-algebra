@@ -78,8 +78,13 @@ c_header (Params{..}) =
 
 hsBegin :: Params -> Code
 hsBegin (Params{..}) =
-  [ "-- NOTE 1: This module is intented to be imported qualified"
-  , "-- NOTE 2: Generated code, do not edit!"
+  [ "-- | Prime field (standard representation) with"
+  , "--"
+  , "-- > p = " ++ show thePrime
+  , "--"
+  , "-- * NOTE 1: This module is intented to be imported qualified"
+  , "--"
+  , "-- * NOTE 2: Generated code, do not edit!"
   , ""
   , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}"
   , "module " ++ hsModule hs_path

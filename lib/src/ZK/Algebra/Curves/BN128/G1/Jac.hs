@@ -1,8 +1,10 @@
 
 -- | BN128 curve, Jacobian (or weighted) projective coordinates, Montgomery field representation
 --
--- NOTE 1: This module is intented to be imported qualified
--- NOTE 2: Generated code, do not edit!
+-- * NOTE 1: This module is intented to be imported qualified
+--
+-- * NOTE 2: Generated code, do not edit!
+--
 
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
 module ZK.Algebra.Curves.BN128.G1.Jac

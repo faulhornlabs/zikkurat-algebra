@@ -7,6 +7,7 @@ module Zikkurat.Generate
   , generate_curves_affine
   , generate_curves_proj
   , generate_curves_jac
+  , generate_curves_poly
   ) 
   where
 
@@ -25,9 +26,11 @@ import qualified Zikkurat.CodeGen.PrimeField.Montgomery as FpMont
 import qualified Zikkurat.CodeGen.Curve.MontAffine      as Affine
 import qualified Zikkurat.CodeGen.Curve.MontProj        as Proj
 import qualified Zikkurat.CodeGen.Curve.MontJac         as Jac
+import qualified Zikkurat.CodeGen.Poly                  as Poly
 
 import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.Curve.Params
+import Zikkurat.CodeGen.Poly ( PolyParams )
 import Zikkurat.Primes
 
 --------------------------------------------------------------------------------
@@ -197,6 +200,19 @@ bn128_cgParams = CodeGenParams
   , typeName       = "G1"                                                        -- the name of the haskell type for curve points
   }
 
+bn128_polyParams :: PolyParams
+bn128_polyParams = Poly.PolyParams 
+  { Poly.prefix     = "bn128_poly_mont_"   
+  , Poly.prefix_r   = "bn128_r_mont_"
+  , Poly.nlimbs     = 4 
+  , Poly.c_path     = Path ["curves","poly"  , "mont", "bn128_poly_mont" ]
+  , Poly.c_path_r   = Path ["curves","fields", "mont", "bn128_r_mont" ]
+  , Poly.hs_path    = Path ["ZK","Algebra","Curves","BN128","Poly"]
+  , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","BN128","Fr","Mont"] 
+  , Poly.typeName   = "Poly" 
+  , Poly.typeName_r = "Fr"
+  }
+
 bls12_381_cgParams :: CodeGenParams
 bls12_381_cgParams = CodeGenParams
   { prefix         = error "bls12_381 / prefix"                                  -- prefix for C names
@@ -225,15 +241,38 @@ bls12_381_cgParams = CodeGenParams
   , typeName       = "G1"                                                        -- the name of the haskell type for curve points
   }
 
-curveList :: [(Curve,CodeGenParams)]
+bls12_381_polyParams :: PolyParams
+bls12_381_polyParams = Poly.PolyParams 
+  { Poly.prefix     = "bls12_381_poly_mont_"   
+  , Poly.prefix_r   = "bls12_381_r_mont_"
+  , Poly.nlimbs     = 4 
+  , Poly.c_path     = Path ["curves","poly"  , "mont", "bls12_381_poly_mont" ]
+  , Poly.c_path_r   = Path ["curves","fields", "mont", "bls12_381_r_mont" ]
+  , Poly.hs_path    = Path ["ZK","Algebra","Curves","BLS12_381","Poly"]
+  , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","BLS12_381","Fr","Mont"] 
+  , Poly.typeName   = "Poly" 
+  , Poly.typeName_r = "Fr"
+  }
+--------------------------------------------------------------------------------
+
+generate_curves_poly :: HsOrC -> FilePath -> IO ()
+generate_curves_poly hsOrC tgtdir = do
+  forM_ curveList $ \(curve,_,polyparams) -> do
+    case hsOrC of 
+      C  -> Poly.poly_c_codegen  tgtdir polyparams
+      Hs -> Poly.poly_hs_codegen tgtdir polyparams
+
+--------------------------------------------------------------------------------
+
+curveList :: [(Curve,CodeGenParams,PolyParams)]
 curveList = 
-  [ ( bn128_curve      , bn128_cgParams      )
-  , ( bls12_381_curve  , bls12_381_cgParams  )
+  [ ( bn128_curve     , bn128_cgParams     , bn128_polyParams     )
+  , ( bls12_381_curve , bls12_381_cgParams , bls12_381_polyParams )
   ]
 
 generate_curves_proj :: HsOrC -> FilePath -> IO ()
 generate_curves_proj hsOrC tgtdir = do
-  forM_ curveList $ \(curve,cgparams0) -> do
+  forM_ curveList $ \(curve,cgparams0,_) -> do
     let cgparams = cgparams0 
           { prefix  = prefix_proj  cgparams0
           , c_path  = c_path_proj  cgparams0 
@@ -246,7 +285,7 @@ generate_curves_proj hsOrC tgtdir = do
 
 generate_curves_jac :: HsOrC -> FilePath -> IO ()
 generate_curves_jac hsOrC tgtdir = do
-  forM_ curveList $ \(curve,cgparams0) -> do
+  forM_ curveList $ \(curve,cgparams0,_) -> do
     let cgparams = cgparams0 
           { prefix  = prefix_jac  cgparams0
           , c_path  = c_path_jac  cgparams0 
@@ -259,7 +298,7 @@ generate_curves_jac hsOrC tgtdir = do
 
 generate_curves_affine :: HsOrC -> FilePath -> IO ()
 generate_curves_affine hsOrC tgtdir = do
-  forM_ curveList $ \(curve,cgparams0) -> do
+  forM_ curveList $ \(curve,cgparams0,_) -> do
     let cgparams = cgparams0 
           { prefix  = prefix_affine  cgparams0 
           , c_path  = c_path_affine  cgparams0 

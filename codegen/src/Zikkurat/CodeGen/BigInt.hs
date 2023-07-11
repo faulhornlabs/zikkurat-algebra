@@ -71,8 +71,11 @@ c_header (Params{..}) =
 
 hsBegin :: Params -> Code
 hsBegin (Params{..}) =
-  [ "-- NOTE 1: This module is intented to be imported qualified"
-  , "-- NOTE 2: Generated code, do not edit!"
+  [ "-- | " ++ show (64*nlimbs) ++ "-bit unsigned integers"
+  , "--"
+  , "-- * NOTE 1: This module is intented to be imported qualified"
+  , "--" 
+  , "-- * NOTE 2: Generated code, do not edit!"
   , ""
   , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}"
   , "module " ++ hs_module ++ hs_basename 

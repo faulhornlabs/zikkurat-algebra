@@ -1,6 +1,11 @@
 
--- NOTE 1: This module is intented to be imported qualified
--- NOTE 2: Generated code, do not edit!
+-- | Prime field (standard representation) with
+--
+-- > p = 52435875175126190479447740508185965837690552500527637822603658699938581184513
+--
+-- * NOTE 1: This module is intented to be imported qualified
+--
+-- * NOTE 2: Generated code, do not edit!
 
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
 module ZK.Algebra.Curves.BLS12_381.Fr.Std

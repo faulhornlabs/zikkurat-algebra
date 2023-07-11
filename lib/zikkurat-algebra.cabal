@@ -54,7 +54,9 @@ Library
   Exposed-Modules:      ZK.Algebra.Class.Flat
                         ZK.Algebra.Class.Field
                         ZK.Algebra.Class.Curve
-                        ZK.Algebra.BigInt.Types        
+                        ZK.Algebra.Class.Poly
+
+  Exposed-Modules:      ZK.Algebra.BigInt.Types        
                         ZK.Algebra.BigInt.BigInt128
                         ZK.Algebra.BigInt.BigInt192
                         ZK.Algebra.BigInt.BigInt256
@@ -71,6 +73,7 @@ Library
                         ZK.Algebra.Curves.BN128.G1.Affine
                         ZK.Algebra.Curves.BN128.G1.Proj
                         ZK.Algebra.Curves.BN128.G1.Jac
+                        ZK.Algebra.Curves.BN128.Poly
 
   if flag(BLS12_381)
     Exposed-Modules:    ZK.Algebra.Curves.BLS12_381.Fp.Std
@@ -80,6 +83,7 @@ Library
                         ZK.Algebra.Curves.BLS12_381.G1.Affine
                         ZK.Algebra.Curves.BLS12_381.G1.Proj
                         ZK.Algebra.Curves.BLS12_381.G1.Jac
+                        ZK.Algebra.Curves.BLS12_381.Poly
 
   c-sources:            cbits/bigint/bigint128.c
                         cbits/bigint/bigint192.c
@@ -97,6 +101,7 @@ Library
                         cbits/curves/g1/affine/bn128_G1_affine.c
                         cbits/curves/g1/proj/bn128_G1_proj.c
                         cbits/curves/g1/jac/bn128_G1_jac.c
+                        cbits/curves/poly/mont/bn128_poly_mont.c
 
   if flag(BLS12_381)
     c-sources:          cbits/curves/fields/std/bls12_381_p_std.c
@@ -106,6 +111,7 @@ Library
                         cbits/curves/g1/affine/bls12_381_G1_affine.c
                         cbits/curves/g1/proj/bls12_381_G1_proj.c
                         cbits/curves/g1/jac/bls12_381_G1_jac.c
+                        cbits/curves/poly/mont/bls12_381_poly_mont.c
 
   Default-Language:     Haskell2010
   Default-Extensions:   CPP, BangPatterns
@@ -116,8 +122,9 @@ Library
                         cbits/curves/fields/std
                         cbits/curves/fields/mont
                         cbits/curves/g1/affine
-                        cbits/curves/g1/proj/
+                        cbits/curves/g1/proj
                         cbits/curves/g1/jac
+                        cbits/curves/poly/mont
 
   ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
 

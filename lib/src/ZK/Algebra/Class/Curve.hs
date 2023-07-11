@@ -1,4 +1,6 @@
 
+-- | Polymorphic interface for elliptic curves
+
 {-# LANGUAGE BangPatterns, ScopedTypeVariables, FlexibleContexts, TypeFamilies #-}
 module ZK.Algebra.Class.Curve where
 

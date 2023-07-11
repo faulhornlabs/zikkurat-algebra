@@ -1,6 +1,9 @@
 
--- NOTE 1: This module is intented to be imported qualified
--- NOTE 2: Generated code, do not edit!
+-- | 512-bit unsigned integers
+--
+-- * NOTE 1: This module is intented to be imported qualified
+--
+-- * NOTE 2: Generated code, do not edit!
 
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
 module ZK.Algebra.BigInt.BigInt512
