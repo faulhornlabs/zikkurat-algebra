@@ -1,4 +1,5 @@
 
+{-# LANGUAGE RecordWildCards #-}
 module Zikkurat.CodeGen.Curve.Params where
 
 --------------------------------------------------------------------------------
@@ -48,6 +49,57 @@ data CodeGenParams = CodeGenParams
   , typeName       :: String       -- ^ the name of the haskell type for curve points
   }
   deriving Show
+
+--------------------------------------------------------------------------------
+
+-- | Produce Sage code to experiment with the curve
+curveSageSetup :: Curve -> [String]
+curveSageSetup (Curve{..}) = 
+  [ "# " ++ curveName ++ " elliptic curve"
+  , "p  = " ++ show curveFp
+  , "r  = " ++ show curveFr
+  , "h  = " ++ show cofactor
+  , "Fp = GF(p)"
+  , "Fr = GF(r)"
+  , "A  = Fp(" ++ show curveA ++ ")"
+  , "B  = Fp(" ++ show curveB ++ ")"
+  , "E  = EllipticCurve(Fp,[A,B])"
+  , "gx = Fp(" ++ show (fst subgroupGen) ++ ")"
+  , "gy = Fp(" ++ show (snd subgroupGen) ++ ")"
+  , "gen = E(gx,gy)  # subgroup generator"
+  , "print(\"scalar field check: \", gen.additive_order() == r )"
+  , "print(\"cofactor check:     \", E.cardinality() == r*h )" 
+  ] ++
+  (case glvBetaLambda of
+     Nothing -> []
+     Just (beta,lambda) -> 
+       [ ""
+       , "# GLV beta and gamma parameters"
+       , "beta = Fp(" ++ show beta   ++ ")"
+       , "lam  = " ++ show lambda 
+       , "pt   = 1234567 * gen;"
+       , "pt2  = E( beta*pt[0] , pt[1], pt[2] )"
+       , "print(\"beta check:   \", beta^3 == 1 )"
+       , "print(\"lambda check: \", Fr(lam)^3 == 1 )"
+       , "print(\"GLV check:    \", lam * pt == pt2 )"
+       ]
+  )
+
+printSageSetup :: Curve -> IO ()
+printSageSetup curve = mapM_ putStrLn $ curveSageSetup curve
+
+hsQuoteListOfStrings :: [String] -> [String]
+hsQuoteListOfStrings xs = zipWith f chs xs ++ [close] where
+  chs   = '[' : repeat ','
+  close = "  ]"
+  f ch str = "  " ++ [ch] ++ " \"" ++ hsEscapeStr str ++ "\""
+
+hsEscapeStr :: String -> String
+hsEscapeStr = concatMap g where
+  g '"'  = "\\\""
+  g '\\' = "\\\\"
+  g '\n' = "\\n"
+  g ch   = [ch] 
 
 --------------------------------------------------------------------------------
 
