@@ -7,23 +7,23 @@
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
 module ZK.Algebra.Curves.BLS12_381.G1.Proj
   ( G1(..)
-    -- * parameters
+    -- * Parameters
   , primeP , primeR , cofactor , curveA , curveB
   , genG1 , infinity
-    -- * curve points
+    -- * Curve points
   , coords , mkPoint , mkPointMaybe , unsafeMkPoint
   , fromAffine , toAffine
   , normalize
-    -- * predicates
+    -- * Predicates
   , isEqual , isSame
   , isOnCurve , isInfinity , isInSubgroup
-    -- * addition and doubling
+    -- * Addition and doubling
   , neg , add , madd, dbl , sub
-    -- * scaling
+    -- * Scaling
   , sclFr , sclBig , sclSmall
-    -- * random
+    -- * Random
   , rndG1 , rndG1_naive
-    -- * multi-scalar multiplication
+    -- * Multi-scalar multiplication
   , msm , msmStd
     -- * Sage
   , sageSetup , printSageSetup

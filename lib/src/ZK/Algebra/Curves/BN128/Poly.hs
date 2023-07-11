@@ -9,30 +9,30 @@
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface, PatternSynonyms, TypeFamilies, FlexibleInstances #-}
 module ZK.Algebra.Curves.BN128.Poly
   ( Poly(..)
-    -- * coefficients
+    -- * Coefficients
   , coeffs , coeffsArr
-    -- * predicates
+    -- * Predicates
   , isZero , isEqual
-    -- * queries
+    -- * Queries
   , degree
   , constTerm
   , kthCoeff
   , evalAt
-    -- * constant polynomials
+    -- * Constant polynomials
   , constPoly
   , mbConst
   , zero , one
-    -- * creating polynomials
+    -- * Creating polynomials
   , mkPoly , mkPoly' , mkPolyA
   , linearPoly
-    -- * pretty-printing
+    -- * Pretty-printing
   , showPoly, showPoly'
     -- * ring operations
   , neg , add , sub
   , mul , mulNaive
-    -- * linear combinations
+    -- * Linear combinations
   , scale
-    -- * random
+    -- * Random
   , rndPoly , rnd
   )
   where

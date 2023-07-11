@@ -8,24 +8,24 @@
 {-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
 module ZK.Algebra.BigInt.BigInt320
   ( BigInt320(..)
-    -- * conversion
+    -- * Conversion
   , to
   , from
-    -- * some numbers
+    -- * Some numbers
   , small , zero , one , two
-    -- * predicates
+    -- * Predicates
   , isZero , isOne , isEqual
-    -- * ring operations
+    -- * Ring operations
   , neg , add , sub
   , sqr , mul
-    -- * shifts
+    -- * Shifts
   , shiftLeft1 , shiftRight1
   , shiftLeft  , shiftRight
-    -- * extended multiplication
+    -- * Extended multiplication
   , sqrExt
   , mulExt
   , scaleExt
-    -- * random
+    -- * Random
   , rnd
   )
   where

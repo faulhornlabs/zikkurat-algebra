@@ -10,22 +10,22 @@
 module ZK.Algebra.Curves.BN128.G1.Jac
   ( G1(..)
   , primeP , primeR , cofactor , curveA , curveB
-    -- * parameters
+    -- * Parameters
   , genG1 , infinity
-    -- * curve points
+    -- * Curve points
   , coords , mkPoint , mkPointMaybe , unsafeMkPoint
   , fromAffine , toAffine
   , normalize
-    -- * predicates
+    -- * Predicates
   , isEqual , isSame
   , isOnCurve , isInfinity , isInSubgroup
-    -- * addition and doubling
+    -- * Addition and doubling
   , neg , add , madd, dbl , sub
-    -- * scaling
+    -- * Scaling
   , sclFr , sclBig , sclSmall
-    -- * random
+    -- * Random
   , rndG1 , rndG1_naive
-    -- * multi-scalar multiplication
+    -- * Multi-scalar multiplication
   , msm , msmStd
   )
   where

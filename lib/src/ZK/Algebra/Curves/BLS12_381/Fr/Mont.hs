@@ -11,20 +11,20 @@
 module ZK.Algebra.Curves.BLS12_381.Fr.Mont
   ( Fr(..)
   , prime
-    -- * conversion
+    -- * Conversion
   , to , from
   , toStd , fromStd
-    -- * field elements
+    -- * Field elements
   , zero , one , two, primGen
-    -- * predicates
+    -- * Predicates
   , isValid , isZero , isOne , isEqual
-    -- * field operations
+    -- * Field operations
   , neg , add , sub
   , sqr , mul
   , inv , div
-    -- * exponentiation
+    -- * Exponentiation
   , pow , pow_
-    -- * random
+    -- * Random
   , rnd
   )
   where

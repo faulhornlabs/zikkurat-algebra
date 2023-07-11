@@ -6,10 +6,10 @@ This is a Haskell / C library implementing algebraic primitives
 (finite fields, elliptic curves, polynomials) commonly used in zero-knowledge 
 proof systems and related technologies.
 
-The core idea is that we generate C code specialized to standard fields / curve;
+The core idea is that we generate C code specialized to standard fields / curves;
 and also Haskell bindings to this C code, presenting a proper API while retaining 
 relatively good performance. Other high-level language bindings could be added 
-in the future if there is demand.
+in the future, if there is demand for that.
 
 Project goals:
 
@@ -99,10 +99,11 @@ TODO
 - [ ] hash-to-curve & better random curve points  
 - [ ] add benchmarking
 - [ ] figure out a better meta-programming story
-- [ ] add pure Haskell reference implementations
+- [ ] add pure Haskell reference implementations (?)
 - [ ] try to optimize a bit more
 - [ ] add an explicit discrete logarithm type (integers modulo `p-1`)
 - [ ] implement field extensions
+- [ ] implement "G2" twisted curves
 - [ ] implement pairings
 - [ ] implement multivariate polynomials
 

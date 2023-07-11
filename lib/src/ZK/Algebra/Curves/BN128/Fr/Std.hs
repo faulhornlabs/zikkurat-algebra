@@ -11,20 +11,20 @@
 module ZK.Algebra.Curves.BN128.Fr.Std
   ( Fr(..)
   , prime
-    -- * conversion
+    -- * Conversion
   , to
   , from
-    -- * field elements
+    -- * Field elements
   , small , zero , one , two , primGen
-    -- * predicates
+    -- * Predicates
   , isValid , isZero , isOne , isEqual
-    -- * field operations
+    -- * Field operations
   , neg , add , sub
   , sqr , mul
   , inv , div , div_by_2
-    -- * exponentiation
+    -- * Exponentiation
   , pow , pow_
-    -- * random
+    -- * Random
   , rnd
   )
   where
