@@ -27,24 +27,29 @@ runPolyTests n pxy = do
   forM_ allRingProps $ \prop -> case prop of
   
     PolyProp1 test name -> doTests n name $ do
-      x <- rndIO @a
-      return (test x) 
+      p <- rndIO @a
+      return (test p) 
 
     PolyProp2 test name -> doTests n name $ do
-      x <- rndIO @a
-      y <- rndIO @a
-      return (test x y) 
+      p <- rndIO @a
+      q <- rndIO @a
+      return (test p q) 
 
     PolyProp3 test name -> doTests n name $ do
-      x <- rndIO @a
-      y <- rndIO @a
-      z <- rndIO @a
-      return (test x y z) 
+      p <- rndIO @a
+      q <- rndIO @a
+      r <- rndIO @a
+      return (test p q r) 
 
     PolyPropF1 test name -> doTests n name $ do
       c <- rndIO @(Coeff a)
-      x <- rndIO @a
-      return (test c x) 
+      p <- rndIO @a
+      return (test c p) 
+
+    PolyPropFF test name -> doTests n name $ do
+      x <- rndIO @(Coeff a)
+      y <- rndIO @(Coeff a)
+      return (test (Proxy @a) x y) 
 
 --------------------------------------------------------------------------------
 
@@ -67,10 +72,11 @@ doTests n name testAction =
 --------------------------------------------------------------------------------
 
 data PolyProp
-  = PolyProp1  (forall a. Univariate a  => a -> Bool           ) String
-  | PolyProp2  (forall a. Univariate a  => a -> a -> Bool      ) String
-  | PolyProp3  (forall a. Univariate a  => a -> a -> a -> Bool ) String
-  | PolyPropF1 (forall a. Univariate a  => Coeff a -> a -> Bool) String
+  = PolyProp1  (forall a. Univariate a  => a -> Bool                 ) String
+  | PolyProp2  (forall a. Univariate a  => a -> a -> Bool            ) String
+  | PolyProp3  (forall a. Univariate a  => a -> a -> a -> Bool       ) String
+  | PolyPropF1 (forall a. Univariate a  => Coeff a -> a -> Bool      ) String
+  | PolyPropFF (forall a. Univariate a  => Proxy a -> Coeff a -> Coeff a -> Bool) String
 
 --------------------------------------------------------------------------------
 
@@ -105,7 +111,14 @@ specificPolyProps =
   , PolyProp2  prop_add_vs_ref          "add vs. reference" 
   , PolyProp2  prop_sub_vs_ref          "sub vs. reference" 
   , PolyPropF1 prop_scale_vs_ref        "scale vs. reference" 
+  , PolyPropF1 prop_scale_by_zero       "scale by 0" 
+  , PolyPropF1 prop_scale_by_one        "scale by 1" 
+  , PolyPropF1 prop_scale_by_minus_one  "scale by -1" 
   , PolyProp2  prop_mul_vs_ref          "mul vs. reference" 
+  , PolyPropF1 prop_eval_vs_ref         "evalAt vs. reference"
+  , PolyProp1  prop_const_term          "constTerm"
+  , PolyPropFF prop_mbConst             "mbConst"
+  , PolyProp1  prop_kthCoeff            "kthCoeff"
   ]
 
 --------------------------------------------------------------------------------
@@ -226,6 +239,11 @@ mulRef p q = mkPoly list where
           | k<-[0..d1+d2] 
           ]
 
+evalRef :: Univariate p => Coeff p -> p -> Coeff p
+evalRef x p = sum (zipWith (*) cfs xs) where
+  cfs = coeffs p
+  xs  = [ power x k | k<-[0..] ]
+
 --------------------------------------------------------------------------------
 -- * Polynomial properties
 
@@ -241,7 +259,34 @@ prop_sub_vs_ref p q = (p - q == subRef p q)
 prop_scale_vs_ref :: Univariate p => Coeff p -> p -> Bool
 prop_scale_vs_ref c p = (scale c p == scaleRef c p)
 
+prop_scale_by_zero :: Univariate p => Coeff p -> p -> Bool
+prop_scale_by_zero c p = (scale 0 p == scaleRef 0 p)
+
+prop_scale_by_one :: Univariate p => Coeff p -> p -> Bool
+prop_scale_by_one c p = (scale 1 p == p)
+
+prop_scale_by_minus_one :: Univariate p => Coeff p -> p -> Bool
+prop_scale_by_minus_one c p = (scale (-1) p == negate p)
+
 prop_mul_vs_ref :: Univariate p => p -> p -> Bool
 prop_mul_vs_ref p q = (p * q == mulRef p q)
+
+prop_eval_vs_ref :: Univariate p => Coeff p -> p -> Bool
+prop_eval_vs_ref x p = (evalAt x p == evalRef x p)
+
+prop_const_term :: Univariate p => p -> Bool
+prop_const_term p = constTermOf p == kthCoeff 0 p
+
+prop_mbConst :: forall p. Univariate p => Proxy p -> Coeff p -> Coeff p -> Bool
+prop_mbConst _pxy a b = and
+  [ mbConst @p 0                == Just 0 
+  , mbConst @p (constPoly b)    == Just b
+  , mbConst @p (linearPoly a b) == if a==0 then Just b else Nothing
+  ]
+
+prop_kthCoeff :: Univariate p => p -> Bool
+prop_kthCoeff p = list1 == list2 where
+  list1 = [0,0] ++ coeffs p ++ [0,0]
+  list2 = [ kthCoeff k p | k <- [-2..(2 + degree p)] ]
 
 --------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 
--- | Generating code for univariate polynomials over a field
+-- | Generating code for dense univariate polynomials over a field
 
 {-# LANGUAGE RecordWildCards #-}
 module Zikkurat.CodeGen.Poly where
@@ -90,12 +90,14 @@ hsBegin (PolyParams{..}) =
   , "module " ++ hsModule hs_path
   , "  ( " ++ typeName ++ "(..)"
   , "    -- * Coefficients"
-  , "  , coeffs , coeffsArr"
+  , "  , coeffs"
+  , "  , coeffsArr"
+  , "  , coeffsFlatArr"
   , "    -- * Predicates"
   , "  , isZero , isEqual" 
   , "    -- * Queries"
   , "  , degree"
-  , "  , constTerm"
+  , "  , constTermOf"
   , "  , kthCoeff"
   , "  , evalAt"
   , "    -- * Constant polynomials"
@@ -103,7 +105,7 @@ hsBegin (PolyParams{..}) =
   , "  , mbConst"
   , "  , zero , one"
   , "    -- * Creating polynomials"
-  , "  , mkPoly , mkPoly' , mkPolyA"
+  , "  , mkPoly , mkPoly' , mkPolyArr , mkPolyFlatArr"
   , "  , linearPoly"
   , "    -- * Pretty-printing"
   , "  , showPoly, showPoly'"
@@ -145,6 +147,17 @@ hsBegin (PolyParams{..}) =
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Poly  as P"
   , ""
+  , "import ZK.Algebra.Class.Poly"
+  , "  ( polyIsOne"
+  , "  , constTermOf"
+  , "  , mbConst   "
+  , "  , constPoly "
+  , "  , idPoly    "
+  , "  , linearPoly"
+  , "  , showPoly  "
+  , "  , showPoly' "
+  , "  )"
+  , ""
   , "--------------------------------------------------------------------------------"
   , ""
   , "newtype " ++ typeName ++ " = Mk" ++ typeName ++ " (L.FlatArray " ++ typeName_r ++ ")"
@@ -157,14 +170,20 @@ hsBegin (PolyParams{..}) =
   , "mkPoly' :: Int -> [" ++ typeName_r ++ "] -> " ++ typeName
   , "mkPoly' len xs = Mk" ++ typeName ++ " $ L.packFlatArrayFromList' len xs"
   , ""
-  , "mkPolyA :: Array Int " ++ typeName_r ++ " -> "  ++ typeName
-  , "mkPolyA = Mk" ++ typeName ++ " . L.packFlatArray"
+  , "mkPolyArr :: Array Int " ++ typeName_r ++ " -> "  ++ typeName
+  , "mkPolyArr = Mk" ++ typeName ++ " . L.packFlatArray"
+  , "" 
+  , "mkPolyFlatArr :: L.FlatArray " ++ typeName_r ++ " -> "  ++ typeName
+  , "mkPolyFlatArr = Mk" ++ typeName 
   , "" 
   , "coeffs :: " ++ typeName ++ " -> [" ++ typeName_r ++ "]"
   , "coeffs (Mk" ++ typeName ++ " arr) = L.unpackFlatArrayToList arr"
   , "" 
   , "coeffsArr :: " ++ typeName ++ " -> Array Int " ++ typeName_r 
   , "coeffsArr (Mk" ++ typeName ++ " arr) = L.unpackFlatArray arr"
+  , "" 
+  , "coeffsFlatArr :: Poly -> L.FlatArray " ++ typeName_r
+  , "coeffsFlatArr (MkPoly flat) = flat"
   , "" 
   , "--------------------------------------------------------------------------------"
   , "" 
@@ -197,15 +216,21 @@ hsBegin (PolyParams{..}) =
   , "  one       = " ++ hsModule hs_path ++ ".one"
   , "  power     = error \"exponentiation of polynomials is not implemented\""
   , ""
+  , "instance L.WrappedArray " ++ typeName ++ " where"
+  , "  type Element " ++ typeName ++ " = " ++ typeName_r
+  , "  wrapArray = Mk" ++ typeName
+  , "  unwrapArray (Mk" ++ typeName ++ " flatArr) = flatArr"
+  , ""
   , "instance P.Univariate " ++ typeName ++ " where"
   , "  type Coeff " ++ typeName ++ " = " ++ typeName_r
-  , "  degree    = " ++ hsModule hs_path ++ ".degree"
-  , "  coeffs    = " ++ hsModule hs_path ++ ".coeffs"
-  , "  coeffsArr = " ++ hsModule hs_path ++ ".coeffsArr"
-  , "  kthCoeff  = " ++ hsModule hs_path ++ ".kthCoeff"
-  , "  mkPoly    = " ++ hsModule hs_path ++ ".mkPoly"
-  , "  evalAt    = " ++ hsModule hs_path ++ ".evalAt"
-  , "  scale    = " ++ hsModule hs_path ++ ".scale"
+  , "  degree        = " ++ hsModule hs_path ++ ".degree"
+  , "  kthCoeff      = " ++ hsModule hs_path ++ ".kthCoeff"
+  , "  evalAt        = " ++ hsModule hs_path ++ ".evalAt"
+  , "  scale         = " ++ hsModule hs_path ++ ".scale"
+  , "  mkPoly        = " ++ hsModule hs_path ++ ".mkPoly"
+  , "  coeffs        = " ++ hsModule hs_path ++ ".coeffs"
+  , "  coeffsArr     = " ++ hsModule hs_path ++ ".coeffsArr"
+  , "  coeffsFlatArr = " ++ hsModule hs_path ++ ".coeffsFlatArr"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -221,13 +246,16 @@ hsBegin (PolyParams{..}) =
   , "isOne :: " ++ typeName ++ " -> Bool"
   , "isOne p = (mbConst p == Just " ++ hsModule hs_path_r ++ ".one)"
   , ""
+{-
+-- NOTE: these were moved next to the type class
+--
   , "-- | The constant term of a polynomial"
-  , "constTerm :: " ++ typeName ++ " -> " ++ typeName_r
-  , "constTerm p = kthCoeff 0 p"
+  , "constTermOf :: " ++ typeName ++ " -> " ++ typeName_r
+  , "constTermOf p = kthCoeff 0 p"
   , ""
   , "-- | Is this a constant polynomial?"
   , "mbConst :: " ++ typeName ++ " -> Maybe " ++ typeName_r
-  , "mbConst p = if degree p <= 0 then Just (constTerm p) else Nothing"
+  , "mbConst p = if degree p <= 0 then Just (constTermOf p) else Nothing"
   , ""
   , "-- | Create a constant polynomial"
   , "constPoly :: " ++ typeName_r ++ " -> " ++ typeName
@@ -249,6 +277,7 @@ hsBegin (PolyParams{..}) =
   , "    terms = zipWith f [0..] (coeffs poly)"
   , "    f k x = ' ' : show x ++ \" * x^\" ++ show k" 
   , ""
+-}
   , "-- | @rndPoly d@ generates a random polynomial of degree @d@"
   , "rndPoly :: Int -> IO " ++ typeName
   , "rndPoly d = mkPoly <$> replicateM (d+1) F.rndIO"
@@ -516,7 +545,17 @@ cPolyBasics (PolyParams{..}) =
   , "  (          const uint64_t *kst1"
   , "  , int n2 , const uint64_t *src2"
   , "  ,          uint64_t *tgt ) {"
-  , ""
+  , "  if (" ++ prefix_r ++ "is_zero(kst1)) {"
+  , "    // multiply by zero"
+  , "    for(int i=0; i<n2; i++) { " ++ prefix_r ++ "set_zero( TGT(i) ); }"
+  , "    return;"
+  , "  }"
+  , "  if (" ++ prefix_r ++ "is_one(kst1)) {"
+  , "    // multiply by one"
+  , "    for(int i=0; i<n2; i++) { " ++ prefix_r ++ "copy( SRC2(i) , TGT(i) ); }"
+  , "    return;"
+  , "  }"
+  , "  // generic scaling"
   , "  for(int i=0; i<n2; i++) {"
   , "    " ++ prefix_r ++ "mul( kst1 , SRC2(i) , TGT(i) );"
   , "  }"

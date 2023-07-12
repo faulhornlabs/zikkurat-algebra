@@ -4,7 +4,7 @@
 -- Examples are: bigints, field elements, elliptic curve points
 --
 
-{-# LANGUAGE ScopedTypeVariables, TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables, TypeApplications, TypeFamilies, FlexibleContexts #-}
 module ZK.Algebra.Class.Flat where
 
 --------------------------------------------------------------------------------
@@ -40,6 +40,14 @@ makeFlatGeneric wrap nwords srcPtr = do
   fptr <- mallocForeignPtrBytes (8*nwords)
   withForeignPtr fptr $ \tgtPtr -> copyBytes tgtPtr srcPtr (8*nwords)
   return (wrap fptr)
+
+--------------------------------------------------------------------------------
+
+-- | Something which is a newtype containing a FlatArray
+class WrappedArray a where
+  type Element a :: *
+  wrapArray   :: FlatArray (Element a) -> a
+  unwrapArray :: a -> FlatArray (Element a)
 
 --------------------------------------------------------------------------------
 

@@ -143,7 +143,17 @@ void bls12_381_poly_mont_scale
   (          const uint64_t *kst1
   , int n2 , const uint64_t *src2
   ,          uint64_t *tgt ) {
-
+  if (bls12_381_r_mont_is_zero(kst1)) {
+    // multiply by zero
+    for(int i=0; i<n2; i++) { bls12_381_r_mont_set_zero( TGT(i) ); }
+    return;
+  }
+  if (bls12_381_r_mont_is_one(kst1)) {
+    // multiply by one
+    for(int i=0; i<n2; i++) { bls12_381_r_mont_copy( SRC2(i) , TGT(i) ); }
+    return;
+  }
+  // generic scaling
   for(int i=0; i<n2; i++) {
     bls12_381_r_mont_mul( kst1 , SRC2(i) , TGT(i) );
   }

@@ -10,12 +10,14 @@
 module ZK.Algebra.Curves.BLS12_381.Poly
   ( Poly(..)
     -- * Coefficients
-  , coeffs , coeffsArr
+  , coeffs
+  , coeffsArr
+  , coeffsFlatArr
     -- * Predicates
   , isZero , isEqual
     -- * Queries
   , degree
-  , constTerm
+  , constTermOf
   , kthCoeff
   , evalAt
     -- * Constant polynomials
@@ -23,11 +25,11 @@ module ZK.Algebra.Curves.BLS12_381.Poly
   , mbConst
   , zero , one
     -- * Creating polynomials
-  , mkPoly , mkPoly' , mkPolyA
+  , mkPoly , mkPoly' , mkPolyArr , mkPolyFlatArr
   , linearPoly
     -- * Pretty-printing
   , showPoly, showPoly'
-    -- * ring operations
+    -- * Ring operations
   , neg , add , sub
   , mul , mulNaive
     -- * Linear combinations
@@ -64,6 +66,17 @@ import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as F
 import qualified ZK.Algebra.Class.Poly  as P
 
+import ZK.Algebra.Class.Poly
+  ( polyIsOne
+  , constTermOf
+  , mbConst   
+  , constPoly 
+  , idPoly    
+  , linearPoly
+  , showPoly  
+  , showPoly' 
+  )
+
 --------------------------------------------------------------------------------
 
 newtype Poly = MkPoly (L.FlatArray Fr)
@@ -76,14 +89,20 @@ mkPoly = MkPoly . L.packFlatArrayFromList
 mkPoly' :: Int -> [Fr] -> Poly
 mkPoly' len xs = MkPoly $ L.packFlatArrayFromList' len xs
 
-mkPolyA :: Array Int Fr -> Poly
-mkPolyA = MkPoly . L.packFlatArray
+mkPolyArr :: Array Int Fr -> Poly
+mkPolyArr = MkPoly . L.packFlatArray
+
+mkPolyFlatArr :: L.FlatArray Fr -> Poly
+mkPolyFlatArr = MkPoly
 
 coeffs :: Poly -> [Fr]
 coeffs (MkPoly arr) = L.unpackFlatArrayToList arr
 
 coeffsArr :: Poly -> Array Int Fr
 coeffsArr (MkPoly arr) = L.unpackFlatArray arr
+
+coeffsFlatArr :: Poly -> L.FlatArray Fr
+coeffsFlatArr (MkPoly flat) = flat
 
 --------------------------------------------------------------------------------
 
@@ -116,15 +135,21 @@ instance F.Ring Poly where
   one       = ZK.Algebra.Curves.BLS12_381.Poly.one
   power     = error "exponentiation of polynomials is not implemented"
 
+instance L.WrappedArray Poly where
+  type Element Poly = Fr
+  wrapArray = MkPoly
+  unwrapArray (MkPoly flatArr) = flatArr
+
 instance P.Univariate Poly where
   type Coeff Poly = Fr
-  degree    = ZK.Algebra.Curves.BLS12_381.Poly.degree
-  coeffs    = ZK.Algebra.Curves.BLS12_381.Poly.coeffs
-  coeffsArr = ZK.Algebra.Curves.BLS12_381.Poly.coeffsArr
-  kthCoeff  = ZK.Algebra.Curves.BLS12_381.Poly.kthCoeff
-  mkPoly    = ZK.Algebra.Curves.BLS12_381.Poly.mkPoly
-  evalAt    = ZK.Algebra.Curves.BLS12_381.Poly.evalAt
-  scale    = ZK.Algebra.Curves.BLS12_381.Poly.scale
+  degree        = ZK.Algebra.Curves.BLS12_381.Poly.degree
+  kthCoeff      = ZK.Algebra.Curves.BLS12_381.Poly.kthCoeff
+  evalAt        = ZK.Algebra.Curves.BLS12_381.Poly.evalAt
+  scale         = ZK.Algebra.Curves.BLS12_381.Poly.scale
+  mkPoly        = ZK.Algebra.Curves.BLS12_381.Poly.mkPoly
+  coeffs        = ZK.Algebra.Curves.BLS12_381.Poly.coeffs
+  coeffsArr     = ZK.Algebra.Curves.BLS12_381.Poly.coeffsArr
+  coeffsFlatArr = ZK.Algebra.Curves.BLS12_381.Poly.coeffsFlatArr
 
 --------------------------------------------------------------------------------
 
@@ -139,34 +164,6 @@ one = constPoly 1
 -- | Checks whether the input is the constant one polynomial?
 isOne :: Poly -> Bool
 isOne p = (mbConst p == Just ZK.Algebra.Curves.BLS12_381.Fr.Mont.one)
-
--- | The constant term of a polynomial
-constTerm :: Poly -> Fr
-constTerm p = kthCoeff 0 p
-
--- | Is this a constant polynomial?
-mbConst :: Poly -> Maybe Fr
-mbConst p = if degree p <= 0 then Just (constTerm p) else Nothing
-
--- | Create a constant polynomial
-constPoly :: Fr -> Poly
-constPoly y = mkPoly [y]
-
--- | @linearPoly a b == a*x + b@
-linearPoly :: Fr -> Fr -> Poly
-linearPoly a b = mkPoly [b,a]
-
-showPoly :: Poly -> String
-showPoly = showPoly' True
-
-showPoly' :: Bool -> Poly -> String
-showPoly' newlines_flag poly =
-  case newlines_flag of
-    False -> intercalate " +"   terms
-    True  -> intercalate " +\n" terms
-  where
-    terms = zipWith f [0..] (coeffs poly)
-    f k x = ' ' : show x ++ " * x^" ++ show k
 
 -- | @rndPoly d@ generates a random polynomial of degree @d@
 rndPoly :: Int -> IO Poly
