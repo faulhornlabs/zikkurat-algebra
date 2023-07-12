@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "bls12_381_r_mont.h"
 
@@ -11,17 +12,19 @@
 #define MIN(a,b) ( ((a)<=(b)) ? (a) : (b) )
 #define MAX(a,b) ( ((a)>=(b)) ? (a) : (b) )
 
-#define SRC1(i) (src1 + i*NLIMBS)
-#define SRC2(i) (src2 + i*NLIMBS)
-#define TGT(i)  (tgt  + i*NLIMBS)
+#define SRC1(i) (src1 + (i)*NLIMBS)
+#define SRC2(i) (src2 + (i)*NLIMBS)
+#define TGT(i)  (tgt  + (i)*NLIMBS)
+#define QUOT(i) (quot + (i)*NLIMBS)
+#define REM(i)  (rem  + (i)*NLIMBS)
 
 
 // returns the degree of the polynomial (can be smaller than the size)
-// by definition, the constant zero polynomials has degree -1
+// by definition, the constant zero polynomial has degree -1
 int bls12_381_poly_mont_degree( int n1, const uint64_t *src1 ) {
   int deg = -1;
-  for(int i=0; i<n1; i++) {
-    if (!bls12_381_r_mont_is_zero( SRC1(i) )) { deg = i; }
+  for(int i=n1-1; i>=0; i--) {
+    if (!bls12_381_r_mont_is_zero( SRC1(i) )) { deg=i; break; }
   }
   return deg;
 }
@@ -225,14 +228,80 @@ void bls12_381_poly_mont_eval_at( int  n1, const uint64_t *src1, const uint64_t 
     uint64_t tmp[NLIMBS];
     if (i>0) { 
       bls12_381_r_mont_mul( SRC1(i) , run , tmp );
-      bls12_381_r_mont_add_inplace( tgt, tmp );      
+      bls12_381_r_mont_add_inplace( tgt, tmp ); 
     }
     else {
       // constant term
-      bls12_381_r_mont_copy( SRC1(i) , tgt );      
+      bls12_381_r_mont_copy( SRC1(i) , tgt );
     }
     if (i < n1-1) {
       bls12_381_r_mont_mul_inplace( run, loc );
     }
   }
+}
+
+
+// polynomial long division
+// allocate at least `deg(p) - deg(q) + 1` field elements for the quotient
+// and at least `deg(q)` for the remainder
+void bls12_381_poly_mont_long_div( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot, int nrem, uint64_t *rem ) {
+  int deg_p = bls12_381_poly_mont_degree( n1, src1 );
+  int deg_q = bls12_381_poly_mont_degree( n2, src2 );
+  assert( (!quot) || (nquot >= deg_p - deg_q + 1) );
+  assert( (!rem ) || (nrem  >= deg_q)             );
+
+  if (deg_q < 0) {
+    // division by zero
+    if (quot) { for(int j=0; j<nquot; j++) { bls12_381_r_mont_set_zero( QUOT(j) ); } }
+    if (rem ) { for(int j=0; j<nrem ; j++) { bls12_381_r_mont_set_zero( REM(j)  ); } }
+    return;
+  }
+
+  if (deg_p < deg_q) {
+    // quotient == 0
+    if (quot) { for(int j=0; j<nquot; j++) { bls12_381_r_mont_set_zero( QUOT(j) ); } }
+    if (rem ) {
+      for(int j=deg_p+1; j<nrem; j++) { bls12_381_r_mont_set_zero( REM(j) ); }
+      assert( nrem >= deg_p+1 ); 
+      memcpy( rem, src1, 8*(deg_p+1)*NLIMBS );
+    }
+    return;
+  }
+
+  if (quot) { for(int j=MAX(0,deg_p-deg_q+1); j<nquot; j++) { bls12_381_r_mont_set_zero( QUOT(j) ); } }
+  if (rem ) { for(int j=MAX(0,deg_q        ); j<nrem ; j++) { bls12_381_r_mont_set_zero( REM(j)  ); } }
+
+  uint64_t *tgt = malloc( 8*(deg_p+1)*NLIMBS );
+  assert( tgt != 0 );
+  memcpy( tgt, src1, 8*(deg_p+1)*NLIMBS );
+
+  uint64_t lead_inv[NLIMBS];
+  bls12_381_r_mont_inv( SRC2(deg_q) , lead_inv );
+
+  for(int k=deg_p; k>=deg_q; k--) {
+    uint64_t scl[NLIMBS];
+    bls12_381_r_mont_mul( TGT(k) , lead_inv , scl );
+    for(int i=0; i<=deg_q; i++) {
+      uint64_t tmp[NLIMBS];
+      bls12_381_r_mont_mul( SRC2(i) , scl , tmp );
+      bls12_381_r_mont_sub_inplace( TGT(k-deg_q+i) , tmp );
+    }
+    if (quot) { bls12_381_r_mont_copy( scl , QUOT(k-deg_q) ); } 
+  }
+
+  if (rem) { memcpy( rem , tgt , 8*NLIMBS * MIN(deg_p+1,deg_q) ); } 
+
+  free(tgt);
+}
+
+// polynomial quotient
+// allocate at least `deg(p) - deg(q) + 1` field elements for quotient
+void bls12_381_poly_mont_quot( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot ) {
+  bls12_381_poly_mont_long_div( n1, src1, n2, src2, nquot, quot, 0, 0 );
+}
+
+// polynomial remainder
+// allocate at least `deg(q)` field elements for the remainder
+void bls12_381_poly_mont_rem( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nrem, uint64_t *rem ) {
+  bls12_381_poly_mont_long_div( n1, src1, n2, src2, 0, 0, nrem, rem );
 }

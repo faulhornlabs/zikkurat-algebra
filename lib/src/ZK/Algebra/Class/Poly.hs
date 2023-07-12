@@ -36,6 +36,12 @@ class (Ring p, Field (Coeff p), WrappedArray p, Element p ~ Coeff p) => Univaria
   coeffsArr :: p -> Array Int (Coeff p)
   -- | Coefficients as a FlatArray
   coeffsFlatArr :: p -> FlatArray (Coeff p)
+  -- | Polynomial long division
+  polyLongDiv :: p -> p -> (p,p)
+  -- | Polynomial quotient
+  polyQuot :: p -> p -> p
+  -- | Polynomial remainder
+  polyRem :: p -> p -> p
 
 --------------------------------------------------------------------------------
 -- * Some generic functions

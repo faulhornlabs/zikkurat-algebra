@@ -53,6 +53,10 @@ c_header (PolyParams{..}) =
   , "extern void " ++ prefix ++ "mul_naive( int n1, const uint64_t *src1, int n2, const uint64_t *src2, uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "lincomb( int K, const int *ns, const uint64_t **coeffs, const uint64_t **polys, uint64_t *tgt );"  
+  , ""
+  , "extern void " ++ prefix ++ "long_div( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot, int nrem, uint64_t *rem );"
+  , "extern void " ++ prefix ++ "quot    ( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot                          );"
+  , "extern void " ++ prefix ++ "rem     ( int n1, const uint64_t *src1, int n2, const uint64_t *src2,                            int nrem, uint64_t *rem );"
   ]
 
 --------------------------------------------------------------------------------
@@ -63,6 +67,7 @@ cBegin (PolyParams{..}) =
   , ""
   , "#include <stdint.h>"
   , "#include <assert.h>"
+  , "#include <stdio.h>"
   , ""
   , "#include \"" ++ pathBaseName c_path_r ++ ".h\""
   , ""
@@ -71,9 +76,11 @@ cBegin (PolyParams{..}) =
   , "#define MIN(a,b) ( ((a)<=(b)) ? (a) : (b) )"
   , "#define MAX(a,b) ( ((a)>=(b)) ? (a) : (b) )"
   , ""
-  , "#define SRC1(i) (src1 + i*NLIMBS)"
-  , "#define SRC2(i) (src2 + i*NLIMBS)"
-  , "#define TGT(i)  (tgt  + i*NLIMBS)"
+  , "#define SRC1(i) (src1 + (i)*NLIMBS)"
+  , "#define SRC2(i) (src2 + (i)*NLIMBS)"
+  , "#define TGT(i)  (tgt  + (i)*NLIMBS)"
+  , "#define QUOT(i) (quot + (i)*NLIMBS)"
+  , "#define REM(i)  (rem  + (i)*NLIMBS)"
   , ""
   ]
 
@@ -104,9 +111,10 @@ hsBegin (PolyParams{..}) =
   , "  , constPoly"
   , "  , mbConst"
   , "  , zero , one"
+  , "    -- * Special polynomials"
+  , "  , idPoly , linearPoly"
   , "    -- * Creating polynomials"
   , "  , mkPoly , mkPoly' , mkPolyArr , mkPolyFlatArr"
-  , "  , linearPoly"
   , "    -- * Pretty-printing"
   , "  , showPoly, showPoly'"
   , "    -- * Ring operations"
@@ -115,6 +123,8 @@ hsBegin (PolyParams{..}) =
   , "    -- * Linear combinations"
   , "  , scale"
 --  , "  , linComb"
+  , "    -- * Polynomial division"
+  , "  , longDiv , quot , rem"
   , "    -- * Random"
   , "  , rndPoly , rnd"
   , "  )"  
@@ -122,8 +132,8 @@ hsBegin (PolyParams{..}) =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
-  , "import Prelude  hiding (div)"
-  , "import GHC.Real hiding (div)"
+  , "import Prelude  hiding (div,quot,rem)"
+  , "import GHC.Real hiding (div,quot,rem)"
   , ""
   , "import Data.Bits"
   , "import Data.Word"
@@ -231,6 +241,9 @@ hsBegin (PolyParams{..}) =
   , "  coeffs        = " ++ hsModule hs_path ++ ".coeffs"
   , "  coeffsArr     = " ++ hsModule hs_path ++ ".coeffsArr"
   , "  coeffsFlatArr = " ++ hsModule hs_path ++ ".coeffsFlatArr"
+  , "  polyLongDiv   = " ++ hsModule hs_path ++ ".longDiv"
+  , "  polyQuot      = " ++ hsModule hs_path ++ ".quot"
+  , "  polyRem       = " ++ hsModule hs_path ++ ".rem"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -419,11 +432,11 @@ hsPolyBasics (PolyParams{..}) =
 cPolyBasics :: PolyParams -> Code
 cPolyBasics (PolyParams{..}) =
   [ "// returns the degree of the polynomial (can be smaller than the size)"
-  , "// by definition, the constant zero polynomials has degree -1"
+  , "// by definition, the constant zero polynomial has degree -1"
   , "int " ++ prefix ++ "degree( int n1, const uint64_t *src1 ) {"
   , "  int deg = -1;"
-  , "  for(int i=0; i<n1; i++) {"
-  , "    if (!" ++ prefix_r ++ "is_zero( SRC1(i) )) { deg = i; }"
+  , "  for(int i=n1-1; i>=0; i--) {"
+  , "    if (!" ++ prefix_r ++ "is_zero( SRC1(i) )) { deg=i; break; }"
   , "  }"
   , "  return deg;"
   , "}"
@@ -627,11 +640,11 @@ cPolyBasics (PolyParams{..}) =
   , "    uint64_t tmp[NLIMBS];"
   , "    if (i>0) { "
   , "      " ++ prefix_r ++ "mul( SRC1(i) , run , tmp );"
-  , "      " ++ prefix_r ++ "add_inplace( tgt, tmp );      "
+  , "      " ++ prefix_r ++ "add_inplace( tgt, tmp ); "
   , "    }"
   , "    else {"
   , "      // constant term"
-  , "      " ++ prefix_r ++ "copy( SRC1(i) , tgt );      "
+  , "      " ++ prefix_r ++ "copy( SRC1(i) , tgt );"
   , "    }"
   , "    if (i < n1-1) {"
   , "      " ++ prefix_r ++ "mul_inplace( run, loc );"
@@ -642,16 +655,140 @@ cPolyBasics (PolyParams{..}) =
 
 --------------------------------------------------------------------------------
 
+hsPolyDiv :: PolyParams -> Code
+hsPolyDiv (PolyParams{..}) =  
+  [ "foreign import ccall unsafe \"" ++ prefix ++ "long_div\" c_" ++ prefix ++ "long_div :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "quot\"     c_" ++ prefix ++ "quot     :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "rem\"      c_" ++ prefix ++ "rem      :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO ()"
+  , "" 
+  , "{-# NOINLINE longDiv #-}"
+  , "-- | Polynomial long division"
+  , "longDiv :: " ++ typeName ++ " -> " ++ typeName ++ " -> (" ++ typeName ++ ", " ++ typeName ++ ")"
+  , "longDiv poly1@(XPoly n1 fptr1) poly2@(XPoly n2 fptr2) = unsafePerformIO $ do"
+  , "  let d2 = degree poly2"
+  , "  let nq = max 0 (n1-d2)"
+  , "  let nr = max 0 d2"
+  , "  fptr3 <- mallocForeignPtrArray (nq*" ++ show nlimbs ++ ")"
+  , "  fptr4 <- mallocForeignPtrArray (nr*" ++ show nlimbs ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        withForeignPtr fptr4 $ \\ptr4 -> do"
+  , "          c_" ++ prefix ++ "long_div (fromIntegral n1) ptr1 (fromIntegral n2) ptr2 (fromIntegral nq) ptr3 (fromIntegral nr) ptr4"
+  , "  return (XPoly nq fptr3, XPoly nr fptr4)"
+  , "" 
+  , "{-# NOINLINE quot #-}"
+  , "-- | Polynomial quotient"
+  , "quot :: " ++ typeName ++ " -> " ++ typeName ++ " -> " ++ typeName 
+  , "quot poly1@(XPoly n1 fptr1) poly2@(XPoly n2 fptr2) = unsafePerformIO $ do"
+  , "  let d2 = degree poly2"
+  , "  let nq = max 0 (n1-d2)"
+  , "  fptr3 <- mallocForeignPtrArray (nq*" ++ show nlimbs ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "quot (fromIntegral n1) ptr1 (fromIntegral n2) ptr2 (fromIntegral nq) ptr3"
+  , "  return (XPoly nq fptr3)"
+  , "" 
+  , "{-# NOINLINE rem #-}"
+  , "-- | Polynomial remainder"
+  , "rem :: " ++ typeName ++ " -> " ++ typeName ++ " -> " ++ typeName 
+  , "rem poly1@(XPoly n1 fptr1) poly2@(XPoly n2 fptr2) = unsafePerformIO $ do"
+  , "  let d2 = degree poly2"
+  , "  let nr = max 0 d2"
+  , "  fptr4 <- mallocForeignPtrArray (nr*" ++ show nlimbs ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr4 $ \\ptr4 -> do"
+  , "        c_" ++ prefix ++ "rem (fromIntegral n1) ptr1 (fromIntegral n2) ptr2 (fromIntegral nr) ptr4"
+  , "  return (XPoly nr fptr4)"
+  ]
+
+--------------------------------------------------------------------------------
+
+cPolyDiv :: PolyParams -> Code
+cPolyDiv (PolyParams{..}) = 
+  [ ""
+  , "// polynomial long division"
+  , "// allocate at least `deg(p) - deg(q) + 1` field elements for the quotient"
+  , "// and at least `deg(q)` for the remainder"
+  , "void " ++ prefix ++ "long_div( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot, int nrem, uint64_t *rem ) {"
+  , "  int deg_p = " ++ prefix ++ "degree( n1, src1 );"
+  , "  int deg_q = " ++ prefix ++ "degree( n2, src2 );"
+  , "  assert( (!quot) || (nquot >= deg_p - deg_q + 1) );"
+  , "  assert( (!rem ) || (nrem  >= deg_q)             );"
+  , ""
+  , "  if (deg_q < 0) {"
+  , "    // division by zero"
+  , "    if (quot) { for(int j=0; j<nquot; j++) { " ++ prefix_r ++ "set_zero( QUOT(j) ); } }"
+  , "    if (rem ) { for(int j=0; j<nrem ; j++) { " ++ prefix_r ++ "set_zero( REM(j)  ); } }"
+  , "    return;"
+  , "  }"
+  , ""
+  , "  if (deg_p < deg_q) {"
+  , "    // quotient == 0"
+  , "    if (quot) { for(int j=0; j<nquot; j++) { " ++ prefix_r ++ "set_zero( QUOT(j) ); } }"
+  , "    if (rem ) {"
+  , "      for(int j=deg_p+1; j<nrem; j++) { " ++ prefix_r ++ "set_zero( REM(j) ); }"
+  , "      assert( nrem >= deg_p+1 ); "
+  , "      memcpy( rem, src1, 8*(deg_p+1)*NLIMBS );"
+  , "    }"
+  , "    return;"
+  , "  }"
+  , ""
+  , "  if (quot) { for(int j=MAX(0,deg_p-deg_q+1); j<nquot; j++) { " ++ prefix_r ++ "set_zero( QUOT(j) ); } }"
+  , "  if (rem ) { for(int j=MAX(0,deg_q        ); j<nrem ; j++) { " ++ prefix_r ++ "set_zero( REM(j)  ); } }"
+  , ""
+  , "  uint64_t *tgt = malloc( 8*(deg_p+1)*NLIMBS );"
+  , "  assert( tgt != 0 );"
+  , "  memcpy( tgt, src1, 8*(deg_p+1)*NLIMBS );"
+  , ""
+  , "  uint64_t lead_inv[NLIMBS];" 
+  , "  " ++ prefix_r ++ "inv( SRC2(deg_q) , lead_inv );"
+  , ""
+  , "  for(int k=deg_p; k>=deg_q; k--) {"
+  , "    uint64_t scl[NLIMBS];" 
+  , "    " ++ prefix_r ++ "mul( TGT(k) , lead_inv , scl );"
+  , "    for(int i=0; i<=deg_q; i++) {"
+  , "      uint64_t tmp[NLIMBS];" 
+  , "      " ++ prefix_r ++ "mul( SRC2(i) , scl , tmp );"
+  , "      " ++ prefix_r ++ "sub_inplace( TGT(k-deg_q+i) , tmp );"
+  , "    }"
+  , "    if (quot) { " ++ prefix_r ++ "copy( scl , QUOT(k-deg_q) ); } "
+  , "  }"
+  , "" 
+  , "  if (rem) { memcpy( rem , tgt , 8*NLIMBS * MIN(deg_p+1,deg_q) ); } "
+  , "" 
+  , "  free(tgt);"
+  , "}"
+  , ""
+  , "// polynomial quotient"
+  , "// allocate at least `deg(p) - deg(q) + 1` field elements for quotient"
+  , "void " ++ prefix ++ "quot( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot ) {"
+  , "  " ++ prefix ++ "long_div( n1, src1, n2, src2, nquot, quot, 0, 0 );"
+  , "}"
+  , ""
+  , "// polynomial remainder"
+  , "// allocate at least `deg(q)` field elements for the remainder"
+  , "void " ++ prefix ++ "rem( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nrem, uint64_t *rem ) {"
+  , "  " ++ prefix ++ "long_div( n1, src1, n2, src2, 0, 0, nrem, rem );"
+  , "}"
+  ]
+
+--------------------------------------------------------------------------------
+
 c_code :: PolyParams -> Code
 c_code params = concat $ map ("":)
   [ cBegin      params
   , cPolyBasics params
+  , cPolyDiv    params
   ]
 
 hs_code :: PolyParams -> Code
 hs_code params@(PolyParams{..}) = concat $ map ("":)
   [ hsBegin      params
   , hsPolyBasics params
+  , hsPolyDiv    params
   ]
 
 --------------------------------------------------------------------------------

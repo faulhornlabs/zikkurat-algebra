@@ -24,9 +24,10 @@ module ZK.Algebra.Curves.BLS12_381.Poly
   , constPoly
   , mbConst
   , zero , one
+    -- * Special polynomials
+  , idPoly , linearPoly
     -- * Creating polynomials
   , mkPoly , mkPoly' , mkPolyArr , mkPolyFlatArr
-  , linearPoly
     -- * Pretty-printing
   , showPoly, showPoly'
     -- * Ring operations
@@ -34,6 +35,8 @@ module ZK.Algebra.Curves.BLS12_381.Poly
   , mul , mulNaive
     -- * Linear combinations
   , scale
+    -- * Polynomial division
+  , longDiv , quot , rem
     -- * Random
   , rndPoly , rnd
   )
@@ -41,8 +44,8 @@ module ZK.Algebra.Curves.BLS12_381.Poly
 
 --------------------------------------------------------------------------------
 
-import Prelude  hiding (div)
-import GHC.Real hiding (div)
+import Prelude  hiding (div,quot,rem)
+import GHC.Real hiding (div,quot,rem)
 
 import Data.Bits
 import Data.Word
@@ -150,6 +153,9 @@ instance P.Univariate Poly where
   coeffs        = ZK.Algebra.Curves.BLS12_381.Poly.coeffs
   coeffsArr     = ZK.Algebra.Curves.BLS12_381.Poly.coeffsArr
   coeffsFlatArr = ZK.Algebra.Curves.BLS12_381.Poly.coeffsFlatArr
+  polyLongDiv   = ZK.Algebra.Curves.BLS12_381.Poly.longDiv
+  polyQuot      = ZK.Algebra.Curves.BLS12_381.Poly.quot
+  polyRem       = ZK.Algebra.Curves.BLS12_381.Poly.rem
 
 --------------------------------------------------------------------------------
 
@@ -294,3 +300,49 @@ mulNaive (XPoly n1 fptr1) (XPoly n2 fptr2) = unsafePerformIO $ do
       withForeignPtr fptr3 $ \ptr3 -> do
         c_bls12_381_poly_mont_mul_naive (fromIntegral n1) ptr1 (fromIntegral n2) ptr2 ptr3
   return (XPoly n3 fptr3)
+
+foreign import ccall unsafe "bls12_381_poly_mont_long_div" c_bls12_381_poly_mont_long_div :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_poly_mont_quot"     c_bls12_381_poly_mont_quot     :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_poly_mont_rem"      c_bls12_381_poly_mont_rem      :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO ()
+
+{-# NOINLINE longDiv #-}
+-- | Polynomial long division
+longDiv :: Poly -> Poly -> (Poly, Poly)
+longDiv poly1@(XPoly n1 fptr1) poly2@(XPoly n2 fptr2) = unsafePerformIO $ do
+  let d2 = degree poly2
+  let nq = max 0 (n1-d2)
+  let nr = max 0 d2
+  fptr3 <- mallocForeignPtrArray (nq*4)
+  fptr4 <- mallocForeignPtrArray (nr*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        withForeignPtr fptr4 $ \ptr4 -> do
+          c_bls12_381_poly_mont_long_div (fromIntegral n1) ptr1 (fromIntegral n2) ptr2 (fromIntegral nq) ptr3 (fromIntegral nr) ptr4
+  return (XPoly nq fptr3, XPoly nr fptr4)
+
+{-# NOINLINE quot #-}
+-- | Polynomial quotient
+quot :: Poly -> Poly -> Poly
+quot poly1@(XPoly n1 fptr1) poly2@(XPoly n2 fptr2) = unsafePerformIO $ do
+  let d2 = degree poly2
+  let nq = max 0 (n1-d2)
+  fptr3 <- mallocForeignPtrArray (nq*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bls12_381_poly_mont_quot (fromIntegral n1) ptr1 (fromIntegral n2) ptr2 (fromIntegral nq) ptr3
+  return (XPoly nq fptr3)
+
+{-# NOINLINE rem #-}
+-- | Polynomial remainder
+rem :: Poly -> Poly -> Poly
+rem poly1@(XPoly n1 fptr1) poly2@(XPoly n2 fptr2) = unsafePerformIO $ do
+  let d2 = degree poly2
+  let nr = max 0 d2
+  fptr4 <- mallocForeignPtrArray (nr*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr4 $ \ptr4 -> do
+        c_bls12_381_poly_mont_rem (fromIntegral n1) ptr1 (fromIntegral n2) ptr2 (fromIntegral nr) ptr4
+  return (XPoly nr fptr4)

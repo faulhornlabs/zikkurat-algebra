@@ -16,3 +16,7 @@ extern void bn128_poly_mont_scale( const uint64_t *kst1, int n2, const uint64_t 
 extern void bn128_poly_mont_mul_naive( int n1, const uint64_t *src1, int n2, const uint64_t *src2, uint64_t *tgt );
 
 extern void bn128_poly_mont_lincomb( int K, const int *ns, const uint64_t **coeffs, const uint64_t **polys, uint64_t *tgt );
+
+extern void bn128_poly_mont_long_div( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot, int nrem, uint64_t *rem );
+extern void bn128_poly_mont_quot    ( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot                          );
+extern void bn128_poly_mont_rem     ( int n1, const uint64_t *src1, int n2, const uint64_t *src2,                            int nrem, uint64_t *rem );

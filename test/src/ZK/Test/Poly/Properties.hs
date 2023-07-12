@@ -107,7 +107,8 @@ genericRingProps =
 
 specificPolyProps :: [PolyProp]
 specificPolyProps = 
-  [ PolyProp1  prop_neg_vs_ref          "neg vs. reference" 
+  [ PolyProp1  prop_degree_vs_ref       "degree vs. reference"
+  , PolyProp1  prop_neg_vs_ref          "neg vs. reference" 
   , PolyProp2  prop_add_vs_ref          "add vs. reference" 
   , PolyProp2  prop_sub_vs_ref          "sub vs. reference" 
   , PolyPropF1 prop_scale_vs_ref        "scale vs. reference" 
@@ -119,6 +120,10 @@ specificPolyProps =
   , PolyProp1  prop_const_term          "constTerm"
   , PolyPropFF prop_mbConst             "mbConst"
   , PolyProp1  prop_kthCoeff            "kthCoeff"
+  , PolyProp2  prop_longdiv             "long division"
+  , PolyProp2  prop_longdiv_quot_rem    "long_div vs. quot/rem"
+  , PolyProp1  prop_longdiv_itself      "p `div` p"
+  , PolyPropF1 prop_longdiv_kp_plus_13  "(k*p+13) `div` p"
   ]
 
 --------------------------------------------------------------------------------
@@ -204,6 +209,11 @@ prop_sub_mul_right_distributive x y z = x * (y - z) ==  x*y - x*z
 --------------------------------------------------------------------------------
 -- * Reference implementations
 
+degreeRef :: Univariate p => p -> Int
+degreeRef p = go (-1) [0..] (coeffs p) where
+  go d _      []     = d
+  go d (j:js) (c:cs) = go (if c /= 0 then j else d) js cs
+
 longZipWith :: (a -> b -> c) -> a -> b -> [a] -> [b] -> [c]
 longZipWith f x0 y0 = go where
   go (x:xs) (y:ys) = f x  y  : go xs ys
@@ -247,6 +257,9 @@ evalRef x p = sum (zipWith (*) cfs xs) where
 --------------------------------------------------------------------------------
 -- * Polynomial properties
 
+prop_degree_vs_ref :: Univariate p => p -> Bool
+prop_degree_vs_ref p = degree p == degreeRef p
+
 prop_neg_vs_ref :: Univariate p => p -> Bool
 prop_neg_vs_ref p = (negate p == negRef p)
 
@@ -288,5 +301,21 @@ prop_kthCoeff :: Univariate p => p -> Bool
 prop_kthCoeff p = list1 == list2 where
   list1 = [0,0] ++ coeffs p ++ [0,0]
   list2 = [ kthCoeff k p | k <- [-2..(2 + degree p)] ]
+
+prop_longdiv :: Univariate p => p -> p -> Bool
+prop_longdiv p1 p2 = (degree r < degree p2) && (p1 == p2*q + r) where
+  (q,r) = polyLongDiv p1 p2
+
+prop_longdiv_quot_rem :: Univariate p => p -> p -> Bool
+prop_longdiv_quot_rem p q = polyLongDiv p q == (polyQuot p q, polyRem p q)
+
+prop_longdiv_itself :: Univariate p => p -> Bool
+prop_longdiv_itself p = isZero p || polyLongDiv p p == (1,0)
+
+prop_longdiv_kp_plus_13 :: Univariate p => Coeff p -> p -> Bool
+prop_longdiv_kp_plus_13 k p 
+  =  degree p <= 0 
+  || polyLongDiv (scale k p + 13) p == (mkPoly [k],13)
+
 
 --------------------------------------------------------------------------------
