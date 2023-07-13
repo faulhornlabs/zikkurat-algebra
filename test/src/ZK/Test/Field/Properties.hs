@@ -111,6 +111,8 @@ ringProps =
   , RingProp1 prop_mul_right_unit              "mul right unit"
   , RingProp2 prop_mul_commutative             "mul comm"
   , RingProp3 prop_mul_associative             "mul assoc"
+  , RingProp1 prop_square_def                  "square def"
+  , RingProp2 prop_square_distrib              "square distributive"
   , RingProp3 prop_add_mul_left_distributive   "add+mul left distr"
   , RingProp3 prop_add_mul_right_distributive  "add+mul right distr"
   , RingProp3 prop_sub_mul_left_distributive   "sub+mul left distr"
@@ -128,6 +130,8 @@ fieldOnlyProps =
   [ FieldProp1 prop_mul_left_inv               "mul left inf"
   , FieldProp1 prop_mul_right_inv              "mul right inf"
   , FieldProp2 prop_div_def                    "div def"
+  , FieldProp1 prop_inv_def                    "inv def"
+  , FieldProp2 prop_div_test                   "div defining prop."
   , FieldProp1 prop_inv_fermat                 "inv == fermat"
   , FieldProp1 prop_fermat_1                   "fermat/1"
   , FieldProp1 prop_fermat_2                   "fermat/2"
@@ -192,16 +196,23 @@ prop_is_equal x = and
 ----------------------------------------
 
 prop_mul_left_unit :: Ring a => a -> Bool
-prop_mul_left_unit x = one * x == x
+prop_mul_left_unit x = (one * x == x)
 
 prop_mul_right_unit :: Ring a => a -> Bool
-prop_mul_right_unit x = x * one == x
+prop_mul_right_unit x = (x * one == x)
 
 prop_mul_commutative :: Ring a => a -> a -> Bool
 prop_mul_commutative x y = (x * y == y * x)
 
 prop_mul_associative :: Ring a => a -> a -> a -> Bool
 prop_mul_associative x y z = ((x * y) * z) == (x * (y * z))
+
+prop_square_def :: Ring a => a -> Bool
+prop_square_def x = (square x == x*x)
+
+prop_square_distrib :: Ring a => a -> a -> Bool
+prop_square_distrib x y =  (square (x+y) == square x + 2*x*y + square y)
+                        && (square (x-y) == square x - 2*x*y + square y)
 
 ----------------------------------------
 
@@ -248,6 +259,12 @@ prop_mul_right_inv x = isZero x || x * (inverse x) == one
 
 prop_div_def :: Field a => a -> a -> Bool
 prop_div_def x y = (x * (inverse y) == x / y)
+
+prop_inv_def :: Field a => a -> Bool
+prop_inv_def x = (inverse x == 1 / x)
+
+prop_div_test :: Field a => a -> a -> Bool
+prop_div_test x y = isZero y || (x/y)*y == x
 
 prop_inv_fermat :: forall a. Field a => a -> Bool
 prop_inv_fermat x = (inverse x) == power x (p - 2) where p = charPxy (Proxy @a)

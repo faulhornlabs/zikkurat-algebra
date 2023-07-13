@@ -16,6 +16,7 @@ extern uint8_t  bigint256_add( const uint64_t *src1, const uint64_t *src2, uint6
 extern uint8_t  bigint256_sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 extern void     bigint256_sqr( const uint64_t *src , uint64_t *tgt );
 extern void     bigint256_mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
+extern void     bigint256_sqr_truncated( const uint64_t *src1,                       uint64_t *tgt );
 extern void     bigint256_mul_truncated( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 
 extern void     bigint256_neg_inplace( uint64_t *tgt );

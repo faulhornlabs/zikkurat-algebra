@@ -50,6 +50,7 @@ c_header (Params{..}) =
   , "extern uint8_t  " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , "extern void     " ++ prefix ++ "sqr( const uint64_t *src , uint64_t *tgt );"
   , "extern void     " ++ prefix ++ "mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void     " ++ prefix ++ "sqr_truncated( const uint64_t *src1,                       uint64_t *tgt );"
   , "extern void     " ++ prefix ++ "mul_truncated( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , ""
   , "extern void     " ++ prefix ++ "neg_inplace( uint64_t *tgt );"
@@ -174,10 +175,11 @@ hsBegin (Params{..}) =
   , "instance C.Ring " ++ typeName ++ " where"
   , "  ringNamePxy _ = \"" ++ typeName ++ "\""
   , "  ringSizePxy _ = " ++ show (2^(64*nlimbs)) 
-  , "  isZero = isZero"
-  , "  isOne  = isOne"
-  , "  zero   = zero"
-  , "  one    = one"
+  , "  isZero = " ++ hs_module ++ hs_basename ++ ".isZero"
+  , "  isOne  = " ++ hs_module ++ hs_basename ++ ".isOne"
+  , "  zero   = " ++ hs_module ++ hs_basename ++ ".zero"
+  , "  one    = " ++ hs_module ++ hs_basename ++ ".one"
+  , "  square = " ++ hs_module ++ hs_basename ++ ".sqr"
   , "  power  = C.ringPowerDefault"
   , ""
 --  , "----------------------------------------"
@@ -592,6 +594,7 @@ sqrBigInt (Params{..}) =
     , let j = m-i
     , i < nlimbs
     , j < nlimbs
+    , i <= j 
     ] ++
     if (m < (2*nlimbs-2)) then [ "  tgt[" ++ show (m+2) ++ "] = carry;" ] else []
   | m <- [0..2*(nlimbs-1)]
@@ -625,6 +628,49 @@ mulBigInt (Params{..}) =
     ] ++
     if (m < (2*nlimbs-2)) then [ "  tgt[" ++ show (m+2) ++ "] = carry;" ] else []
   | m <- [0..2*(nlimbs-1)]
+  , let tgt_lo_hi =  "tgt+" ++ show m ++ ", tgt+" ++ show (m+1) 
+  ] ++
+  [ "}"
+  ]
+
+sqrBigIntTruncated :: Params -> Code
+sqrBigIntTruncated (Params{..}) = 
+  [ "// squares an (unsigned) big integers of " ++ show nlimbs ++ " limbs,"
+  , "// and *truncates* the result " ++ show nlimbs ++ " limbs"
+  , "// (so this gives the ring of integers modulo 2^" ++ show (64*nlimbs) ++ ")"
+  , "void " ++ prefix ++ "sqr_truncated( const uint64_t *src1, uint64_t *tgt ) {"
+  , "  __uint128_t prod;" 
+  , "  uint64_t prod_hi, prod_lo;"
+  , "  uint64_t carry;"
+  , "  for(int m=0; m<" ++ show (nlimbs) ++ "; m++) { tgt[m] = 0; }"
+  ] ++ concat
+  [ [ "  // *** m = " ++ show m ++ " ***"
+    , "  carry  = 0;"
+    ] ++ concat
+    [ [ "  prod = ((__uint128_t) src1[" ++ show i ++ "]) * src1[" ++ show j ++"];"
+      , "  prod_lo = (uint64_t)(prod      );"
+      ] ++ 
+      (if (m < nlimbs - 1)
+         then [ "  prod_hi = (uint64_t)(prod >> 64);"
+              ] ++ 
+              (if i==j  
+                then [ "  carry += addcarry_u128_inplace( " ++ tgt_lo_hi ++ ", prod_lo, prod_hi );" ]
+                else [ "  carry += addcarry_u128_inplace( " ++ tgt_lo_hi ++ ", prod_lo, prod_hi );" 
+                     , "  carry += addcarry_u128_inplace( " ++ tgt_lo_hi ++ ", prod_lo, prod_hi );" 
+                     ]
+              )
+         else (if i==j  
+                then [ "  tgt[" ++ show m ++ "] += prod_lo;"     ]
+                else [ "  tgt[" ++ show m ++ "] += (2*prod_lo);" ]
+              ))
+    | i <- [0..m]
+    , let j = m-i
+    , i < nlimbs
+    , j < nlimbs
+    , i <= j
+    ] ++
+    if (m < (nlimbs-2)) then [ "  tgt[" ++ show (m+2) ++ "] = carry;" ] else []
+  | m <- [0..(nlimbs-1)]
   , let tgt_lo_hi =  "tgt+" ++ show m ++ ", tgt+" ++ show (m+1) 
   ] ++
   [ "}"
@@ -797,7 +843,9 @@ c_code params@(Params{..}) = concat $ map ("":)
   , scaleBigInt  params
   , sqrBigInt    params
   , mulBigInt    params
+    --
   , mulBigIntTruncated  params
+  , sqrBigIntTruncated  params
     --
   , shiftLeft    params
   , shiftRight   params

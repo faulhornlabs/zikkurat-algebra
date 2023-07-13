@@ -326,6 +326,38 @@ void bigint192_mul_truncated( const uint64_t *src1, const uint64_t *src2, uint64
   tgt[2] += prod_lo;
 }
 
+// squares an (unsigned) big integers of 3 limbs,
+// and *truncates* the result 3 limbs
+// (so this gives the ring of integers modulo 2^192)
+void bigint192_sqr_truncated( const uint64_t *src1, uint64_t *tgt ) {
+  __uint128_t prod;
+  uint64_t prod_hi, prod_lo;
+  uint64_t carry;
+  for(int m=0; m<3; m++) { tgt[m] = 0; }
+  // *** m = 0 ***
+  carry  = 0;
+  prod = ((__uint128_t) src1[0]) * src1[0];
+  prod_lo = (uint64_t)(prod      );
+  prod_hi = (uint64_t)(prod >> 64);
+  carry += addcarry_u128_inplace( tgt+0, tgt+1, prod_lo, prod_hi );
+  tgt[2] = carry;
+  // *** m = 1 ***
+  carry  = 0;
+  prod = ((__uint128_t) src1[0]) * src1[1];
+  prod_lo = (uint64_t)(prod      );
+  prod_hi = (uint64_t)(prod >> 64);
+  carry += addcarry_u128_inplace( tgt+1, tgt+2, prod_lo, prod_hi );
+  carry += addcarry_u128_inplace( tgt+1, tgt+2, prod_lo, prod_hi );
+  // *** m = 2 ***
+  carry  = 0;
+  prod = ((__uint128_t) src1[0]) * src1[2];
+  prod_lo = (uint64_t)(prod      );
+  tgt[2] += (2*prod_lo);
+  prod = ((__uint128_t) src1[1]) * src1[1];
+  prod_lo = (uint64_t)(prod      );
+  tgt[2] += prod_lo;
+}
+
 // shift left by 1 bit
 uint8_t bigint192_shift_left_by_1( const uint64_t *src, uint64_t *tgt) {
   uint64_t tmp[3];

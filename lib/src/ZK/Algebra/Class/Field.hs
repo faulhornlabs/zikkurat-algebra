@@ -30,6 +30,8 @@ class (Eq a, Show a, Rnd a, Num a) => Ring a where
   zero        :: a
   -- | the unit element
   one         :: a
+  -- | squaring
+  square      :: a -> a
   -- | exponentiation
   power       :: a -> Integer -> a      
 

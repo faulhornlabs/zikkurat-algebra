@@ -98,10 +98,11 @@ instance C.Rnd BigInt256 where
 instance C.Ring BigInt256 where
   ringNamePxy _ = "BigInt256"
   ringSizePxy _ = 115792089237316195423570985008687907853269984665640564039457584007913129639936
-  isZero = isZero
-  isOne  = isOne
-  zero   = zero
-  one    = one
+  isZero = ZK.Algebra.BigInt.BigInt256.isZero
+  isOne  = ZK.Algebra.BigInt.BigInt256.isOne
+  zero   = ZK.Algebra.BigInt.BigInt256.zero
+  one    = ZK.Algebra.BigInt.BigInt256.one
+  square = ZK.Algebra.BigInt.BigInt256.sqr
   power  = C.ringPowerDefault
 
 ----------------------------------------

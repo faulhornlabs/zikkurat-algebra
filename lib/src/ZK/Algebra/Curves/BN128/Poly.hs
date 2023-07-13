@@ -33,6 +33,7 @@ module ZK.Algebra.Curves.BN128.Poly
     -- * Ring operations
   , neg , add , sub
   , mul , mulNaive
+  , sqr
     -- * Linear combinations
   , scale
     -- * Polynomial division
@@ -127,6 +128,8 @@ instance Num Poly where
 
 mul = mulNaive       -- TEMPORARY !!!
 
+sqr x = mul x x      -- TEMPORARY ???
+
 instance F.Rnd Poly where
   rndIO = rnd
 
@@ -137,6 +140,7 @@ instance F.Ring Poly where
   isOne     = ZK.Algebra.Curves.BN128.Poly.isOne
   zero      = ZK.Algebra.Curves.BN128.Poly.zero
   one       = ZK.Algebra.Curves.BN128.Poly.one
+  square    = ZK.Algebra.Curves.BN128.Poly.sqr
   power     = error "exponentiation of polynomials is not implemented"
 
 instance L.WrappedArray Poly where

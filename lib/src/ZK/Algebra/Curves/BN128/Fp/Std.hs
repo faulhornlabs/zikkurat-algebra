@@ -109,10 +109,11 @@ instance C.Rnd Fp where
 instance C.Ring Fp where
   ringNamePxy _ = "BN128/Fp (standard repr.)"
   ringSizePxy _ = prime
-  isZero = isZero
-  isOne  = isOne
-  zero   = zero
-  one    = one
+  isZero = ZK.Algebra.Curves.BN128.Fp.Std.isZero
+  isOne  = ZK.Algebra.Curves.BN128.Fp.Std.isOne
+  zero   = ZK.Algebra.Curves.BN128.Fp.Std.zero
+  one    = ZK.Algebra.Curves.BN128.Fp.Std.one
+  square = ZK.Algebra.Curves.BN128.Fp.Std.sqr
   power x e = pow x (B.to (mod e (prime-1)))
 
 instance C.Field Fp where

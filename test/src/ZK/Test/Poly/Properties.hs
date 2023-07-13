@@ -99,6 +99,8 @@ genericRingProps =
   , PolyProp1 prop_mul_right_unit              "mul right unit"
   , PolyProp2 prop_mul_commutative             "mul comm"
   , PolyProp3 prop_mul_associative             "mul assoc"
+  , PolyProp1 prop_square_def                  "square def"
+  , PolyProp2 prop_square_distrib              "square distributive"
   , PolyProp3 prop_add_mul_left_distributive   "add+mul left distr"
   , PolyProp3 prop_add_mul_right_distributive  "add+mul right distr"
   , PolyProp3 prop_sub_mul_left_distributive   "sub+mul left distr"
@@ -193,6 +195,13 @@ prop_mul_commutative x y = (x * y == y * x)
 
 prop_mul_associative :: Ring a => a -> a -> a -> Bool
 prop_mul_associative x y z = ((x * y) * z) == (x * (y * z))
+
+prop_square_def :: Ring a => a -> Bool
+prop_square_def x = (square x == x*x)
+
+prop_square_distrib :: Ring a => a -> a -> Bool
+prop_square_distrib x y =  (square (x+y) == square x + 2*x*y + square y)
+                        && (square (x-y) == square x - 2*x*y + square y)
 
 ----------------------------------------
 

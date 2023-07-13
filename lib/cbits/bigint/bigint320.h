@@ -16,6 +16,7 @@ extern uint8_t  bigint320_add( const uint64_t *src1, const uint64_t *src2, uint6
 extern uint8_t  bigint320_sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 extern void     bigint320_sqr( const uint64_t *src , uint64_t *tgt );
 extern void     bigint320_mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
+extern void     bigint320_sqr_truncated( const uint64_t *src1,                       uint64_t *tgt );
 extern void     bigint320_mul_truncated( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 
 extern void     bigint320_neg_inplace( uint64_t *tgt );
