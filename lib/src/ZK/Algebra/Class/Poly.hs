@@ -42,6 +42,10 @@ class (Ring p, Field (Coeff p), WrappedArray p, Element p ~ Coeff p) => Univaria
   polyQuot :: p -> p -> p
   -- | Polynomial remainder
   polyRem :: p -> p -> p
+  -- | Divide by the coset vanishing polynomial @(x^n - eta)@
+  divByVanishing :: p -> (Int, Coeff p) -> (p,p)
+  -- | Quotient by the coset vanishing polynomial @(x^n - eta)@
+  quotByVanishing :: p -> (Int, Coeff p) -> Maybe p
 
 --------------------------------------------------------------------------------
 -- * Some generic functions

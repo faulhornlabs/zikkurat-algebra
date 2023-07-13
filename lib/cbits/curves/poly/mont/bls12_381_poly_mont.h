@@ -20,3 +20,6 @@ extern void bls12_381_poly_mont_lincomb( int K, const int *ns, const uint64_t **
 extern void bls12_381_poly_mont_long_div( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot, int nrem, uint64_t *rem );
 extern void bls12_381_poly_mont_quot    ( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot                          );
 extern void bls12_381_poly_mont_rem     ( int n1, const uint64_t *src1, int n2, const uint64_t *src2,                            int nrem, uint64_t *rem );
+
+extern void    bls12_381_poly_mont_div_by_vanishing ( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot, int nrem, uint64_t *rem );
+extern uint8_t bls12_381_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot );

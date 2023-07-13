@@ -124,6 +124,8 @@ specificPolyProps =
   , PolyProp2  prop_longdiv_quot_rem    "long_div vs. quot/rem"
   , PolyProp1  prop_longdiv_itself      "p `div` p"
   , PolyPropF1 prop_longdiv_kp_plus_13  "(k*p+13) `div` p"
+  , PolyPropF1 prop_divByVanishing      "divByVanishing"
+  , PolyPropF1 prop_quotByVanishing     "quotByVanishing"
   ]
 
 --------------------------------------------------------------------------------
@@ -317,5 +319,19 @@ prop_longdiv_kp_plus_13 k p
   =  degree p <= 0 
   || polyLongDiv (scale k p + 13) p == (mkPoly [k],13)
 
+-- x^n - eta
+myVanishingPoly :: Univariate p => (Int,Coeff p) -> p
+myVanishingPoly (n,eta) = mkPoly $ [negate eta] ++ replicate (n-1) 0 ++ [1]
+
+prop_divByVanishing :: Univariate p => Coeff p -> p -> Bool
+prop_divByVanishing eta p1 = 
+  let binom = (5,eta) 
+  in  divByVanishing p1 binom == polyLongDiv p1 (myVanishingPoly binom)
+
+prop_quotByVanishing :: Univariate p => Coeff p -> p -> Bool
+prop_quotByVanishing eta p0 = 
+  let binom = (4,eta) 
+  in  (quotByVanishing (p0 * myVanishingPoly binom    ) binom == Just p0) &&
+      (quotByVanishing (p0 * myVanishingPoly binom + 1) binom == Nothing)
 
 --------------------------------------------------------------------------------

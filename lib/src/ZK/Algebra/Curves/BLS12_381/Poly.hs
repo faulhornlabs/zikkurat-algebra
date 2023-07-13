@@ -37,6 +37,7 @@ module ZK.Algebra.Curves.BLS12_381.Poly
   , scale
     -- * Polynomial division
   , longDiv , quot , rem
+  , divByVanishing, quotByVanishing
     -- * Random
   , rndPoly , rnd
   )
@@ -145,17 +146,19 @@ instance L.WrappedArray Poly where
 
 instance P.Univariate Poly where
   type Coeff Poly = Fr
-  degree        = ZK.Algebra.Curves.BLS12_381.Poly.degree
-  kthCoeff      = ZK.Algebra.Curves.BLS12_381.Poly.kthCoeff
-  evalAt        = ZK.Algebra.Curves.BLS12_381.Poly.evalAt
-  scale         = ZK.Algebra.Curves.BLS12_381.Poly.scale
-  mkPoly        = ZK.Algebra.Curves.BLS12_381.Poly.mkPoly
-  coeffs        = ZK.Algebra.Curves.BLS12_381.Poly.coeffs
-  coeffsArr     = ZK.Algebra.Curves.BLS12_381.Poly.coeffsArr
-  coeffsFlatArr = ZK.Algebra.Curves.BLS12_381.Poly.coeffsFlatArr
-  polyLongDiv   = ZK.Algebra.Curves.BLS12_381.Poly.longDiv
-  polyQuot      = ZK.Algebra.Curves.BLS12_381.Poly.quot
-  polyRem       = ZK.Algebra.Curves.BLS12_381.Poly.rem
+  degree          = ZK.Algebra.Curves.BLS12_381.Poly.degree
+  kthCoeff        = ZK.Algebra.Curves.BLS12_381.Poly.kthCoeff
+  evalAt          = ZK.Algebra.Curves.BLS12_381.Poly.evalAt
+  scale           = ZK.Algebra.Curves.BLS12_381.Poly.scale
+  mkPoly          = ZK.Algebra.Curves.BLS12_381.Poly.mkPoly
+  coeffs          = ZK.Algebra.Curves.BLS12_381.Poly.coeffs
+  coeffsArr       = ZK.Algebra.Curves.BLS12_381.Poly.coeffsArr
+  coeffsFlatArr   = ZK.Algebra.Curves.BLS12_381.Poly.coeffsFlatArr
+  polyLongDiv     = ZK.Algebra.Curves.BLS12_381.Poly.longDiv
+  polyQuot        = ZK.Algebra.Curves.BLS12_381.Poly.quot
+  polyRem         = ZK.Algebra.Curves.BLS12_381.Poly.rem
+  divByVanishing  = ZK.Algebra.Curves.BLS12_381.Poly.divByVanishing
+  quotByVanishing = ZK.Algebra.Curves.BLS12_381.Poly.quotByVanishing
 
 --------------------------------------------------------------------------------
 
@@ -346,3 +349,37 @@ rem poly1@(XPoly n1 fptr1) poly2@(XPoly n2 fptr2) = unsafePerformIO $ do
       withForeignPtr fptr4 $ \ptr4 -> do
         c_bls12_381_poly_mont_rem (fromIntegral n1) ptr1 (fromIntegral n2) ptr2 (fromIntegral nr) ptr4
   return (XPoly nr fptr4)
+
+foreign import ccall unsafe "bls12_381_poly_mont_div_by_vanishing"  c_bls12_381_poly_mont_div_by_vanishing  :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_poly_mont_quot_by_vanishing" c_bls12_381_poly_mont_quot_by_vanishing :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO Word8
+
+-- | Divide by the coset vanishing polynomial @(x^n - eta)@.
+-- Returns quotient and remainder.
+divByVanishing :: Poly -> (Int, Fr) -> (Poly, Poly)
+divByVanishing poly1@(XPoly n1 fptr1) (expo_n, MkFr fptr2) = unsafePerformIO $ do
+  let d2 = expo_n
+  let nq = max 0 (n1-d2)
+  let nr = max 0 d2
+  fptr3 <- mallocForeignPtrArray (nq*4)
+  fptr4 <- mallocForeignPtrArray (nr*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        withForeignPtr fptr4 $ \ptr4 -> do
+          c_bls12_381_poly_mont_div_by_vanishing (fromIntegral n1) ptr1 (fromIntegral expo_n) ptr2 (fromIntegral nq) ptr3 (fromIntegral nr) ptr4
+  return (XPoly nq fptr3, XPoly nr fptr4)
+
+-- | Quotient by the coset vanishing polynomial @(x^n - eta)@.
+-- Returns @Nothing@ if the remainder is nonzero.
+quotByVanishing :: Poly -> (Int, Fr) -> Maybe Poly
+quotByVanishing poly1@(XPoly n1 fptr1) (expo_n, MkFr fptr2) = unsafePerformIO $ do
+  let d2 = expo_n
+  let nq = max 0 (n1-d2)
+  fptr3 <- mallocForeignPtrArray (nq*4)
+  cret <- withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bls12_381_poly_mont_quot_by_vanishing (fromIntegral n1) ptr1 (fromIntegral expo_n) ptr2 (fromIntegral nq) ptr3
+  return $ if (cret /= 0)
+    then Just (XPoly nq fptr3)
+    else Nothing

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "bn128_r_mont.h"
 
@@ -304,4 +306,108 @@ void bn128_poly_mont_quot( int n1, const uint64_t *src1, int n2, const uint64_t 
 // allocate at least `deg(q)` field elements for the remainder
 void bn128_poly_mont_rem( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nrem, uint64_t *rem ) {
   bn128_poly_mont_long_div( n1, src1, n2, src2, 0, 0, nrem, rem );
+}
+
+
+// divide by the vanishing polynomial of a coset `(x^n - eta)`
+// This should be much faster than the general-purpose long division
+// Remark: the case `eta = 1` corresponds to a subgroup
+// allocate at least `deg(p) - n + 1` field elements for the quotient
+// and at least `n` for the remainder
+void bn128_poly_mont_div_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot, int nrem, uint64_t *rem ) {
+  int deg_p = bn128_poly_mont_degree( n1, src1 );
+  int n = expo_n;
+  assert( quot );  // NOTE: quot cannot be NULL for this routine (or maybe we could allocate a temp buffer in that case?)
+  assert( (!quot) || (nquot >= deg_p - n + 1) );
+  assert( (!rem ) || (nrem  >= n)             );
+  assert( n >= 1 );
+
+  if (deg_p < n) {
+    // quotient == 0
+    if (quot) { for(int j=0; j<nquot; j++) { bn128_r_mont_set_zero( QUOT(j) ); } }
+    if (rem ) {
+      for(int j=deg_p+1; j<nrem; j++) { bn128_r_mont_set_zero( REM(j) ); }
+      assert( nrem >= deg_p+1 ); 
+      memcpy( rem, src1, 8*(deg_p+1)*NLIMBS );
+    }
+    return;
+  }
+
+  if (quot) { for(int j=MAX(0,deg_p-n+1); j<nquot; j++) { bn128_r_mont_set_zero( QUOT(j) ); } }
+  if (rem ) { for(int j=MAX(0,n        ); j<nrem ; j++) { bn128_r_mont_set_zero( REM(j)  ); } }
+
+  if (bn128_r_mont_is_one(eta)) {
+    // 
+    // eta = 1, we don't need to multiply by it
+    // 
+    for(int j=deg_p-n; j>=0; j--) {
+      if (j+n <= deg_p-n) {
+        // as[j+n] + bs[j+n]
+        bn128_r_mont_add( SRC1(j+n) , QUOT(j+n) , QUOT(j) );
+      }
+      else {
+        // bs[j+n] is zero
+        bn128_r_mont_copy( SRC1(j+n) , QUOT(j) );
+      }
+    }
+    if (rem) {
+      for(int j=0; j<n; j++) {
+        if (j <= deg_p-n) {
+          // as[j] + bs[j]
+          bn128_r_mont_add( SRC1(j) , QUOT(j) , REM(j) );
+        }
+        else {
+          // bs[j] is zero
+          bn128_r_mont_copy( SRC1(j) , REM(j) );
+        }
+      }
+    }
+  }
+  else {
+    // 
+    // eta != 1, generic case
+    // 
+    for(int j=deg_p-n; j>=0; j--) {
+      if (j+n <= deg_p-n) {
+        uint64_t tmp[NLIMBS];
+        // as[j+n] + eta * bs[j+n]
+        bn128_r_mont_mul( QUOT(j+n) , eta , tmp );
+        bn128_r_mont_add( SRC1(j+n) , tmp , QUOT(j) );
+      }
+      else {
+        // bs[j+n] is zero
+        bn128_r_mont_copy( SRC1(j+n) , QUOT(j) );
+      }
+    }
+    if (rem) {
+      for(int j=0; j<n; j++) {
+        if (j <= deg_p-n) {
+          uint64_t tmp[NLIMBS];
+          // as[j] + eta * bs[j]
+          bn128_r_mont_mul( QUOT(j) , eta , tmp );
+          bn128_r_mont_add( SRC1(j) , tmp , REM(j) );
+        }
+        else {
+          // bs[j] is zero
+          bn128_r_mont_copy( SRC1(j) , REM(j) );
+        }
+      }
+    }
+  }
+}
+
+// divide by the vanishing polynomial `x^n - eta`
+// returns True if the remainder is zero
+// TODO: this could be implemented with no allocation, but i don't want to copy-paste the whole code right now
+uint8_t bn128_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot ) {
+  int nrem = expo_n;
+  uint64_t *rem = malloc( 8*NLIMBS*nrem );
+  assert( rem != 0 );
+  bn128_poly_mont_div_by_vanishing( n1, src1, expo_n, eta, nquot, quot, nrem, rem );
+  int ok = 1;
+  for(int j=0; j<nrem; j++) {
+    if (!bn128_r_mont_is_zero(REM(j))) { ok = 0; break; }
+  }
+  free(rem);
+  return ok;
 }

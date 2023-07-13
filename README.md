@@ -92,18 +92,19 @@ TODO
 - [x] implement prime fields
 - [x] implement curves
 - [x] implement univariate polynomials
+- [ ] implement NTT and iNTT
 - [x] property-based test framework
 - [ ] unit-test framework
 - [ ] long division of bigints
 - [ ] square roots in prime fields 
 - [ ] hash-to-curve & better random curve points  
 - [ ] add benchmarking
+- [ ] implement field extensions
+- [ ] implement "G2" twisted curves
 - [ ] figure out a better meta-programming story
 - [ ] add pure Haskell reference implementations (?)
 - [ ] try to optimize a bit more
 - [ ] add an explicit discrete logarithm type (integers modulo `p-1`)
-- [ ] implement field extensions
-- [ ] implement "G2" twisted curves
 - [ ] implement pairings
 - [ ] implement multivariate polynomials
 
@@ -115,6 +116,7 @@ Optimization opportunities
 - implement addition and multiplication of prime fields directly in assembly
 - deeper study of algorithmic tricks
 - check out what others do (eg. constantine)
+- lazy reduction: `a*b mod p + c*d mod p == (a*b + c*d) mod p`
 - specialize for finite fields fitting into a single qword (but this is not relevant for elliptic curves)
 
 Note: The main bottleneck for KZG-based proof systems is MSM.

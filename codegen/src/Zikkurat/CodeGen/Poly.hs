@@ -57,6 +57,9 @@ c_header (PolyParams{..}) =
   , "extern void " ++ prefix ++ "long_div( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot, int nrem, uint64_t *rem );"
   , "extern void " ++ prefix ++ "quot    ( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nquot, uint64_t *quot                          );"
   , "extern void " ++ prefix ++ "rem     ( int n1, const uint64_t *src1, int n2, const uint64_t *src2,                            int nrem, uint64_t *rem );"
+  , ""
+  , "extern void    " ++ prefix ++ "div_by_vanishing ( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot, int nrem, uint64_t *rem );"
+  , "extern uint8_t " ++ prefix ++ "quot_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot );"
   ]
 
 --------------------------------------------------------------------------------
@@ -68,6 +71,8 @@ cBegin (PolyParams{..}) =
   , "#include <stdint.h>"
   , "#include <assert.h>"
   , "#include <stdio.h>"
+  , "#include <stdlib.h>"
+  , "#include <string.h>"
   , ""
   , "#include \"" ++ pathBaseName c_path_r ++ ".h\""
   , ""
@@ -125,6 +130,7 @@ hsBegin (PolyParams{..}) =
 --  , "  , linComb"
   , "    -- * Polynomial division"
   , "  , longDiv , quot , rem"
+  , "  , divByVanishing, quotByVanishing"
   , "    -- * Random"
   , "  , rndPoly , rnd"
   , "  )"  
@@ -233,17 +239,19 @@ hsBegin (PolyParams{..}) =
   , ""
   , "instance P.Univariate " ++ typeName ++ " where"
   , "  type Coeff " ++ typeName ++ " = " ++ typeName_r
-  , "  degree        = " ++ hsModule hs_path ++ ".degree"
-  , "  kthCoeff      = " ++ hsModule hs_path ++ ".kthCoeff"
-  , "  evalAt        = " ++ hsModule hs_path ++ ".evalAt"
-  , "  scale         = " ++ hsModule hs_path ++ ".scale"
-  , "  mkPoly        = " ++ hsModule hs_path ++ ".mkPoly"
-  , "  coeffs        = " ++ hsModule hs_path ++ ".coeffs"
-  , "  coeffsArr     = " ++ hsModule hs_path ++ ".coeffsArr"
-  , "  coeffsFlatArr = " ++ hsModule hs_path ++ ".coeffsFlatArr"
-  , "  polyLongDiv   = " ++ hsModule hs_path ++ ".longDiv"
-  , "  polyQuot      = " ++ hsModule hs_path ++ ".quot"
-  , "  polyRem       = " ++ hsModule hs_path ++ ".rem"
+  , "  degree          = " ++ hsModule hs_path ++ ".degree"
+  , "  kthCoeff        = " ++ hsModule hs_path ++ ".kthCoeff"
+  , "  evalAt          = " ++ hsModule hs_path ++ ".evalAt"
+  , "  scale           = " ++ hsModule hs_path ++ ".scale"
+  , "  mkPoly          = " ++ hsModule hs_path ++ ".mkPoly"
+  , "  coeffs          = " ++ hsModule hs_path ++ ".coeffs"
+  , "  coeffsArr       = " ++ hsModule hs_path ++ ".coeffsArr"
+  , "  coeffsFlatArr   = " ++ hsModule hs_path ++ ".coeffsFlatArr"
+  , "  polyLongDiv     = " ++ hsModule hs_path ++ ".longDiv"
+  , "  polyQuot        = " ++ hsModule hs_path ++ ".quot"
+  , "  polyRem         = " ++ hsModule hs_path ++ ".rem"
+  , "  divByVanishing  = " ++ hsModule hs_path ++ ".divByVanishing"
+  , "  quotByVanishing = " ++ hsModule hs_path ++ ".quotByVanishing"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -704,6 +712,43 @@ hsPolyDiv (PolyParams{..}) =
   , "  return (XPoly nr fptr4)"
   ]
 
+hsDivVanishing :: PolyParams -> Code
+hsDivVanishing (PolyParams{..}) =  
+  [ "foreign import ccall unsafe \"" ++ prefix ++ "div_by_vanishing\"  c_" ++ prefix ++ "div_by_vanishing  :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "quot_by_vanishing\" c_" ++ prefix ++ "quot_by_vanishing :: CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> CInt -> Ptr Word64 -> IO Word8"
+  , ""
+  , "-- | Divide by the coset vanishing polynomial @(x^n - eta)@."
+  , "-- Returns quotient and remainder."
+  , "divByVanishing :: " ++ typeName ++ " -> (Int, " ++ typeName_r ++ ") -> (" ++ typeName ++ ", " ++ typeName ++ ")"
+  , "divByVanishing poly1@(XPoly n1 fptr1) (expo_n, Mk" ++ typeName_r ++ " fptr2) = unsafePerformIO $ do"
+  , "  let d2 = expo_n"
+  , "  let nq = max 0 (n1-d2)"
+  , "  let nr = max 0 d2"
+  , "  fptr3 <- mallocForeignPtrArray (nq*" ++ show nlimbs ++ ")"
+  , "  fptr4 <- mallocForeignPtrArray (nr*" ++ show nlimbs ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        withForeignPtr fptr4 $ \\ptr4 -> do"
+  , "          c_" ++ prefix ++ "div_by_vanishing (fromIntegral n1) ptr1 (fromIntegral expo_n) ptr2 (fromIntegral nq) ptr3 (fromIntegral nr) ptr4"
+  , "  return (XPoly nq fptr3, XPoly nr fptr4)"
+  , ""
+  , "-- | Quotient by the coset vanishing polynomial @(x^n - eta)@."
+  , "-- Returns @Nothing@ if the remainder is nonzero."
+  , "quotByVanishing :: " ++ typeName ++ " -> (Int, " ++ typeName_r ++ ") -> Maybe " ++ typeName 
+  , "quotByVanishing poly1@(XPoly n1 fptr1) (expo_n, Mk" ++ typeName_r ++ " fptr2) = unsafePerformIO $ do"
+  , "  let d2 = expo_n"
+  , "  let nq = max 0 (n1-d2)"
+  , "  fptr3 <- mallocForeignPtrArray (nq*" ++ show nlimbs ++ ")"
+  , "  cret <- withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "quot_by_vanishing (fromIntegral n1) ptr1 (fromIntegral expo_n) ptr2 (fromIntegral nq) ptr3"
+  , "  return $ if (cret /= 0)"
+  , "    then Just (XPoly nq fptr3)"
+  , "    else Nothing"
+  ]
+
 --------------------------------------------------------------------------------
 
 cPolyDiv :: PolyParams -> Code
@@ -773,22 +818,131 @@ cPolyDiv (PolyParams{..}) =
   , "void " ++ prefix ++ "rem( int n1, const uint64_t *src1, int n2, const uint64_t *src2, int nrem, uint64_t *rem ) {"
   , "  " ++ prefix ++ "long_div( n1, src1, n2, src2, 0, 0, nrem, rem );"
   , "}"
+  , ""
+  ]
+
+cDivVanishing :: PolyParams -> Code
+cDivVanishing (PolyParams{..}) = 
+  [ "// divide by the vanishing polynomial of a coset `(x^n - eta)`"
+  , "// This should be much faster than the general-purpose long division"
+  , "// Remark: the case `eta = 1` corresponds to a subgroup"
+  , "// allocate at least `deg(p) - n + 1` field elements for the quotient"
+  , "// and at least `n` for the remainder"
+  , "void " ++ prefix ++ "div_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot, int nrem, uint64_t *rem ) {"
+  , "  int deg_p = " ++ prefix ++ "degree( n1, src1 );"
+  , "  int n = expo_n;"
+  , "  assert( quot );  // NOTE: quot cannot be NULL for this routine (or maybe we could allocate a temp buffer in that case?)"
+  , "  assert( (!quot) || (nquot >= deg_p - n + 1) );"
+  , "  assert( (!rem ) || (nrem  >= n)             );"
+  , "  assert( n >= 1 );"
+  , ""
+  , "  if (deg_p < n) {"
+  , "    // quotient == 0"
+  , "    if (quot) { for(int j=0; j<nquot; j++) { " ++ prefix_r ++ "set_zero( QUOT(j) ); } }"
+  , "    if (rem ) {"
+  , "      for(int j=deg_p+1; j<nrem; j++) { " ++ prefix_r ++ "set_zero( REM(j) ); }"
+  , "      assert( nrem >= deg_p+1 ); "
+  , "      memcpy( rem, src1, 8*(deg_p+1)*NLIMBS );"
+  , "    }"
+  , "    return;"
+  , "  }"
+  , ""
+  , "  if (quot) { for(int j=MAX(0,deg_p-n+1); j<nquot; j++) { " ++ prefix_r ++ "set_zero( QUOT(j) ); } }"
+  , "  if (rem ) { for(int j=MAX(0,n        ); j<nrem ; j++) { " ++ prefix_r ++ "set_zero( REM(j)  ); } }"
+  , ""
+  , "  if (" ++ prefix_r ++ "is_one(eta)) {"
+  , "    // "
+  , "    // eta = 1, we don't need to multiply by it"
+  , "    // "
+  , "    for(int j=deg_p-n; j>=0; j--) {"
+  , "      if (j+n <= deg_p-n) {"
+  , "        // as[j+n] + bs[j+n]"
+  , "        " ++ prefix_r ++ "add( SRC1(j+n) , QUOT(j+n) , QUOT(j) );"
+  , "      }"
+  , "      else {"
+  , "        // bs[j+n] is zero"
+  , "        " ++ prefix_r ++ "copy( SRC1(j+n) , QUOT(j) );"
+  , "      }"
+  , "    }"
+  , "    if (rem) {"
+  , "      for(int j=0; j<n; j++) {"
+  , "        if (j <= deg_p-n) {"
+  , "          // as[j] + bs[j]"
+  , "          " ++ prefix_r ++ "add( SRC1(j) , QUOT(j) , REM(j) );"
+  , "        }"
+  , "        else {"
+  , "          // bs[j] is zero"
+  , "          " ++ prefix_r ++ "copy( SRC1(j) , REM(j) );"
+  , "        }"
+  , "      }"
+  , "    }"
+  , "  }"
+  , "  else {"
+  , "    // "
+  , "    // eta != 1, generic case"
+  , "    // "
+  , "    for(int j=deg_p-n; j>=0; j--) {"
+  , "      if (j+n <= deg_p-n) {"
+  , "        uint64_t tmp[NLIMBS];"
+  , "        // as[j+n] + eta * bs[j+n]"
+  , "        " ++ prefix_r ++ "mul( QUOT(j+n) , eta , tmp );"
+  , "        " ++ prefix_r ++ "add( SRC1(j+n) , tmp , QUOT(j) );"
+  , "      }"
+  , "      else {"
+  , "        // bs[j+n] is zero"
+  , "        " ++ prefix_r ++ "copy( SRC1(j+n) , QUOT(j) );"
+  , "      }"
+  , "    }"
+  , "    if (rem) {"
+  , "      for(int j=0; j<n; j++) {"
+  , "        if (j <= deg_p-n) {"
+  , "          uint64_t tmp[NLIMBS];"
+  , "          // as[j] + eta * bs[j]"
+  , "          " ++ prefix_r ++ "mul( QUOT(j) , eta , tmp );"
+  , "          " ++ prefix_r ++ "add( SRC1(j) , tmp , REM(j) );"
+  , "        }"
+  , "        else {"
+  , "          // bs[j] is zero"
+  , "          " ++ prefix_r ++ "copy( SRC1(j) , REM(j) );"
+  , "        }"
+  , "      }"
+  , "    }"
+  , "  }"
+  , "}"
+  , ""
+  , "// divide by the vanishing polynomial `x^n - eta`"
+  , "// returns True if the remainder is zero"
+  , "// TODO: this could be implemented with no allocation, but i don't want to copy-paste the whole code right now"
+  , "uint8_t " ++ prefix ++ "quot_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot ) {"
+  , "  int nrem = expo_n;"
+  , "  uint64_t *rem = malloc( 8*NLIMBS*nrem );"
+  , "  assert( rem != 0 );"
+  , "  " ++ prefix ++ "div_by_vanishing( n1, src1, expo_n, eta, nquot, quot, nrem, rem );"
+  , "  int ok = 1;"
+  , "  for(int j=0; j<nrem; j++) {"
+  , "    if (!" ++ prefix_r ++ "is_zero(REM(j))) { ok = 0; break; }"
+  , "  }"
+  , "  free(rem);"
+  , "  return ok;"
+  , "}"
   ]
 
 --------------------------------------------------------------------------------
 
 c_code :: PolyParams -> Code
 c_code params = concat $ map ("":)
-  [ cBegin      params
-  , cPolyBasics params
-  , cPolyDiv    params
+  [ cBegin        params
+  , cPolyBasics   params
+  , cPolyDiv      params
+  , cDivVanishing params
   ]
 
 hs_code :: PolyParams -> Code
 hs_code params@(PolyParams{..}) = concat $ map ("":)
-  [ hsBegin      params
-  , hsPolyBasics params
-  , hsPolyDiv    params
+  [ hsBegin        params
+  , hsPolyBasics   params
+  , hsPolyDiv      params
+  , hsDivVanishing params
   ]
 
 --------------------------------------------------------------------------------
