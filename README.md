@@ -22,7 +22,8 @@ Project goals:
 - comprehensive testing
 - the code should stay simple enough (and documented enough) so that auditing 
   correctness wouldn't be a nightmarishly daunting task 
-  (this one is very much not satisfied at the moment, as the code generator is very hackish)
+  (this one is very much not satisfied at the moment, as the current code generator 
+  is very hackish.)
 
 
 Metadata
@@ -51,8 +52,9 @@ Sub-projects:
 The essential parts of the code are written in (generated) C, maybe with some assembly.
 This C code (under `lib/cbits`) is self-contained, and can be also used without the Haskell bindings.
 
-There is specialized code for each individual field and curve, and also
-a generic Haskell reference implementation for testing purposes.
+There is specialized code for each individual field and curve, and maybe there
+should be also a generic Haskell reference implementation for testing purposes,
+but that's not there at the moment.
 
 
 Supported primitives
@@ -85,6 +87,31 @@ All the base and scalar fields of the curves, plus:
     - ...
 
 
+Testing
+-------
+
+Given that the algorithms needed here are pretty complex, the optimizations can
+be rather tricky, and there are a whole pyramid (a zikkurat!) of them, proper
+testing is very important.
+
+Our primary testing methods are:
+
+- property-based testing
+- unit tests, especially for possible corner cases - TODO
+- compare against a very straightforward, high-level (but slow) reference implementation - TODO
+
+In property-based testing we declare the expected properties of the functions,
+things like for example commutativity and associativity of ring operations. 
+Then we just test them on a large number of random inputs. A sufficiently big 
+set of such properties gives a pretty good assurance, but since corner cases 
+have a low probability to appear from random sampling, further "manual" testing 
+of those is still necessary (TODO).
+
+The test "framework" currently is a CLI executable, in which you can select the
+subset of tests to run, and the number of random samples to run per test case 
+(1000 by default).
+
+
 TODO
 ----
 
@@ -97,7 +124,7 @@ TODO
 - [ ] unit-test framework
 - [ ] long division of bigints
 - [ ] square roots in prime fields 
-- [ ] hash-to-curve & better random curve points  
+- [ ] hash-to-curve & better (faster) random curve points  
 - [ ] add benchmarking
 - [ ] implement field extensions
 - [ ] implement "G2" twisted curves
@@ -112,8 +139,8 @@ TODO
 Optimization opportunities
 --------------------------
 
-- implement fused multiply-and-add for prime fields
-- implement addition and multiplication of prime fields directly in assembly
+- implement fused multiply-and-add (and multiply-and-subtract) for prime fields
+- implement addition and multiplication of prime fields in hand-written assembly
 - deeper study of algorithmic tricks
 - check out what others do (eg. constantine)
 - lazy reduction: `a*b mod p + c*d mod p == (a*b + c*d) mod p`
