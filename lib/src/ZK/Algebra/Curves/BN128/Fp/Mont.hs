@@ -21,7 +21,7 @@ module ZK.Algebra.Curves.BN128.Fp.Mont
     -- * Field operations
   , neg , add , sub
   , sqr , mul
-  , inv , div
+  , inv , div , batchInv
     -- * Exponentiation
   , pow , pow_
     -- * Random
@@ -49,7 +49,7 @@ import ZK.Algebra.BigInt.BigInt256( BigInt256(..) )
 import qualified ZK.Algebra.BigInt.BigInt256 as B
 import qualified ZK.Algebra.Curves.BN128.Fp.Std as Std
 
-import qualified ZK.Algebra.Class.Flat  as L
+import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
 
 --------------------------------------------------------------------------------  
@@ -121,6 +121,7 @@ instance C.Field Fp where
   charPxy    _ = prime
   dimPxy     _ = 1
   primGenPxy _ = primGen
+  batchInverse = batchInv
 
 ----------------------------------------
 
@@ -146,6 +147,8 @@ toStd (MkFp fptr1) = unsafePerformIO $ do
       c_bn128_p_mont_to_std ptr1 ptr2
   return (Std.MkFp fptr2)
 
+----------------------------------------
+
 foreign import ccall unsafe "bn128_p_mont_pow_gen" c_bn128_p_mont_pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
 
 {-# NOINLINE pow #-}
@@ -159,6 +162,20 @@ pow (MkFp fptr1) (MkBigInt256 fptr2) = unsafePerformIO $ do
   return (MkFp fptr3)
 
 ----------------------------------------
+
+foreign import ccall unsafe "bn128_p_mont_batch_inv" c_bn128_p_mont_batch_inv :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE batchInv #-}
+batchInv :: FlatArray Fp -> FlatArray Fp
+batchInv (MkFlatArray n fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bn128_p_mont_batch_inv (fromIntegral n) ptr1 ptr2
+  return (MkFlatArray n fptr2)
+
+----------------------------------------
+
 
 fromWord64sLE :: [Word64] -> Integer
 fromWord64sLE = go where

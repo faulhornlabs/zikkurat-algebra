@@ -9,13 +9,15 @@ module ZK.Algebra.Class.Field where
 import Data.Bits
 import Data.Proxy
 
+import ZK.Algebra.Class.Flat ( Flat , FlatArray )
+
 --------------------------------------------------------------------------------
 
 class Rnd a where
   rndIO :: IO a
   
 --------------------------------------------------------------------------------
--- * Finite rings
+-- * Rings (finite rings and polynomials rings)
 
 class (Eq a, Show a, Rnd a, Num a) => Ring a where
   -- | name of the ring
@@ -38,13 +40,15 @@ class (Eq a, Show a, Rnd a, Num a) => Ring a where
 --------------------------------------------------------------------------------
 -- * Finite fields
 
-class (Ring a, Fractional a) => Field a where
+class (Flat a, Ring a, Fractional a) => Field a where
   -- | prime characteristic of the field
   charPxy      :: Proxy a -> Integer     
   -- | dimension of the field (over the prime field)
   dimPxy       :: Proxy a -> Int         
   -- | a fixed primitive element (generator of the multiplicative group)
   primGenPxy   :: Proxy a -> a           
+  -- | efficient batch inverse
+  batchInverse :: FlatArray a -> FlatArray a
 
 -- | multiplicative inverse
 inverse :: Field a => a -> a      

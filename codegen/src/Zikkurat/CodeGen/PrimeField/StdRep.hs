@@ -13,6 +13,7 @@ import Data.Bits
 import Control.Monad
 import System.FilePath
 
+import Zikkurat.CodeGen.PrimeField.FieldCommon
 import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.FFI
 import Zikkurat.Primes -- ( integerLog2 )
@@ -32,6 +33,9 @@ data Params = Params
   , primGen     :: Integer      -- ^ the primitive generator
   }
   deriving Show
+
+toCommonParams :: Params -> CommonParams
+toCommonParams (Params{..}) = CommonParams{..}
 
 --------------------------------------------------------------------------------
 
@@ -66,8 +70,9 @@ c_header (Params{..}) =
   , ""
   , "extern void " ++ prefix ++ "sub_inplace_reverse( uint64_t *tgt, const uint64_t *src1 );"
   , ""
-  , "extern void " ++ prefix ++ "div_by_2           ( const uint64_t *src , uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "div_by_2_inplace   ( uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "div_by_2         ( const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "div_by_2_inplace ( uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "batch_inv        ( int n, const uint64_t *src, uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "reduce_modp     ( const uint64_t *src , uint64_t *tgt );"
   , ""
@@ -77,7 +82,7 @@ c_header (Params{..}) =
   ]
 
 hsBegin :: Params -> Code
-hsBegin (Params{..}) =
+hsBegin params@(Params{..}) =
   [ "-- | Prime field (standard representation) with"
   , "--"
   , "-- > p = " ++ show thePrime
@@ -100,7 +105,7 @@ hsBegin (Params{..}) =
   , "    -- * Field operations"
   , "  , neg , add , sub"
   , "  , sqr , mul"
-  , "  , inv , div , div_by_2"
+  , "  , inv , div , div_by_2 , batchInv"
   , "    -- * Exponentiation"
   , "  , pow , pow_"
   , "    -- * Random"
@@ -127,7 +132,7 @@ hsBegin (Params{..}) =
   , "import ZK.Algebra.BigInt." ++ bigintType ++ "( " ++ bigintType ++ "(..) )"
   , "import qualified ZK.Algebra.BigInt." ++ bigintType ++ " as B"
   , ""
-  , "import qualified ZK.Algebra.Class.Flat  as L"
+  , "import           ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as C"
   , ""
   , "--------------------------------------------------------------------------------  "
@@ -196,26 +201,14 @@ hsBegin (Params{..}) =
   , "  power x e = pow x (B.to (mod e (prime-1)))"
   , ""
   , "instance C.Field " ++ typeName ++ " where"
-  , "  charPxy    _ = prime"
-  , "  dimPxy     _ = 1"  
-  , "  primGenPxy _ = primGen"
+  , "  charPxy      _ = prime"
+  , "  dimPxy       _ = 1"  
+  , "  primGenPxy   _ = primGen"
+  , "  batchInverse   = batchInv"
   , ""
-  , "----------------------------------------"
-  , ""
-  , "foreign import ccall unsafe \"" ++ prefix ++ "pow_gen\" c_" ++ prefix ++ "pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()"
-  , ""
-  , "{-# NOINLINE pow #-}"
-  , "pow :: " ++ typeName ++ " -> " ++ bigintType ++ " -> " ++ typeName 
-  , "pow (Mk" ++ typeName ++ " fptr1) (Mk" ++ bigintType ++ " fptr2) = unsafePerformIO $ do"
-  , "  fptr3 <- mallocForeignPtrArray " ++ show nlimbs
-  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
-  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
-  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
-  , "        c_" ++ prefix ++ "pow_gen ptr1 ptr2 ptr3 " ++ show (nlimbs)
-  , "  return (Mk" ++ typeName ++ " fptr3)"
-  , ""
-  , "----------------------------------------"
-  ]
+  ] ++ 
+  c_exponentiation (toCommonParams params) ++
+  c_batch_inverse  (toCommonParams params) 
   where 
     postfix = ""  
 
@@ -257,7 +250,7 @@ hsFFI (Params{..}) = catCode $
 --------------------------------------------------------------------------------
 
 c_begin :: Params -> Code
-c_begin (Params{..}) =
+c_begin params@(Params{..}) =
   [ "// finite field arithmetic (standard representation) in the prime field with "
   , "//"
   , "//   p = " ++ show thePrime
@@ -267,6 +260,8 @@ c_begin (Params{..}) =
   , "#include <string.h>"
   , "#include <stdint.h>"
   , "#include <x86intrin.h>"
+  , "#include <assert.h>"
+  , ""
   , "#include \"" ++ pathBaseName c_path ++ ".h\""
   , "#include \"bigint" ++ show (64*nlimbs) ++ ".h\""
   , ""
@@ -534,41 +529,6 @@ reduceBigInt Params{..} = the_constants ++
       , "" 
       ]
 
---------------------------------------------------------------------------------
--- * exponentiation
-
-powField :: Params -> Code
-powField Params{..} = 
-  [ "// computes `x^e mod p`"
-  , "void " ++ prefix ++ "pow_uint64( const uint64_t *src, uint64_t exponent, uint64_t *tgt ) {"
-  , "  uint64_t e = exponent;"
-  , "  uint64_t sqr[" ++ show nlimbs ++ "];"
-  , "  " ++ bigint_ ++ "copy( src, sqr );             // sqr := src"
-  , "  " ++ bigint_ ++ "set_one( tgt );                     // tgt := 1"
-  , "  while(e!=0) {"
-  , "    if (e & 1) { " ++ prefix ++ "mul_inplace(tgt, sqr); }"
-  , "    " ++ prefix ++ "mul_inplace(sqr, sqr);"
-  , "    e = e >> 1;"
-  , "  }"
-  , "}"
-  , ""
-  , "// computes `x^e mod p` (for `e` non-negative bigint)"
-  , "void " ++ prefix ++ "pow_gen( const uint64_t *src, const uint64_t *expo, uint64_t *tgt, int expo_len ) {"
-  , "  uint64_t sqr[" ++ show nlimbs ++ "];"
-  , "  " ++ bigint_ ++ "copy( src, sqr );             // sqr := src"
-  , "  " ++ bigint_ ++ "set_one( tgt );                     // tgt := 1"
-  , "  int s = expo_len - 1;"
-  , "  while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers"
-  , "  for(int i=0; i<=s; i++) {"
-  , "    uint64_t e = expo[i];"
-  , "    for(int j=0; j<64; j++) {"
-  , "      if (e & 1) { " ++ prefix ++ "mul_inplace(tgt, sqr); }"
-  , "      " ++ prefix ++ "mul_inplace(sqr, sqr);"
-  , "      e = e >> 1;"
-  , "    }"
-  , "  }"
-  , "}"
-  ]
  
 --------------------------------------------------------------------------------
 -- * modular inverse
@@ -688,7 +648,6 @@ invField Params{..} =
   , "  " ++ prefix ++ "div(tgt,src2,tgt);"
   , "}"
   ]
-
 --------------------------------------------------------------------------------
 
 c_code :: Params -> Code
@@ -707,8 +666,10 @@ c_code params = concat $ map ("":)
   , mulField     params
   , reduceBigInt params
     --
-  , powField   params
-  , invField   params
+  , invField     params
+    --
+  , exponentiation (toCommonParams params)
+  , batchInverse   (toCommonParams params)
   ]
 
 hs_code :: Params -> Code

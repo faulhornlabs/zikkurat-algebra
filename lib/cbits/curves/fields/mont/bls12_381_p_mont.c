@@ -8,6 +8,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <x86intrin.h>
+#include <assert.h>
+
 #include "bls12_381_p_mont.h"
 #include "bls12_381_p_std.h"
 #include "bigint384.h"
@@ -203,36 +205,6 @@ void bls12_381_p_mont_mul_inplace( uint64_t *tgt, const uint64_t *src2) {
   bls12_381_p_mont_REDC_unsafe( T, tgt );
 };
 
-// computes `x^e mod p`
-void bls12_381_p_mont_pow_uint64( const uint64_t *src, uint64_t exponent, uint64_t *tgt ) {
-  uint64_t e = exponent;
-  uint64_t sqr[6];
-  bigint384_copy( src, sqr );             // sqr := src
-  bigint384_copy( bls12_381_p_mont_R_modp, tgt );          // tgt := 1
-  while(e!=0) {
-    if (e & 1) { bls12_381_p_mont_mul_inplace(tgt, sqr); }
-    bls12_381_p_mont_mul_inplace(sqr, sqr);
-    e = e >> 1;
-  }
-}
-
-// computes `x^e mod p` (for `e` non-negative bigint)
-void bls12_381_p_mont_pow_gen( const uint64_t *src, const uint64_t *expo, uint64_t *tgt, int expo_len ) {
-  uint64_t sqr[6];
-  bigint384_copy( src, sqr );             // sqr := src
-  bigint384_copy( bls12_381_p_mont_R_modp, tgt );        // tgt := 1
-  int s = expo_len - 1;
-  while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers
-  for(int i=0; i<=s; i++) {
-    uint64_t e = expo[i];
-    for(int j=0; j<64; j++) {
-      if (e & 1) { bls12_381_p_mont_mul_inplace(tgt, sqr); }
-      bls12_381_p_mont_mul_inplace(sqr, sqr);
-      e = e >> 1;
-    }
-  }
-}
-
 void bls12_381_p_mont_inv( const uint64_t *src, uint64_t *tgt) {
   bls12_381_p_std_inv( src, tgt );
   bls12_381_p_mont_mul_inplace( tgt, bls12_381_p_mont_R_cubed );
@@ -252,6 +224,73 @@ void bls12_381_p_mont_div_inplace( uint64_t *tgt, const uint64_t *src2) {
   bls12_381_p_std_div_inplace( tgt, src2 );
   bls12_381_p_mont_mul_inplace( tgt, bls12_381_p_mont_R_squared );
 };
+
+// computes `x^e mod p`
+void bls12_381_p_mont_pow_uint64( const uint64_t *src, uint64_t exponent, uint64_t *tgt ) {
+  uint64_t e = exponent;
+  uint64_t sqr[6];
+  bls12_381_p_mont_copy( src, sqr );                 // sqr := src
+  bls12_381_p_mont_set_one( tgt );                   // tgt := 1
+  while(e!=0) {
+    if (e & 1) { bls12_381_p_mont_mul_inplace(tgt, sqr); }
+    bls12_381_p_mont_mul_inplace(sqr, sqr);
+    e = e >> 1;
+  }
+}
+
+// computes `x^e mod p` (for `e` non-negative bigint)
+void bls12_381_p_mont_pow_gen( const uint64_t *src, const uint64_t *expo, uint64_t *tgt, int expo_len ) {
+  uint64_t sqr[6];
+  bls12_381_p_mont_copy( src, sqr );                 // sqr := src
+  bls12_381_p_mont_set_one( tgt );                   // tgt := 1
+  int s = expo_len - 1;
+  while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers
+  for(int i=0; i<=s; i++) {
+    uint64_t e = expo[i];
+    for(int j=0; j<64; j++) {
+      if (e & 1) { bls12_381_p_mont_mul_inplace(tgt, sqr); }
+      bls12_381_p_mont_mul_inplace(sqr, sqr);
+      e = e >> 1;
+    }
+  }
+}
+
+#define SRC(i)   (src    + (i)*NLIMBS)
+#define TGT(i)   (tgt    + (i)*NLIMBS)
+#define PROD(i)  (prods  + (i)*NLIMBS)
+#define RECIP(i) (recips + (i)*NLIMBS)
+
+// computes the inverse of many field elements at the same time, efficiently
+// uses the Montgomery batch inversion trick
+// inverse of a field element
+void bls12_381_p_mont_batch_inv( int n, const uint64_t *src, uint64_t *tgt ) {
+  assert( n >= 1 );
+  uint64_t *prods  = malloc( 8*NLIMBS*n );
+  uint64_t *recips = malloc( 8*NLIMBS*n );
+  assert( prods  != 0 );
+  assert( recips != 0 );
+  
+  // compute partial products (a[0]*a[1]*...*a[k]) for all k
+  bls12_381_p_mont_copy( SRC(0) , PROD(0) );
+  for(int i=1; i<n; i++) {
+    bls12_381_p_mont_mul( PROD(i-1) , SRC(i) , PROD(i) );
+  }
+  
+  // compute inverses of partial products 1/(a[0]*a[1]*...*a[k]) for all k
+  bls12_381_p_mont_inv( PROD(n-1) , RECIP(n-1) );
+  for(int i=n-2; i>=0; i--) {
+    bls12_381_p_mont_mul( RECIP(i+1) , SRC(i+1) , RECIP(i) );
+  }
+  
+  // compute the inverses 1/a[k] for all k
+  bls12_381_p_mont_copy( RECIP(0) , TGT(0) );
+  for(int i=1; i<n; i++) {
+    bls12_381_p_mont_mul( RECIP(i) , PROD(i-1) , TGT(i) );
+  }
+  
+  free(recips);
+  free(prods);
+}
 
 uint8_t bls12_381_p_mont_is_zero( const uint64_t *src ) {
   return bigint384_is_zero( src );

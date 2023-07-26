@@ -234,7 +234,7 @@ Some of the useful operations on finite field elements are:
 \item equality of elements, equality with zero or one
 \item addition, subtraction, negation (additive inverse)
 \item multiplication, squaring
-\item division, (multiplicative) inverse
+\item division, (multiplicative) inverse, batch inverse
 \item raising to the $n$-th power for arbitrary $n\in\Z$
 \item square root, checking if an element is a square (quadratic residue)
 \item conversion between different representation\\
@@ -287,6 +287,23 @@ Euclidean algorithm.
 \subsection{Division}
 This can be done either by multiplying with the inverse, or directly using
 the extended binary Euclidean algorithm.
+
+\subsection{Montgomery batch inversion}
+Computing the inverse is expensive; this trick replaces computing $n$ inverses
+by computing a single inverse and $3(n-1)$ multiplications, which is much cheaper.
+The idea is:
+\begin{enumerate}
+\item first compute the products 
+\[ m_1:=a_1 ,\quad m_2:=a_1a_2 ,\quad m_3:=a_1a_2a_3 ,\quad \dots\quad m_n:=a_1a_2\cdots a_n \]
+\item calculate the inverse $d_n:=m_n^{-1}$
+\item recursively compute the inverses 
+\[ d_{n-1}:=m_{n-1}^{-1}=a_nd_n ,\quad 
+   d_{n-2}:=m_{n-2}^{-1}=a_{n-1}d_{n-1} ,\quad
+   \dots \quad
+   d_1:=m_1^{-1} = a_2d_2
+  \]
+\item set $m_0=1$, and finally compute $a_k^{-1} = m_{k-1}/m_{k} = m_{k-1}d_{k}$ for all $1\le k\le n$.
+\end{enumerate}
 
 \subsection{Checking being a square (quadratic resiude)}
 One can compute the Jacobi symbol using a standard algorithm based

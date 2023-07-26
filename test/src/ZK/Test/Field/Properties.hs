@@ -11,6 +11,7 @@ import Data.Proxy
 import Control.Monad
 import System.IO
 
+import ZK.Algebra.Class.Flat
 import ZK.Algebra.Class.Field
 
 --------------------------------------------------------------------------------
@@ -139,6 +140,7 @@ fieldOnlyProps =
   , FieldProp3 prop_mul_div_associative_1      "mul-div assoc /1"
   , FieldProp3 prop_mul_div_associative_2      "mul-div assoc /2"
   , FieldProp3 prop_mul_div_associative_3      "mul-div assoc /3"
+  , FieldProp3 prop_batch_inverse              "batch inverse"
   ]
 
 --------------------------------------------------------------------------------
@@ -286,5 +288,10 @@ prop_mul_div_associative_2 x y z = ((x / y) * z) == (x / (y / z))
 
 prop_mul_div_associative_3 :: Field a => a -> a -> a -> Bool
 prop_mul_div_associative_3 x y z = ((x / y) / z) == (x / (y * z))
+
+prop_batch_inverse :: Field a => a -> a -> a -> Bool
+prop_batch_inverse x y z = any (==0) as || (map recip as == bs) where
+  as = [ x,y,z, x+y, y+z, z+x, x+y+z ]
+  bs = (unpackFlatArrayToList . batchInverse . packFlatArrayFromList) as
 
 --------------------------------------------------------------------------------
