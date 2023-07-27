@@ -13,6 +13,7 @@ import Data.List
 
 import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Flat
+import ZK.Algebra.Class.FFT
 
 --------------------------------------------------------------------------------
 -- * Univariate polynomials over (finite) fields
@@ -46,6 +47,13 @@ class (Ring p, Field (Coeff p), WrappedArray p, Element p ~ Coeff p) => Univaria
   divByVanishing :: p -> (Int, Coeff p) -> (p,p)
   -- | Quotient by the coset vanishing polynomial @(x^n - eta)@
   quotByVanishing :: p -> (Int, Coeff p) -> Maybe p
+
+-- | Polynomials which over an FFT-friend field support NTT operations
+class (Univariate p, FFTField (Coeff p)) => UnivariateFFT p where
+  -- | Number-theoretical transform (evaluate on a subgroup)
+  ntt  :: FFTSubgroup (Coeff p) -> p -> FlatArray (Coeff p) 
+  -- | Inverse number-theoretical transform (interpolate on a subgroup)
+  intt :: FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> p
 
 --------------------------------------------------------------------------------
 -- * Some generic functions

@@ -119,7 +119,7 @@ TODO
 - [x] implement prime fields
 - [x] implement curves
 - [x] implement univariate polynomials
-- [ ] implement NTT and iNTT
+- [x] implement NTT and iNTT
 - [x] property-based test framework
 - [ ] unit-test framework
 - [ ] long division of bigints
@@ -129,7 +129,7 @@ TODO
 - [ ] implement field extensions
 - [ ] implement "G2" twisted curves
 - [ ] figure out a better meta-programming story
-- [ ] add pure Haskell reference implementations (?)
+- [ ] add pure Haskell reference implementations (not really necessary, but would make codegen nicer)
 - [ ] try to optimize a bit more
 - [ ] add an explicit discrete logarithm type (integers modulo `p-1`)
 - [ ] implement pairings

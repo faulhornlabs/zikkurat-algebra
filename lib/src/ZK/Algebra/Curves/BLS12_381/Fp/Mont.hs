@@ -53,7 +53,7 @@ import qualified ZK.Algebra.Curves.BLS12_381.Fp.Std as Std
 
 import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
-import           ZK.Algebra.Helpers
+import ZK.Algebra.Helpers
 
 --------------------------------------------------------------------------------  
 
@@ -125,6 +125,7 @@ instance C.Field Fp where
   dimPxy     _ = 1
   primGenPxy _ = primGen
   batchInverse = batchInv
+
 
 ----------------------------------------
 

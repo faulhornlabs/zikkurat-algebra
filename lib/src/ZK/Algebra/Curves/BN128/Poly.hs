@@ -39,6 +39,8 @@ module ZK.Algebra.Curves.BN128.Poly
     -- * Polynomial division
   , longDiv , quot , rem
   , divByVanishing, quotByVanishing
+    -- * NTT
+  , forwardNTT , inverseNTT
     -- * Random
   , rndPoly , rnd
   )
@@ -67,7 +69,8 @@ import System.IO.Unsafe
 import ZK.Algebra.Curves.BN128.Fr.Mont ( Fr(..) )
 import qualified ZK.Algebra.Curves.BN128.Fr.Mont
 
-import qualified ZK.Algebra.Class.Flat  as L
+import           ZK.Algebra.Class.Flat  as L
+import           ZK.Algebra.Class.FFT   as T
 import qualified ZK.Algebra.Class.Field as F
 import qualified ZK.Algebra.Class.Poly  as P
 
@@ -387,3 +390,35 @@ quotByVanishing poly1@(XPoly n1 fptr1) (expo_n, MkFr fptr2) = unsafePerformIO $ 
   return $ if (cret /= 0)
     then Just (XPoly nq fptr3)
     else Nothing
+
+
+foreign import ccall unsafe "bn128_poly_mont_ntt_forward" c_bn128_poly_mont_ntt_forward :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_poly_mont_ntt_inverse" c_bn128_poly_mont_ntt_inverse :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE forwardNTT #-}
+forwardNTT :: FFTSubgroup Fr -> Poly -> FlatArray Fr
+forwardNTT sg (MkPoly (MkFlatArray n fptr2))
+  | subgroupSize sg /= n   = error "forwardNTT: subgroup size differs from the array size"
+  | otherwise              = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (n*4)
+      withFlat (subgroupGen sg) $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_bn128_poly_mont_ntt_forward (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3
+      return (MkFlatArray n fptr3)
+
+{-# NOINLINE inverseNTT #-}
+inverseNTT :: FFTSubgroup Fr -> FlatArray Fr -> Poly
+inverseNTT sg (MkFlatArray n fptr2)
+  | subgroupSize sg /= n   = error "inverseNTT: subgroup size differs from the array size"
+  | otherwise              = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (n*4)
+      withFlat (subgroupGen sg) $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_bn128_poly_mont_ntt_inverse (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3
+      return (MkPoly (MkFlatArray n fptr3))
+
+instance P.UnivariateFFT Poly where
+  ntt  = forwardNTT
+  intt = inverseNTT

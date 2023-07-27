@@ -28,6 +28,7 @@ data PolyParams = PolyParams
   , hs_path_r   :: Path         -- ^ path of the Haskell module for the field (without extension)
   , typeName    :: String       -- ^ name of the polynomial type
   , typeName_r  :: String       -- ^ name of the field type 
+  , prime_r     :: Integer
   }
   deriving Show
 
@@ -60,6 +61,9 @@ c_header (PolyParams{..}) =
   , ""
   , "extern void    " ++ prefix ++ "div_by_vanishing ( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot, int nrem, uint64_t *rem );"
   , "extern uint8_t " ++ prefix ++ "quot_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot );"
+  , ""
+  , "extern void " ++ prefix ++ "ntt_forward(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);"
+  , "extern void " ++ prefix ++ "ntt_inverse(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);"
   ]
 
 --------------------------------------------------------------------------------
@@ -132,6 +136,8 @@ hsBegin (PolyParams{..}) =
   , "    -- * Polynomial division"
   , "  , longDiv , quot , rem"
   , "  , divByVanishing, quotByVanishing"
+  , "    -- * NTT"
+  , "  , forwardNTT , inverseNTT"
   , "    -- * Random"
   , "  , rndPoly , rnd"
   , "  )"  
@@ -160,7 +166,8 @@ hsBegin (PolyParams{..}) =
   , "import " ++ hsModule hs_path_r ++ " ( " ++ typeName_r ++ "(..) )"
   , "import qualified " ++ hsModule hs_path_r
   , ""
-  , "import qualified ZK.Algebra.Class.Flat  as L"
+  , "import           ZK.Algebra.Class.Flat  as L"
+  , "import           ZK.Algebra.Class.FFT   as T"
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Poly  as P"
   , ""
@@ -933,12 +940,172 @@ cDivVanishing (PolyParams{..}) =
 
 --------------------------------------------------------------------------------
 
+cForwardNTT :: PolyParams -> Code
+cForwardNTT (PolyParams{..}) = 
+  [ ""
+  , "// -----------------------------------------------------------------------------"
+  , ""
+  , "void " ++ prefix ++ "ntt_forward_noalloc(int m, int src_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {"
+  , ""
+  , "  if (m==0) {"
+  , "    " ++ prefix_r ++ "copy( src, tgt );"
+  , "    return;"
+  , "  }"
+  , ""
+  , "  if (m==1) {"
+  , "    // N = 2"
+  , "    " ++ prefix_r ++ "add( src , src + src_stride*NLIMBS , tgt          );    // x + y"
+  , "    " ++ prefix_r ++ "sub( src , src + src_stride*NLIMBS , tgt + NLIMBS );    // x - y"
+  , "    return;"
+  , "  }"
+  , ""
+  , "  else {"
+  , "  "
+  , "    int N     = (1<< m   );"
+  , "    int halfN = (1<<(m-1));"
+  , ""
+  , "    uint64_t gpow[NLIMBS];"
+  , "    " ++ prefix_r ++ "sqr( gen, gpow );  // gen^2"
+  , "    "
+  , "    " ++ prefix ++ "ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src                     , buf + N*NLIMBS , buf                );"
+  , "    " ++ prefix ++ "ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src + src_stride*NLIMBS , buf + N*NLIMBS , buf + halfN*NLIMBS );"
+  , ""
+  , "    " ++ prefix_r ++ "set_one(gpow);"
+  , "    for(int j=0; j<halfN; j++) {"
+  , "      " ++ prefix_r ++ "mul ( buf + (j+halfN)*NLIMBS , gpow , tgt +  j       *NLIMBS );  //   g*v[k]"
+  , "      " ++ prefix_r ++ "neg ( tgt +  j       *NLIMBS ,        tgt + (j+halfN)*NLIMBS );  // - g*v[k]"
+  , "      " ++ prefix_r ++ "add_inplace( tgt +  j       *NLIMBS , buf + j*NLIMBS );          // u[k] + g*v[k]"
+  , "      " ++ prefix_r ++ "add_inplace( tgt + (j+halfN)*NLIMBS , buf + j*NLIMBS );          // u[k] - g*v[k]"
+  , "      " ++ prefix_r ++ "mul_inplace( gpow , gen );      "
+  , "    }"
+  , "  }"
+  , "}"
+  , ""
+  , "// forward number-theoretical transform (evaluation of a polynomial)"
+  , "// `src` and `tgt` should be `N = 2^m` sized arrays of field elements"
+  , "// `gen` should be the generator of the multiplicative subgroup sized `N`"
+  , "void " ++ prefix ++ "ntt_forward(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {"
+  , "  int N = (1<<m);"
+  , "  uint64_t *buf = malloc( 8*NLIMBS * (2*N) );"
+  , "  assert( buf !=0 );"
+  , "  " ++ prefix ++ "ntt_forward_noalloc( m, 1, gen, src, buf, tgt);"
+  , "  free(buf);"
+  , "}"
+  , ""
+  ]
+
+cInverseNTT :: PolyParams -> Code
+cInverseNTT (PolyParams{..}) = 
+  [ ""
+  , " // -----------------------------------------------------------------------------"
+  , " "
+  , " // inverse of 2"
+  , mkConst nlimbs (prefix ++ "oneHalf") (toMont half_std)
+  , " "
+  , " void " ++ prefix ++ "ntt_inverse_noalloc(int m, int tgt_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {"
+  , " "
+  , "   if (m==0) {"
+  , "     " ++ prefix_r ++ "copy( src, tgt );"
+  , "     return;"
+  , "   }"
+  , " "
+  , "   if (m==1) {"
+  , "     // N = 2"
+  , "     " ++ prefix_r ++ "add( src , src + NLIMBS , tgt                     );   // x + y"
+  , "     " ++ prefix_r ++ "sub( src , src + NLIMBS , tgt + tgt_stride*NLIMBS );   // x - y"
+  , "     " ++ prefix_r ++ "mul_inplace( tgt                     , " ++ prefix ++ "oneHalf );      // (x + y)/2"
+  , "     " ++ prefix_r ++ "mul_inplace( tgt + tgt_stride*NLIMBS , " ++ prefix ++ "oneHalf );      // (x - y)/2"
+  , "     return;"
+  , "   }"
+  , " "
+  , "   else {"
+  , "   "
+  , "     int N     = (1<< m   );"
+  , "     int halfN = (1<<(m-1));"
+  , " "
+  , "     uint64_t ginv[NLIMBS];"
+  , "     " ++ prefix_r ++ "inv( gen , ginv );  // gen^-1"
+  , " "
+  , "     uint64_t gpow[NLIMBS];    "
+  , "     " ++ prefix_r ++ "copy(" ++ prefix ++ "oneHalf , gpow);  // 1/2"
+  , "     for(int j=0; j<halfN; j++) {"
+  , "       " ++ prefix_r ++ "add( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + j        *NLIMBS  );    // x + y"
+  , "       " ++ prefix_r ++ "sub( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + (j+halfN)*NLIMBS  );    // x - y"
+  , "       " ++ prefix_r ++ "mul_inplace( buf + j        *NLIMBS , " ++ prefix ++ "oneHalf  );    // (x + y) /  2"
+  , "       " ++ prefix_r ++ "mul_inplace( buf + (j+halfN)*NLIMBS , gpow     );    // (x - y) / (2*g^k)"
+  , "       " ++ prefix_r ++ "mul_inplace( gpow , ginv );      "
+  , "     }"
+  , " "
+  , "     " ++ prefix_r ++ "sqr( gen, gpow );  // gen^2"
+  , "     " ++ prefix ++ "ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf                , buf + N*NLIMBS , tgt                     );"
+  , "     " ++ prefix ++ "ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf + halfN*NLIMBS , buf + N*NLIMBS , tgt + tgt_stride*NLIMBS );"
+  , " "
+  , "   }"
+  , " }"
+  , " "
+  , " // inverse number-theoretical transform (interpolation of a polynomial)"
+  , " // `src` and `tgt` should be `N = 2^m` sized arrays of field elements"
+  , " // `gen` should be the generator of the multiplicative subgroup sized `N`"
+  , " void " ++ prefix ++ "ntt_inverse(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {"
+  , "   int N = (1<<m);"
+  , "   uint64_t *buf = malloc( 8*NLIMBS * (2*N) );"
+  , "   assert( buf !=0 );"
+  , "   " ++ prefix ++ "ntt_inverse_noalloc( m, 1, gen, src, buf, tgt );"
+  , "   free(buf);"
+  , " }"
+  , " "
+  , " // -----------------------------------------------------------------------------"
+  , " "
+  ]
+  where
+    half_std = div (prime_r + 1) 2                 -- (p+1)/2 = 1/2
+    toMont x = mod (2^(64*nlimbs) * x) prime_r     -- but we need Montgomery repr!
+
+hsNTT :: PolyParams -> Code
+hsNTT (PolyParams{..}) =
+  [ ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "ntt_forward\" c_" ++ prefix ++ "ntt_forward :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "ntt_inverse\" c_" ++ prefix ++ "ntt_inverse :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "{-# NOINLINE forwardNTT #-}"
+  , "forwardNTT :: FFTSubgroup " ++ typeName_r ++ " -> " ++ typeName ++ " -> FlatArray " ++ typeName_r 
+  , "forwardNTT sg (Mk" ++ typeName ++ " (MkFlatArray n fptr2))" 
+  , "  | subgroupSize sg /= n   = error \"forwardNTT: subgroup size differs from the array size\""
+  , "  | otherwise              = unsafePerformIO $ do"
+  , "      fptr3 <- mallocForeignPtrArray (n*" ++ show nlimbs ++ ")"
+  , "      withFlat (subgroupGen sg) $ \\ptr1 -> do"
+  , "        withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "          withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "            c_" ++ prefix ++ "ntt_forward (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3"
+  , "      return (MkFlatArray n fptr3)"
+  , ""
+  , "{-# NOINLINE inverseNTT #-}"
+  , "inverseNTT :: FFTSubgroup " ++ typeName_r ++ " -> FlatArray " ++ typeName_r ++ " -> " ++ typeName
+  , "inverseNTT sg (MkFlatArray n fptr2)" 
+  , "  | subgroupSize sg /= n   = error \"inverseNTT: subgroup size differs from the array size\""
+  , "  | otherwise              = unsafePerformIO $ do"
+  , "      fptr3 <- mallocForeignPtrArray (n*" ++ show nlimbs ++ ")"
+  , "      withFlat (subgroupGen sg) $ \\ptr1 -> do"
+  , "        withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "          withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "            c_" ++ prefix ++ "ntt_inverse (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3"
+  , "      return (Mk" ++ typeName ++ " (MkFlatArray n fptr3))"
+  , ""
+  , "instance P.UnivariateFFT " ++ typeName ++ " where"
+  , "  ntt  = forwardNTT"
+  , "  intt = inverseNTT"
+  ]
+
+--------------------------------------------------------------------------------
+
 c_code :: PolyParams -> Code
 c_code params = concat $ map ("":)
   [ cBegin        params
   , cPolyBasics   params
   , cPolyDiv      params
   , cDivVanishing params
+  , cForwardNTT   params
+  , cInverseNTT   params
   ]
 
 hs_code :: PolyParams -> Code
@@ -947,6 +1114,7 @@ hs_code params@(PolyParams{..}) = concat $ map ("":)
   , hsPolyBasics   params
   , hsPolyDiv      params
   , hsDivVanishing params
+  , hsNTT          params
   ]
 
 --------------------------------------------------------------------------------

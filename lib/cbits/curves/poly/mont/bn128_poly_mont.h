@@ -23,3 +23,6 @@ extern void bn128_poly_mont_rem     ( int n1, const uint64_t *src1, int n2, cons
 
 extern void    bn128_poly_mont_div_by_vanishing ( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot, int nrem, uint64_t *rem );
 extern uint8_t bn128_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot );
+
+extern void bn128_poly_mont_ntt_forward(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);
+extern void bn128_poly_mont_ntt_inverse(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);

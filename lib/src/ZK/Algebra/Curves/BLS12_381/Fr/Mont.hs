@@ -24,6 +24,8 @@ module ZK.Algebra.Curves.BLS12_381.Fr.Mont
   , inv , div , batchInv
     -- * Exponentiation
   , pow , pow_
+    -- * FFT
+  , fftDomain
     -- * Random
   , rnd
     -- * Export to C
@@ -53,7 +55,9 @@ import qualified ZK.Algebra.Curves.BLS12_381.Fr.Std as Std
 
 import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
-import           ZK.Algebra.Helpers
+import qualified ZK.Algebra.Class.FFT as T
+import           ZK.Algebra.Class.FFT hiding (fftDomain)
+import ZK.Algebra.Helpers
 
 --------------------------------------------------------------------------------  
 
@@ -125,6 +129,14 @@ instance C.Field Fr where
   dimPxy     _ = 1
   primGenPxy _ = primGen
   batchInverse = batchInv
+
+fftDomain :: FFTSubgroup Fr
+fftDomain = MkFFTSubgroup gen 32 where
+  gen :: Fr
+  gen = to 10238227357739495823651030575849232062558860180284477541189508159991286009131
+
+instance FFTField Fr where
+  fftDomain = ZK.Algebra.Curves.BLS12_381.Fr.Mont.fftDomain
 
 ----------------------------------------
 

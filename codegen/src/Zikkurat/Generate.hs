@@ -79,11 +79,12 @@ stdMontStringReplace stdOrMont = go where
   go (ch:rest)          = ch    : go rest
   go []                 = []
 
-newtype PrimGen = PrimGen Integer
-type FieldDesc  = (String,PrimGen,[String],[String],String,Integer) 
+newtype PrimGen   = PrimGen Integer
+type    DomainGen = (Int,Integer)
+type FieldDesc  = (String,PrimGen,Maybe DomainGen,[String],[String],String,Integer) 
 
 primefiledListReplace1 :: StdOrMont -> FieldDesc -> FieldDesc
-primefiledListReplace1 stdOrMont (name,primgen,hpath,cpath,typeName,p) = (name,primgen,hpath',cpath',typeName,p) where
+primefiledListReplace1 stdOrMont (name,primgen,mbfft,hpath,cpath,typeName,p) = (name,primgen,mbfft,hpath',cpath',typeName,p) where
   hpath' = map (stdMontStringReplace stdOrMont) hpath
   cpath' = map (stdMontStringReplace stdOrMont) cpath
 
@@ -94,11 +95,15 @@ primefiledListReplace stdOrMont = map (primefiledListReplace1 stdOrMont)
 -- (we cannot use ___ for the obvious reasons.....)
 primefield_list :: [FieldDesc]
 primefield_list = 
-  [ ( "BN128/Fp"     , PrimGen 3 , ["ZK","Algebra","Curves", "BN128"    , "Fp", "^^^" ] , ["curves", "fields", ",,,", "bn128_p_,,,"    ] , "Fp" , bn128_base_p       ) 
-  , ( "BN128/Fr"     , PrimGen 5 , ["ZK","Algebra","Curves", "BN128"    , "Fr", "^^^" ] , ["curves", "fields", ",,,", "bn128_r_,,,"    ] , "Fr" , bn128_scalar_r     )
-  , ( "BLS12-381/Fp" , PrimGen 2 , ["ZK","Algebra","Curves", "BLS12_381", "Fp", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_p_,,,"] , "Fp" , bls12_381_base_p   ) 
-  , ( "BLS12-381/Fr" , PrimGen 7 , ["ZK","Algebra","Curves", "BLS12_381", "Fr", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_r_,,,"] , "Fr" , bls12_381_scalar_r )
+  [ ( "BN128/Fp"     , PrimGen 3 , Nothing               , ["ZK","Algebra","Curves", "BN128"    , "Fp", "^^^" ] , ["curves", "fields", ",,,", "bn128_p_,,,"    ] , "Fp" , bn128_base_p       ) 
+  , ( "BN128/Fr"     , PrimGen 5 , Just domain_BN128     , ["ZK","Algebra","Curves", "BN128"    , "Fr", "^^^" ] , ["curves", "fields", ",,,", "bn128_r_,,,"    ] , "Fr" , bn128_scalar_r     )
+  , ( "BLS12-381/Fp" , PrimGen 2 , Nothing               , ["ZK","Algebra","Curves", "BLS12_381", "Fp", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_p_,,,"] , "Fp" , bls12_381_base_p   ) 
+  , ( "BLS12-381/Fr" , PrimGen 7 , Just domain_BLS12_381 , ["ZK","Algebra","Curves", "BLS12_381", "Fr", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_r_,,,"] , "Fr" , bls12_381_scalar_r )
   ]
+
+-- fft domains
+domain_BN128     = (28,19103219067921713944291392827692070036145651957329286315305642004821462161904)
+domain_BLS12_381 = (32,10238227357739495823651030575849232062558860180284477541189508159991286009131)
 
 ----------------------------------------
 
@@ -107,7 +112,7 @@ generate_primefields_std hsOrC tgtdir = do
 
   let primefield_list_std = primefiledListReplace Std primefield_list
 
-  forM_ primefield_list_std $ \(name, PrimGen primgen, hpath, cpath, typeName, prime) -> do
+  forM_ primefield_list_std $ \(name, PrimGen primgen, mbDomainGen, hpath, cpath, typeName, prime) -> do
   
     let nlimbs = nlimbsRequired prime
     let nbits  = 64*nlimbs
@@ -126,6 +131,7 @@ generate_primefields_std hsOrC tgtdir = do
           , FpStd.bigintType  = bigintType          -- the name of the haskell type of the corresponding BigInt
           , FpStd.fieldName   = name
           , FpStd.primGen     = primgen
+          , FpStd.fftDomain   = mbDomainGen
           }
 
     -- print params
@@ -141,7 +147,7 @@ generate_primefields_montgomery hsOrC tgtdir = do
   let primefield_list_std  = primefiledListReplace Std  primefield_list
   let primefield_list_mont = primefiledListReplace Mont primefield_list
 
-  forM_ (zip primefield_list_std primefield_list_mont) $ \( (_,PrimGen primgen,hpath_std,cpath_std,_typeName,_prime) , (name,_,hpath,cpath,typeName,prime) ) -> do
+  forM_ (zip primefield_list_std primefield_list_mont) $ \( (_,PrimGen primgen,mbDomainGen,hpath_std,cpath_std,_typeName,_prime) , (name,_,_,hpath,cpath,typeName,prime) ) -> do
   
     let nlimbs = nlimbsRequired prime
     let nbits  = 64*nlimbs
@@ -163,6 +169,7 @@ generate_primefields_montgomery hsOrC tgtdir = do
           , FpMont.bigintType     = bigintType                -- the name of the haskell type of the corresponding BigInt
           , FpMont.fieldName      = name
           , FpMont.primGen        = primgen
+          , FpMont.fftDomain      = mbDomainGen
           }
 
     -- print params
@@ -211,6 +218,7 @@ bn128_polyParams = Poly.PolyParams
   , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","BN128","Fr","Mont"] 
   , Poly.typeName   = "Poly" 
   , Poly.typeName_r = "Fr"
+  , Poly.prime_r    = bn128_scalar_r   
   }
 
 bls12_381_cgParams :: CodeGenParams
@@ -252,7 +260,9 @@ bls12_381_polyParams = Poly.PolyParams
   , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","BLS12_381","Fr","Mont"] 
   , Poly.typeName   = "Poly" 
   , Poly.typeName_r = "Fr"
+  , Poly.prime_r    = bls12_381_scalar_r
   }
+
 --------------------------------------------------------------------------------
 
 generate_curves_poly :: HsOrC -> FilePath -> IO ()

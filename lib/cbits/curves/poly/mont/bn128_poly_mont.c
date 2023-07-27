@@ -411,3 +411,115 @@ uint8_t bn128_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int exp
   free(rem);
   return ok;
 }
+
+
+// -----------------------------------------------------------------------------
+
+void bn128_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
+
+  if (m==0) {
+    bn128_r_mont_copy( src, tgt );
+    return;
+  }
+
+  if (m==1) {
+    // N = 2
+    bn128_r_mont_add( src , src + src_stride*NLIMBS , tgt          );    // x + y
+    bn128_r_mont_sub( src , src + src_stride*NLIMBS , tgt + NLIMBS );    // x - y
+    return;
+  }
+
+  else {
+  
+    int N     = (1<< m   );
+    int halfN = (1<<(m-1));
+
+    uint64_t gpow[NLIMBS];
+    bn128_r_mont_sqr( gen, gpow );  // gen^2
+    
+    bn128_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src                     , buf + N*NLIMBS , buf                );
+    bn128_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src + src_stride*NLIMBS , buf + N*NLIMBS , buf + halfN*NLIMBS );
+
+    bn128_r_mont_set_one(gpow);
+    for(int j=0; j<halfN; j++) {
+      bn128_r_mont_mul ( buf + (j+halfN)*NLIMBS , gpow , tgt +  j       *NLIMBS );  //   g*v[k]
+      bn128_r_mont_neg ( tgt +  j       *NLIMBS ,        tgt + (j+halfN)*NLIMBS );  // - g*v[k]
+      bn128_r_mont_add_inplace( tgt +  j       *NLIMBS , buf + j*NLIMBS );          // u[k] + g*v[k]
+      bn128_r_mont_add_inplace( tgt + (j+halfN)*NLIMBS , buf + j*NLIMBS );          // u[k] - g*v[k]
+      bn128_r_mont_mul_inplace( gpow , gen );      
+    }
+  }
+}
+
+// forward number-theoretical transform (evaluation of a polynomial)
+// `src` and `tgt` should be `N = 2^m` sized arrays of field elements
+// `gen` should be the generator of the multiplicative subgroup sized `N`
+void bn128_poly_mont_ntt_forward(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
+  int N = (1<<m);
+  uint64_t *buf = malloc( 8*NLIMBS * (2*N) );
+  assert( buf !=0 );
+  bn128_poly_mont_ntt_forward_noalloc( m, 1, gen, src, buf, tgt);
+  free(buf);
+}
+
+
+
+ // -----------------------------------------------------------------------------
+ 
+ // inverse of 2
+const uint64_t bn128_poly_mont_oneHalf[4] = { 0x783c14d81ffffffe, 0xaf982f6f0c8d1edd, 0x8f5f7492fcfd4f45, 0x1f37631a3d9cbfac };
+ 
+ void bn128_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
+ 
+   if (m==0) {
+     bn128_r_mont_copy( src, tgt );
+     return;
+   }
+ 
+   if (m==1) {
+     // N = 2
+     bn128_r_mont_add( src , src + NLIMBS , tgt                     );   // x + y
+     bn128_r_mont_sub( src , src + NLIMBS , tgt + tgt_stride*NLIMBS );   // x - y
+     bn128_r_mont_mul_inplace( tgt                     , bn128_poly_mont_oneHalf );      // (x + y)/2
+     bn128_r_mont_mul_inplace( tgt + tgt_stride*NLIMBS , bn128_poly_mont_oneHalf );      // (x - y)/2
+     return;
+   }
+ 
+   else {
+   
+     int N     = (1<< m   );
+     int halfN = (1<<(m-1));
+ 
+     uint64_t ginv[NLIMBS];
+     bn128_r_mont_inv( gen , ginv );  // gen^-1
+ 
+     uint64_t gpow[NLIMBS];    
+     bn128_r_mont_copy(bn128_poly_mont_oneHalf , gpow);  // 1/2
+     for(int j=0; j<halfN; j++) {
+       bn128_r_mont_add( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + j        *NLIMBS  );    // x + y
+       bn128_r_mont_sub( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + (j+halfN)*NLIMBS  );    // x - y
+       bn128_r_mont_mul_inplace( buf + j        *NLIMBS , bn128_poly_mont_oneHalf  );    // (x + y) /  2
+       bn128_r_mont_mul_inplace( buf + (j+halfN)*NLIMBS , gpow     );    // (x - y) / (2*g^k)
+       bn128_r_mont_mul_inplace( gpow , ginv );      
+     }
+ 
+     bn128_r_mont_sqr( gen, gpow );  // gen^2
+     bn128_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf                , buf + N*NLIMBS , tgt                     );
+     bn128_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf + halfN*NLIMBS , buf + N*NLIMBS , tgt + tgt_stride*NLIMBS );
+ 
+   }
+ }
+ 
+ // inverse number-theoretical transform (interpolation of a polynomial)
+ // `src` and `tgt` should be `N = 2^m` sized arrays of field elements
+ // `gen` should be the generator of the multiplicative subgroup sized `N`
+ void bn128_poly_mont_ntt_inverse(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
+   int N = (1<<m);
+   uint64_t *buf = malloc( 8*NLIMBS * (2*N) );
+   assert( buf !=0 );
+   bn128_poly_mont_ntt_inverse_noalloc( m, 1, gen, src, buf, tgt );
+   free(buf);
+ }
+ 
+ // -----------------------------------------------------------------------------
+ 

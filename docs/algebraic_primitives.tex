@@ -677,7 +677,9 @@ c            & 1   & 4   &  7    & 10     &  13     &  16       \\
 \end{array}
 \]
 where $\textsf{ops}$ means the number of operation divided by $N$. 
-Note that we can do this whole thing in constant memory! \\
+Note that we can do this whole thing in constant memory! (though that
+means repeatedly going over the same group elements, so it may be not worth
+it). \\
 
 %----
 \subsection{Precalculation + Straus}
@@ -697,6 +699,128 @@ c            & 4   & 4   &  4   &  4    &  4     &    4     \\
 \]
 So this can be faster than the bucket method for $N<100$, but for larger $N$-s
 it will be significantly slower.
+
+%===============================================================================
+
+\chapter{Univariate polynomials over fields}
+
+\section{Basic operations}
+
+Addition and subtraction is straightforward.\\
+
+Multiplication can be done naively ($n_1n_2$ field multiplications), but for 
+large polynomials this is not efficient. DFT should bring it down to $O(n\log(n))$
+multiplication. TODO: details of DFT multiplication\\
+
+Polynomial long division is straightforward, because we are over a field.
+
+\subsection*{Division by special polynomials}
+Often we have to divide by polynomials of the form $x^n-\eta$. This can be
+done very efficiently: Let
+\begin{align*} 
+f(x) &= \sum_{i=0}^d     a_ix^i = (x^n-\eta)\cdot q(x) + r(x) \\
+q(x) &= \sum_{i=0}^{d-n} b_ix^i \quad\quad\quad\quad
+r(x)  = \sum_{i=0}^{n-1} c_ix^i 
+\end{align*}
+Expanding the RHS in the first line, we got the equation
+\[ \sum_{i=0}^d a_ix^i = \sum_i \big\{ b_ix^{i+n} + (c_i - \eta b_i) \big\} \]
+which gives a simple recursion
+\begin{align*}
+b_j &= a_{j+n}        + \eta \cdot b_{j+n} \\
+c_j &= a_{j} \;\;\;\; + \eta \cdot b_{j} \\
+\end{align*}
+
+\subsection*{Evaluation}
+
+Evaluation from the coefficients $a_i$ is straightforward: Use Horner's method.\\
+
+Evaluation of an interpolated polynomial (on a subgroup) $f$, that is we have
+$f(\omega^i)=y_i$, at some point $\zeta\neq \omega^i$ can be done efficiently using 
+the barycentric formula:
+\[ f(\zeta) = \frac{\zeta^n - 1}{n} \sum_{k=0}^{n-1} \frac{y_k\cdot\omega^k}{\zeta - \omega^k} . 
+\]
+$\;$
+
+Evaluation on a whole subgroup at the same time can be done using NTT (see below).
+
+\section{Special polynomials}
+
+There are some special polynomials we often need, for example Lagrange polynomials.
+
+\subsection{Lagrange polynomials}
+
+Lagrange basis polynomials on a set $x_i$ are defined by
+\[ \calL_k(\omega_i) := \left\{\begin{array}{ll}
+1, & i=    k \\
+0, & i\neq k
+\end{array}\right.
+\] 
+
+By definition, we have the product formula learned in school:
+\[ \calL_k(x) = y_k \cdot \frac{ \prod_{i\neq k} (x-x_i) } { \prod_{i\neq k} (x_k-x_i) }
+\]
+
+If the locations $x_i$ form a multiplicative subgroup $\{x_i\}=H=\{1,\omega,\omega^2\dots,\omega^{k-1}\}$,
+then we have a simple coefficient formula:
+\[ \calL_k(x) = \frac{1}{n} \sum_{i=0}^{n-1} \omega^{-ki}x^i
+\]
+and also the evaluation formula:
+\[ 
+\calL_k(x) = \frac{\omega^k (x^n - 1)}{n(x- \omega^k)} 
+\]
+and if $|H|=2^m$, then another product formula for $\calL_0$:
+\[
+\calL_0(x) = - \frac{p-1}{|H|}\prod_{k=0}^{\log_2|H|-1} (x^{2^k} + 1)
+\] 
+Note that $\calL_k(x) = \calL_0(\omega^{-k}x)$ by definition.
+
+%------------------
+
+\section{Number-theoretic transform}
+
+This analogue of the well-known FFT can be used to 
+\begin{itemize} 
+\item evaluate a polynomial on a subgroup $H<\F^\times$, of size $N=2^m$;
+\item interpolate a polynomial on such a subgroup $H$.
+\end{itemize}
+
+\subsection*{Forward NTT}
+Given the coefficients $a_i$ of $f$, we want to evaluate
+\[ f(\omega^k) = \sum_{i=0}^{N-1} a_i\omega^{ki} \]
+Separate the odd and even coefficients:
+\[ f(x) = \sum_{i=0}^{N/2-1} a_{2i}x^{2i} + x\cdot\sum_{i=0}^{N/2-1} a_{2i+1}x^{2i} 
+        = g_\even(x^2) + x\cdot g_\odd(x^2)
+\]
+Evaluate $g_\even$ and $g_\odd$ recursively on $H^2=\{1,\omega^2,\omega^4,\dots\}$,
+so we get
+\begin{align*}
+u_k := g_\even(\omega^{2k}) &= \sum_{i=0}^{N/2-1} a_{2i  }\omega^{2ki} \\
+v_k := g_\odd (\omega^{2k}) &= \sum_{i=0}^{N/2-1} a_{2i+1}\omega^{2ki} \\
+\end{align*}
+Finally compute 
+\[
+f(\omega^p) = \left\{\begin{array}{ll}
+ u_k + \omega^k v_k, & \textrm{ if $p<   N/2$, $p=k$     } \\
+ u_k - \omega^k v_k, & \textrm{ if $p\ge N/2$, $p=k+N/2$ } 
+\end{array}\right.
+\]
+Why does this work? Well, it's just a straightforward computation.
+
+\subsection*{Inverse NTT}
+Now we want to do the opposite: Given values $y_i$, we want to interpolate
+the coefficients $a_i$ such that $f(\omega^k)=\sum a_i\omega^{ki} = y_k$.
+For this, we can just literally reverse the above algorithm:\\
+
+First, separate the values into two parts: $y_i$ for $i<N/2$ and $z_i:=y_{i+N/2}$.
+Then compute
+\begin{align*}
+ u_k &= (y_i+z_i)/2            \\
+ v_k &= (y_i-z_i)/(2\omega^k)
+\end{align*}
+Then apply the inverse NTT procedure recursively on $H^2$ to the two set
+of values $\{u_k\}$ and $\{v_k\}$, getting the coefficients of $f_\even$
+and $f_\odd$; finally just interleave these coefficients.
+
 
 %===============================================================================
 

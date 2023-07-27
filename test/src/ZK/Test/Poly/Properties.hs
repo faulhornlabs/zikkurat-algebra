@@ -15,13 +15,15 @@ import System.IO
 
 import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Poly
+import ZK.Algebra.Class.FFT
+import ZK.Algebra.Class.Flat
 
 --------------------------------------------------------------------------------
 
 allRingProps :: [PolyProp]
 allRingProps = genericRingProps ++ specificPolyProps
 
-runPolyTests :: forall a. Univariate a => Int -> Proxy a -> IO ()
+runPolyTests :: forall a. UnivariateFFT a => Int -> Proxy a -> IO ()
 runPolyTests n pxy = do
 
   forM_ allRingProps $ \prop -> case prop of
@@ -51,6 +53,10 @@ runPolyTests n pxy = do
       y <- rndIO @(Coeff a)
       return (test (Proxy @a) x y) 
 
+    PolyPropFFT test name -> doTests n name $ do
+      xs <- replicateM 7 $ rndIO @(Coeff a)
+      return (test (Proxy @a) xs) 
+
 --------------------------------------------------------------------------------
 
 doTests :: Int -> String -> IO Bool -> IO Bool
@@ -72,11 +78,12 @@ doTests n name testAction =
 --------------------------------------------------------------------------------
 
 data PolyProp
-  = PolyProp1  (forall a. Univariate a  => a -> Bool                 ) String
-  | PolyProp2  (forall a. Univariate a  => a -> a -> Bool            ) String
-  | PolyProp3  (forall a. Univariate a  => a -> a -> a -> Bool       ) String
-  | PolyPropF1 (forall a. Univariate a  => Coeff a -> a -> Bool      ) String
-  | PolyPropFF (forall a. Univariate a  => Proxy a -> Coeff a -> Coeff a -> Bool) String
+  = PolyProp1   (forall a. Univariate    a  => a -> Bool                 ) String
+  | PolyProp2   (forall a. Univariate    a  => a -> a -> Bool            ) String
+  | PolyProp3   (forall a. Univariate    a  => a -> a -> a -> Bool       ) String
+  | PolyPropF1  (forall a. Univariate    a  => Coeff a -> a -> Bool      ) String
+  | PolyPropFF  (forall a. Univariate    a  => Proxy a -> Coeff a -> Coeff a -> Bool) String
+  | PolyPropFFT (forall a. UnivariateFFT a  => Proxy a -> [Coeff a] -> Bool) String
 
 --------------------------------------------------------------------------------
 
@@ -128,6 +135,9 @@ specificPolyProps =
   , PolyPropF1 prop_longdiv_kp_plus_13  "(k*p+13) `div` p"
   , PolyPropF1 prop_divByVanishing      "divByVanishing"
   , PolyPropF1 prop_quotByVanishing     "quotByVanishing"
+  , PolyPropFFT prop_ntt_then_intt      "intt . ntt == id"
+  , PolyPropFFT prop_intt_then_ntt      "ntt . intt == id"
+  , PolyPropFFT prop_ntt_vs_eval        "ntt vs. evalAt"
   ]
 
 --------------------------------------------------------------------------------
@@ -342,5 +352,41 @@ prop_quotByVanishing eta p0 =
   let binom = (4,eta) 
   in  (quotByVanishing (p0 * myVanishingPoly binom    ) binom == Just p0) &&
       (quotByVanishing (p0 * myVanishingPoly binom + 1) binom == Nothing)
+
+--------------------------------------------------------------------------------
+
+someNumbers :: Field f => [f]
+someNumbers = go 17 23 57 where
+  go a b c = a : go (b+c*a+101) (c+a*b+205) (a+b*c+507)
+
+prop_ntt_then_intt :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
+prop_ntt_then_intt _pxy input = (cs == coeffs poly2) where
+  m  = 5
+  n  = 2^m
+  sg = getFFTSubgroup m
+  cs    = take n $ zipWith (*) (cycle input) someNumbers :: [Coeff p]
+  poly1 = mkPoly cs     :: p
+  varr  = ntt  sg poly1 :: FlatArray (Coeff p)
+  poly2 = intt sg varr  :: p
+
+prop_intt_then_ntt :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
+prop_intt_then_ntt _pxy input = (ys == zs) where
+  m  = 5
+  n  = 2^m
+  sg = getFFTSubgroup m
+  ys    = take n $ zipWith (*) (cycle input) someNumbers :: [Coeff p]
+  poly  = intt sg (packFlatArrayFromList ys) :: p
+  varr  = ntt  sg poly                       :: FlatArray (Coeff p)
+  zs    = unpackFlatArrayToList varr         :: [Coeff p]
+
+prop_ntt_vs_eval :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
+prop_ntt_vs_eval _pxy input = (us == vs) where
+  m  = 5
+  n  = 2^m
+  sg = getFFTSubgroup m
+  cs    = take n $ zipWith (*) (cycle input) someNumbers :: [Coeff p] 
+  poly  = mkPoly cs                                      :: p
+  us    = unpackFlatArrayToList $ ntt sg poly            :: [Coeff p]
+  vs    = [ evalAt x poly | x <- enumerateSubgroup sg ]  :: [Coeff p]
 
 --------------------------------------------------------------------------------

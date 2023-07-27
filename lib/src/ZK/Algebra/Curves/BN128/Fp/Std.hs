@@ -52,7 +52,7 @@ import qualified ZK.Algebra.BigInt.BigInt256 as B
 
 import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
-import           ZK.Algebra.Helpers
+import ZK.Algebra.Helpers
 
 --------------------------------------------------------------------------------  
 
@@ -124,6 +124,7 @@ instance C.Field Fp where
   dimPxy       _ = 1
   primGenPxy   _ = primGen
   batchInverse   = batchInv
+
 
 
 {-# NOINLINE exportToCDef #-}

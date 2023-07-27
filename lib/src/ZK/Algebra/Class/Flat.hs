@@ -62,7 +62,7 @@ class WrappedArray a where
 data FlatArray a 
   = MkFlatArray !Int !(ForeignPtr Word64)
   deriving Show
-
+  
 withFlatArray :: FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO b
 withFlatArray (MkFlatArray n fptr) action = do
   withForeignPtr fptr $ \ptr -> action n ptr

@@ -55,6 +55,7 @@ Library
                         ZK.Algebra.Class.Field
                         ZK.Algebra.Class.Curve
                         ZK.Algebra.Class.Poly
+                        ZK.Algebra.Class.FFT
                         ZK.Algebra.Helpers
 
   Exposed-Modules:      ZK.Algebra.BigInt.Types        

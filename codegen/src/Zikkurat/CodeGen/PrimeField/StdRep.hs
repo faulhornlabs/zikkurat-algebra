@@ -9,6 +9,7 @@ module Zikkurat.CodeGen.PrimeField.StdRep where
 import Data.List
 import Data.Word
 import Data.Bits
+import Data.Maybe
 
 import Control.Monad
 import System.FilePath
@@ -31,6 +32,7 @@ data Params = Params
   , bigintType  :: String       -- ^ the name of the haskell type of the corresponding BigInt
   , fieldName   :: String       -- ^ name of the field
   , primGen     :: Integer      -- ^ the primitive generator
+  , fftDomain   :: Maybe (Int,Integer)   -- ^ the largest FFT-friendly subgroup
   }
   deriving Show
 
@@ -108,7 +110,12 @@ hsBegin params@(Params{..}) =
   , "  , inv , div , div_by_2 , batchInv"
   , "    -- * Exponentiation"
   , "  , pow , pow_"
-  , "    -- * Random"
+  ] ++ (if isJust fftDomain 
+          then [ "    -- * FFT"
+               , "  , fftDomain"
+               ]
+          else []) ++
+  [ "    -- * Random"
   , "  , rnd"
   , "    -- * Export to C"
   , "  , exportToCDef , exportListToCDef"
@@ -136,7 +143,12 @@ hsBegin params@(Params{..}) =
   , ""
   , "import           ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as C"
-  , "import           ZK.Algebra.Helpers"
+  ] ++ (if isJust fftDomain 
+          then [ "import qualified ZK.Algebra.Class.FFT as T"
+               , "import           ZK.Algebra.Class.FFT hiding (fftDomain)"
+               ]
+          else []) ++
+  [ "import ZK.Algebra.Helpers"
   , ""
   , "--------------------------------------------------------------------------------  "
   , ""
@@ -209,6 +221,18 @@ hsBegin params@(Params{..}) =
   , "  primGenPxy   _ = primGen"
   , "  batchInverse   = batchInv"
   , ""
+  ] ++ (case fftDomain of
+         Just (siz,gen) ->
+           [ "fftDomain :: FFTSubgroup " ++ typeName 
+           , "fftDomain = MkFFTSubgroup gen " ++ show siz ++ " where"
+           , "  gen :: " ++ typeName
+           , "  gen = to" ++ postfix ++ " " ++ show gen
+           , ""
+           , "instance FFTField " ++ typeName ++ " where"
+           , "  fftDomain = " ++ hsModule hs_path ++ ".fftDomain"
+           ]
+         Nothing -> []) ++
+  [ ""  
   ] ++ 
   exportFieldToC     (toCommonParams params) ++
   ffi_exponentiation (toCommonParams params) ++
