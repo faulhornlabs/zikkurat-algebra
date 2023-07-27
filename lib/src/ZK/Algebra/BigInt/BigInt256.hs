@@ -149,20 +149,20 @@ fromWord64sLE = go where
   go []     = 0
   go (x:xs) = fromIntegral x + shiftL (go xs) 64
 
-toWord64sLE :: Integer -> [Word64]
-toWord64sLE = go where
+toWord64sLE_ :: Integer -> [Word64]
+toWord64sLE_ = go where
   go 0 = []
   go k = fromInteger (k .&. (2^64-1)) : go (shiftR k 64)
 
-toWord64sLE' :: Int -> Integer -> [Word64]
-toWord64sLE' len what = take len $ toWord64sLE what ++ repeat 0
+toWord64sLE :: Int -> Integer -> [Word64]
+toWord64sLE len what = take len $ toWord64sLE_ what ++ repeat 0
 
 {-# NOINLINE unsafeMk #-}
 unsafeMk :: Integer -> IO BigInt256
 unsafeMk x = do
   fptr <- mallocForeignPtrArray 4
   withForeignPtr fptr $ \ptr -> do
-    pokeArray ptr $ toWord64sLE' 4 x
+    pokeArray ptr $ toWord64sLE 4 x
   return $ MkBigInt256 fptr
 
 {-# NOINLINE unsafeGet #-}

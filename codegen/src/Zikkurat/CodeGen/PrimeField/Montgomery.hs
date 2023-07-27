@@ -107,6 +107,8 @@ hsBegin params@(Params{..}) =
   , "  , pow , pow_"
   , "    -- * Random"
   , "  , rnd"
+  , "    -- * Export to C"
+  , "  , exportToCDef , exportListToCDef"
   , "  )"  
   , "  where"  
   , ""
@@ -132,6 +134,7 @@ hsBegin params@(Params{..}) =
   , ""
   , "import           ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as C"
+  , "import           ZK.Algebra.Helpers"
   , ""
   , "--------------------------------------------------------------------------------  "
   , ""
@@ -229,8 +232,9 @@ hsBegin params@(Params{..}) =
   , "  return (Std.Mk" ++ typeName ++ " fptr2)"
   , ""
   ] ++
-  c_exponentiation (toCommonParams params) ++
-  c_batch_inverse  (toCommonParams params) 
+  exportFieldToC     (toCommonParams params) ++
+  ffi_exponentiation (toCommonParams params) ++
+  ffi_batch_inverse  (toCommonParams params) 
   where 
     postfix = ""  
 
@@ -672,7 +676,7 @@ c_code params = concat $ map ("":)
 hs_code :: Params -> Code
 hs_code params@(Params{..}) = concat $ map ("":)
   [ hsBegin      params
-  , hsMiscTmp
+  -- , hsMiscTmp
   , hsConvert    params
   , hsFFI        params
   ]

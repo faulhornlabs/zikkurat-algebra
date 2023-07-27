@@ -26,6 +26,8 @@ module ZK.Algebra.Curves.BN128.Fp.Std
   , pow , pow_
     -- * Random
   , rnd
+    -- * Export to C
+  , exportToCDef , exportListToCDef
   )
   where
 
@@ -50,6 +52,7 @@ import qualified ZK.Algebra.BigInt.BigInt256 as B
 
 import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
+import           ZK.Algebra.Helpers
 
 --------------------------------------------------------------------------------  
 
@@ -122,6 +125,19 @@ instance C.Field Fp where
   primGenPxy   _ = primGen
   batchInverse   = batchInv
 
+
+{-# NOINLINE exportToCDef #-}
+exportToCDef :: String -> Fp -> String
+exportToCDef name val = unsafePerformIO $ do
+  ws <- peekFlat val
+  return $ exportWordsToC name ws
+
+{-# NOINLINE exportListToCDef #-}
+exportListToCDef :: String -> [Fp] -> String
+exportListToCDef name vals = unsafePerformIO $ do
+  ws <- mapM peekFlat vals
+  return $ exportWordsArrayToC 4 name (concat ws)
+
 ----------------------------------------
 
 foreign import ccall unsafe "bn128_p_std_pow_gen" c_bn128_p_std_pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
@@ -152,25 +168,12 @@ batchInv (MkFlatArray n fptr1) = unsafePerformIO $ do
 ----------------------------------------
 
 
-fromWord64sLE :: [Word64] -> Integer
-fromWord64sLE = go where
-  go []     = 0
-  go (x:xs) = fromIntegral x + shiftL (go xs) 64
-
-toWord64sLE :: Integer -> [Word64]
-toWord64sLE = go where
-  go 0 = []
-  go k = fromInteger (k .&. (2^64-1)) : go (shiftR k 64)
-
-toWord64sLE' :: Int -> Integer -> [Word64]
-toWord64sLE' len what = take len $ toWord64sLE what ++ repeat 0
-
 {-# NOINLINE unsafeMk #-}
 unsafeMk :: Integer -> IO Fp
 unsafeMk x = do
   fptr <- mallocForeignPtrArray 4
   withForeignPtr fptr $ \ptr -> do
-    pokeArray ptr $ toWord64sLE' 4 x
+    pokeArray ptr $ toWord64sLE 4 x
   return $ MkFp fptr
 
 {-# NOINLINE unsafeGet #-}

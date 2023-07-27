@@ -94,8 +94,8 @@ batchInverse CommonParams{..} =
 
 --------------------------------------------------------------------------------
 
-c_exponentiation :: CommonParams -> [String]
-c_exponentiation (CommonParams{..}) =
+ffi_exponentiation :: CommonParams -> [String]
+ffi_exponentiation (CommonParams{..}) =
   [ "----------------------------------------"
   , ""
   , "foreign import ccall unsafe \"" ++ prefix ++ "pow_gen\" c_" ++ prefix ++ "pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()"
@@ -112,8 +112,8 @@ c_exponentiation (CommonParams{..}) =
   , ""
   ]
 
-c_batch_inverse :: CommonParams -> [String]
-c_batch_inverse (CommonParams{..}) =
+ffi_batch_inverse :: CommonParams -> [String]
+ffi_batch_inverse (CommonParams{..}) =
   [ "----------------------------------------"
   , ""
   , "foreign import ccall unsafe \"" ++ prefix ++ "batch_inv\" c_" ++ prefix ++ "batch_inv :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()"
@@ -133,3 +133,19 @@ c_batch_inverse (CommonParams{..}) =
 
 --------------------------------------------------------------------------------
 
+exportFieldToC :: CommonParams -> [String]
+exportFieldToC (CommonParams{..}) =
+  [ ""
+  , "{-# NOINLINE exportToCDef #-}"
+  , "exportToCDef :: String -> " ++ typeName ++ " -> String"
+  , "exportToCDef name val = unsafePerformIO $ do"
+  , "  ws <- peekFlat val"
+  , "  return $ exportWordsToC name ws"
+  , ""
+  , "{-# NOINLINE exportListToCDef #-}"
+  , "exportListToCDef :: String -> [" ++ typeName ++ "] -> String"
+  , "exportListToCDef name vals = unsafePerformIO $ do"
+  , "  ws <- mapM peekFlat vals"
+  , "  return $ exportWordsArrayToC " ++ show nlimbs ++ " name (concat ws)"
+  , ""
+  ]

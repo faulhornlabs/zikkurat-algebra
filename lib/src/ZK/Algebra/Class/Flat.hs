@@ -41,6 +41,10 @@ makeFlatGeneric wrap nwords srcPtr = do
   withForeignPtr fptr $ \tgtPtr -> copyBytes tgtPtr srcPtr (8*nwords)
   return (wrap fptr)
 
+peekFlat :: forall a. Flat a => a -> IO [Word64]
+peekFlat what = withFlat what $ \ptr -> peekArray (sizeInQWords pxy) ptr where
+  pxy = Proxy @a
+
 --------------------------------------------------------------------------------
 
 -- | Something which is a newtype containing a FlatArray
