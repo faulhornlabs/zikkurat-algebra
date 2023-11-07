@@ -10,12 +10,20 @@ error_exit() {
   exit 1
 }
 
+CABAL_MAJOR_VER=`cabal --numeric-version | head -c 1`
+echo "cabal major version = $CABAL_MAJOR_VER"
+
 cd ${ROOT}/codegen
 echo "===================="
 echo "building the codegen"
 echo "===================="
 #echo "current directory = `pwd`"
-cabal install --disable-documentation || error_exit "building the codegen failed"
+if [ "$CABAL_MAJOR_VER" = "2" ]
+then
+  cabal install --disable-documentation || error_exit "building the codegen failed"
+else
+  cabal install --disable-documentation --overwrite-policy=always || error_exit "building the codegen failed"
+fi
 
 FLAGS=""
 
