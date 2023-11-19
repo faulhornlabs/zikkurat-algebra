@@ -6,21 +6,14 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include <x86intrin.h>
 #include <assert.h>
 #include "bigint320.h"
+#include "platform.h"
 
 #define NLIMBS 5
 
 #define MIN(a,b) ( ((a)<=(b)) ? (a) : (b) )
 #define MAX(a,b) ( ((a)>=(b)) ? (a) : (b) )
-
-inline uint8_t addcarry_u128_inplace(  uint64_t *tgt_lo, uint64_t *tgt_hi, uint64_t arg_lo, uint64_t arg_hi) {
-  uint8_t c;
-  c = _addcarry_u64( 0, *tgt_lo, arg_lo, tgt_lo );
-  c = _addcarry_u64( c, *tgt_hi, arg_hi, tgt_hi );
-  return c;
-}
 
 //------------------------------------------------------------------------------
 
@@ -76,97 +69,97 @@ void bigint320_debug_print(const char *txt, const uint64_t *what) {
 // increments bigint by 1, inplace
 uint8_t bigint320_inc_inplace( uint64_t *tgt ) {
   uint8_t c = 0;
-  c = _addcarry_u64( c, tgt[0], 1, tgt+0 );
-  c = _addcarry_u64( c, tgt[1], 0, tgt+1 );
-  c = _addcarry_u64( c, tgt[2], 0, tgt+2 );
-  c = _addcarry_u64( c, tgt[3], 0, tgt+3 );
-  c = _addcarry_u64( c, tgt[4], 0, tgt+4 );
+  c = addcarry_u64( c, tgt[0], 1, tgt+0 );
+  c = addcarry_u64( c, tgt[1], 0, tgt+1 );
+  c = addcarry_u64( c, tgt[2], 0, tgt+2 );
+  c = addcarry_u64( c, tgt[3], 0, tgt+3 );
+  c = addcarry_u64( c, tgt[4], 0, tgt+4 );
   return c;
 }
 
 // decrements bigint by 1, inplace
 uint8_t bigint320_dec_inplace( uint64_t *tgt ) {
   uint8_t b = 0;
-  b = _subborrow_u64( b, tgt[0], 1, tgt+0 );
-  b = _subborrow_u64( b, tgt[1], 0, tgt+1 );
-  b = _subborrow_u64( b, tgt[2], 0, tgt+2 );
-  b = _subborrow_u64( b, tgt[3], 0, tgt+3 );
-  b = _subborrow_u64( b, tgt[4], 0, tgt+4 );
+  b = subborrow_u64( b, tgt[0], 1, tgt+0 );
+  b = subborrow_u64( b, tgt[1], 0, tgt+1 );
+  b = subborrow_u64( b, tgt[2], 0, tgt+2 );
+  b = subborrow_u64( b, tgt[3], 0, tgt+3 );
+  b = subborrow_u64( b, tgt[4], 0, tgt+4 );
   return b;
 }
 
 // negates a bigint
 void bigint320_neg( const uint64_t *src, uint64_t *tgt ) {
   uint8_t b = 0;
-  b = _subborrow_u64( b, 0, src[0], tgt+0 );
-  b = _subborrow_u64( b, 0, src[1], tgt+1 );
-  b = _subborrow_u64( b, 0, src[2], tgt+2 );
-  b = _subborrow_u64( b, 0, src[3], tgt+3 );
-  b = _subborrow_u64( b, 0, src[4], tgt+4 );
+  b = subborrow_u64( b, 0, src[0], tgt+0 );
+  b = subborrow_u64( b, 0, src[1], tgt+1 );
+  b = subborrow_u64( b, 0, src[2], tgt+2 );
+  b = subborrow_u64( b, 0, src[3], tgt+3 );
+  b = subborrow_u64( b, 0, src[4], tgt+4 );
 }
 
 // negates a bigint inplace
 void bigint320_neg_inplace( uint64_t *tgt ) {
   uint8_t b = 0;
-  b = _subborrow_u64( b, 0, tgt[0], tgt+0 );
-  b = _subborrow_u64( b, 0, tgt[1], tgt+1 );
-  b = _subborrow_u64( b, 0, tgt[2], tgt+2 );
-  b = _subborrow_u64( b, 0, tgt[3], tgt+3 );
-  b = _subborrow_u64( b, 0, tgt[4], tgt+4 );
+  b = subborrow_u64( b, 0, tgt[0], tgt+0 );
+  b = subborrow_u64( b, 0, tgt[1], tgt+1 );
+  b = subborrow_u64( b, 0, tgt[2], tgt+2 );
+  b = subborrow_u64( b, 0, tgt[3], tgt+3 );
+  b = subborrow_u64( b, 0, tgt[4], tgt+4 );
 }
 
 // adds two (unsigned) big integers made up from 5 limbs (64-bit words)
 uint8_t bigint320_add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
   uint8_t c = 0;
-  c = _addcarry_u64( c, src1[0], src2[0],  tgt+0 );
-  c = _addcarry_u64( c, src1[1], src2[1],  tgt+1 );
-  c = _addcarry_u64( c, src1[2], src2[2],  tgt+2 );
-  c = _addcarry_u64( c, src1[3], src2[3],  tgt+3 );
-  c = _addcarry_u64( c, src1[4], src2[4],  tgt+4 );
+  c = addcarry_u64( c, src1[0], src2[0],  tgt+0 );
+  c = addcarry_u64( c, src1[1], src2[1],  tgt+1 );
+  c = addcarry_u64( c, src1[2], src2[2],  tgt+2 );
+  c = addcarry_u64( c, src1[3], src2[3],  tgt+3 );
+  c = addcarry_u64( c, src1[4], src2[4],  tgt+4 );
   return c;
 }
 
 // adds two big integers made up from 5 limbs (64-bit words)
 uint8_t bigint320_add_inplace( uint64_t *tgt, const uint64_t *src2 ) {
   uint8_t c = 0;
-  c = _addcarry_u64( c, tgt[0], src2[0],  tgt+0 );
-  c = _addcarry_u64( c, tgt[1], src2[1],  tgt+1 );
-  c = _addcarry_u64( c, tgt[2], src2[2],  tgt+2 );
-  c = _addcarry_u64( c, tgt[3], src2[3],  tgt+3 );
-  c = _addcarry_u64( c, tgt[4], src2[4],  tgt+4 );
+  c = addcarry_u64( c, tgt[0], src2[0],  tgt+0 );
+  c = addcarry_u64( c, tgt[1], src2[1],  tgt+1 );
+  c = addcarry_u64( c, tgt[2], src2[2],  tgt+2 );
+  c = addcarry_u64( c, tgt[3], src2[3],  tgt+3 );
+  c = addcarry_u64( c, tgt[4], src2[4],  tgt+4 );
   return c;
 }
 
 // subtracts two (unsigned) big integers made up from 5 limbs (64-bit words)
 uint8_t bigint320_sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
   uint8_t b = 0;
-  b = _subborrow_u64( b, src1[0], src2[0],  tgt+0 );
-  b = _subborrow_u64( b, src1[1], src2[1],  tgt+1 );
-  b = _subborrow_u64( b, src1[2], src2[2],  tgt+2 );
-  b = _subborrow_u64( b, src1[3], src2[3],  tgt+3 );
-  b = _subborrow_u64( b, src1[4], src2[4],  tgt+4 );
+  b = subborrow_u64( b, src1[0], src2[0],  tgt+0 );
+  b = subborrow_u64( b, src1[1], src2[1],  tgt+1 );
+  b = subborrow_u64( b, src1[2], src2[2],  tgt+2 );
+  b = subborrow_u64( b, src1[3], src2[3],  tgt+3 );
+  b = subborrow_u64( b, src1[4], src2[4],  tgt+4 );
   return b;
 }
 
 // subtracts two big integers made up from 5 limbs (64-bit words)
 uint8_t bigint320_sub_inplace( uint64_t *tgt, const uint64_t *src2 ) {
   uint8_t b = 0;
-  b = _subborrow_u64( b, tgt[0], src2[0],  tgt+0 );
-  b = _subborrow_u64( b, tgt[1], src2[1],  tgt+1 );
-  b = _subborrow_u64( b, tgt[2], src2[2],  tgt+2 );
-  b = _subborrow_u64( b, tgt[3], src2[3],  tgt+3 );
-  b = _subborrow_u64( b, tgt[4], src2[4],  tgt+4 );
+  b = subborrow_u64( b, tgt[0], src2[0],  tgt+0 );
+  b = subborrow_u64( b, tgt[1], src2[1],  tgt+1 );
+  b = subborrow_u64( b, tgt[2], src2[2],  tgt+2 );
+  b = subborrow_u64( b, tgt[3], src2[3],  tgt+3 );
+  b = subborrow_u64( b, tgt[4], src2[4],  tgt+4 );
   return b;
 }
 
 // tgt := src - tgt
 uint8_t bigint320_sub_inplace_reverse( uint64_t *tgt, const uint64_t *src1 ) {
   uint8_t b = 0;
-  b = _subborrow_u64( b, src1[0], tgt[0],  tgt+0 );
-  b = _subborrow_u64( b, src1[1], tgt[1],  tgt+1 );
-  b = _subborrow_u64( b, src1[2], tgt[2],  tgt+2 );
-  b = _subborrow_u64( b, src1[3], tgt[3],  tgt+3 );
-  b = _subborrow_u64( b, src1[4], tgt[4],  tgt+4 );
+  b = subborrow_u64( b, src1[0], tgt[0],  tgt+0 );
+  b = subborrow_u64( b, src1[1], tgt[1],  tgt+1 );
+  b = subborrow_u64( b, src1[2], tgt[2],  tgt+2 );
+  b = subborrow_u64( b, src1[3], tgt[3],  tgt+3 );
+  b = subborrow_u64( b, src1[4], tgt[4],  tgt+4 );
   return b;
 }
 
@@ -181,31 +174,31 @@ void bigint320_scale( uint64_t z, const uint64_t *src, uint64_t *tgt) {
   x = ((__uint128_t) src[0]) * z;
   lo = (uint64_t) x;
   hi = (uint64_t)(x >> 64);
-  c = _addcarry_u64( 0, tgt[0], lo, tgt+0 );
+  c = addcarry_u64( 0, tgt[0], lo, tgt+0 );
   tgt[1] = hi + c;    // note: cannot overflow because `hi <= 2^64-2`
   // limb # 1
   x = ((__uint128_t) src[1]) * z;
   lo = (uint64_t) x;
   hi = (uint64_t)(x >> 64);
-  c = _addcarry_u64( 0, tgt[1], lo, tgt+1 );
+  c = addcarry_u64( 0, tgt[1], lo, tgt+1 );
   tgt[2] = hi + c;    // note: cannot overflow because `hi <= 2^64-2`
   // limb # 2
   x = ((__uint128_t) src[2]) * z;
   lo = (uint64_t) x;
   hi = (uint64_t)(x >> 64);
-  c = _addcarry_u64( 0, tgt[2], lo, tgt+2 );
+  c = addcarry_u64( 0, tgt[2], lo, tgt+2 );
   tgt[3] = hi + c;    // note: cannot overflow because `hi <= 2^64-2`
   // limb # 3
   x = ((__uint128_t) src[3]) * z;
   lo = (uint64_t) x;
   hi = (uint64_t)(x >> 64);
-  c = _addcarry_u64( 0, tgt[3], lo, tgt+3 );
+  c = addcarry_u64( 0, tgt[3], lo, tgt+3 );
   tgt[4] = hi + c;    // note: cannot overflow because `hi <= 2^64-2`
   // limb # 4
   x = ((__uint128_t) src[4]) * z;
   lo = (uint64_t) x;
   hi = (uint64_t)(x >> 64);
-  c = _addcarry_u64( 0, tgt[4], lo, tgt+4 );
+  c = addcarry_u64( 0, tgt[4], lo, tgt+4 );
   tgt[5] = hi + c;    // note: cannot overflow because `hi <= 2^64-2`
 }
 

@@ -40,6 +40,7 @@ Library
                         Zikkurat.CodeGen.PrimeField.Montgomery
                         Zikkurat.CodeGen.PrimeField.FieldCommon
                         Zikkurat.CodeGen.BigInt
+                        Zikkurat.CodeGen.Platform
                         Zikkurat.CodeGen.FFI
                         Zikkurat.CodeGen.Misc
                         Zikkurat.Primes

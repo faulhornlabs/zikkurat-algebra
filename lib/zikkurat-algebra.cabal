@@ -17,21 +17,13 @@ Maintainer:           balazs.komuves (at) faulhornlabs (dot) com
 Stability:            Experimental
 Category:             Math, Cryptography
 Tested-With:          GHC == 8.6.5, GHC == 9.0.1
-Build-Type:           Custom
+Build-Type:           Simple
+
+--------------------------------------------------------------------------------
 
 source-repository head
   type:                git 
   location:            https://github.com/faulhornlabs/zikkurat-algebra
-
---------------------------------------------------------------------------------
-
-custom-setup
-
-  setup-depends:        base  >= 4 && < 5,
-                        filepath  >= 1.2,
-                        directory >= 1.2,
-                        Cabal >= 2.4,
-                        zikkurat-algebra-codegen == 0.0.1
 
 --------------------------------------------------------------------------------
 
@@ -66,6 +58,7 @@ Library
                         ZK.Algebra.BigInt.BigInt384
                         ZK.Algebra.BigInt.BigInt448
                         ZK.Algebra.BigInt.BigInt512
+                        ZK.Algebra.BigInt.Platform
 
   if flag(BN128)
     Exposed-Modules:    ZK.Algebra.Curves.BN128.Fp.Std
@@ -87,7 +80,8 @@ Library
                         ZK.Algebra.Curves.BLS12_381.G1.Jac
                         ZK.Algebra.Curves.BLS12_381.Poly
 
-  c-sources:            cbits/bigint/bigint128.c
+  c-sources:            cbits/platform.c
+                        cbits/bigint/bigint128.c
                         cbits/bigint/bigint192.c
                         cbits/bigint/bigint256.c
                         cbits/bigint/bigint320.c
@@ -96,6 +90,7 @@ Library
                         cbits/bigint/bigint512.c
 
   if flag(BN128)
+
     c-sources:          cbits/curves/fields/std/bn128_p_std.c
                         cbits/curves/fields/std/bn128_r_std.c
                         cbits/curves/fields/mont/bn128_p_mont.c
@@ -106,6 +101,7 @@ Library
                         cbits/curves/poly/mont/bn128_poly_mont.c
 
   if flag(BLS12_381)
+
     c-sources:          cbits/curves/fields/std/bls12_381_p_std.c
                         cbits/curves/fields/std/bls12_381_r_std.c
                         cbits/curves/fields/mont/bls12_381_p_mont.c
@@ -120,7 +116,8 @@ Library
 
   Hs-Source-Dirs:       src
 
-  include-dirs:         cbits/bigint
+  include-dirs:         cbits
+                        cbits/bigint
                         cbits/curves/fields/std
                         cbits/curves/fields/mont
                         cbits/curves/g1/affine
@@ -129,6 +126,32 @@ Library
                         cbits/curves/poly/mont
 
   ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
+
+  if arch(aarch64)
+    cpp-options:         -DARCH_AARCH64
+  elif arch(x86_64)
+    cpp-options:         -DARCH_X86_64
+  else
+    cpp-options:         -DARCH_UNKNOWN
+
+--------------------------------------------------------------------------------
+
+extra-source-files:     cbits/*.h,
+                        cbits/*.c,
+                        cbits/bigints/*.h,
+                        cbits/bigints/*.c,
+                        cbits/curves/fields/std/*.h,
+                        cbits/curves/fields/std/*.c,
+                        cbits/curves/fields/mont/*.h,
+                        cbits/curves/fields/mont/*.c,
+                        cbits/curves/g1/affine/*.h,
+                        cbits/curves/g1/affine/*.c,
+                        cbits/curves/g1/proj/*.h,
+                        cbits/curves/g1/proj/*.c,
+                        cbits/curves/g1/jac/*.h,
+                        cbits/curves/g1/jac/*.c,
+                        cbits/curves/poly/mont/*.h,
+                        cbits/curves/poly/mont/*.c
 
 --------------------------------------------------------------------------------
 

@@ -29,6 +29,7 @@ help = do
   putStrLn "the following testsuites are available:"
   putStrLn ""
   putStrLn " - all"
+  putStrLn " - platform"  
   putStrLn " - bigint"
   putStrLn " - std_field"
   putStrLn " - montgomery"
@@ -43,6 +44,7 @@ help = do
 validNames :: [String]
 validNames = 
   [ "all"
+  , "platform"
   , "bigint"
   , "stdfield"
   , "montfield" , "montgomery"
@@ -56,7 +58,10 @@ testMain :: String -> Int -> IO ()
 testMain what n = case canonicalizeName what of
 
   "all"        -> runTestsAll       n
+
+  "platform"   -> runTestsPlatform
   "bigint"     -> runTestsBigInt    n
+
   "stdfield"   -> runTestsStdField  n     
 
   "montfield"  -> runTestsMontField n

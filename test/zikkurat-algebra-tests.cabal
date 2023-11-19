@@ -29,6 +29,7 @@ Library
                         zikkurat-algebra == 0.0.1
                         
   Exposed-Modules:      ZK.Test.Run
+                        ZK.Test.Platform.Properties
                         ZK.Test.Field.Properties
                         ZK.Test.Curve.Properties
                         ZK.Test.Poly.Properties
@@ -37,10 +38,6 @@ Library
   Default-Extensions:   CPP, BangPatterns
 
   Hs-Source-Dirs:       src
-
---  include-dirs:         cbits/bigint
---                        cbits/curves/fields/std
---                        cbits/curves/fields/mont
 
   ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
 

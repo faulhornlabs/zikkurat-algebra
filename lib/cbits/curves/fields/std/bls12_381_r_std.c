@@ -7,11 +7,12 @@
 
 #include <string.h>
 #include <stdint.h>
-#include <x86intrin.h>
+#include <stdlib.h>
 #include <assert.h>
 
 #include "bls12_381_r_std.h"
 #include "bigint256.h"
+#include "platform.h"
 
 #define NLIMBS 4
 
@@ -203,7 +204,7 @@ static const uint64_t bls12_381_r_std_mps_table[32] = {
 uint8_t bls12_381_r_std_bigint_sub_inplace_larger( uint64_t *tgt, const uint64_t *src2 ) {
   uint8_t b = 0;
   for(int j=0; j<5; j++) {
-    b = _subborrow_u64( b, tgt[j], src2[j], tgt+j );
+    b = subborrow_u64( b, tgt[j], src2[j], tgt+j );
   }
   return b;
 }

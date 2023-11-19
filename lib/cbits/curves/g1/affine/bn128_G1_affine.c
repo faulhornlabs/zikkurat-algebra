@@ -7,8 +7,8 @@
 //    this is not a valid value for prime fields, so it's OK as long as we always check for it
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdint.h>
-#include <x86intrin.h>
 
 #include "bn128_G1_affine.h"
 #include "bn128_G1_proj.h"
