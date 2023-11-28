@@ -76,6 +76,8 @@ c_header (Params{..}) =
   , ""
   , "extern void " ++ prefix ++ "sub_inplace_reverse ( uint64_t *tgt , const uint64_t *src1 );"
   , ""
+  , "extern void " ++ prefix ++ "batch_inv ( int n, const uint64_t *src, uint64_t *tgt );"
+  , ""
   , "extern void " ++ prefix ++ "pow_uint64( const uint64_t *src,       uint64_t  exponent, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "pow_gen   ( const uint64_t *src, const uint64_t *expo    , uint64_t *tgt, int expo_len );"
   ]
