@@ -26,11 +26,15 @@ Library
   Build-Depends:        base >= 4 && < 5, 
                         array  >= 0.5, 
                         random >= 1.1,
-                        zikkurat-algebra == 0.0.1
+                        zikkurat-algebra == 0.0.1,
+                        zikkurat-algebra-pure == 0.0.1
                         
   Exposed-Modules:      ZK.Test.Run
                         ZK.Test.Platform.Properties
                         ZK.Test.Field.Properties
+                        ZK.Test.Field.AgainstRef
+                        ZK.Test.Field.Ref_BN254
+                        ZK.Test.Field.Ref_BLS12_381
                         ZK.Test.Curve.Properties
                         ZK.Test.Poly.Properties
 

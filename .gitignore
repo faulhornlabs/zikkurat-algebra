@@ -1,4 +1,5 @@
 .DS_Store
+.ghc.environment*
 dist
 dist-newstyle
 cabal.project.local
@@ -8,3 +9,5 @@ tmp
 *.o
 *.s
 a.out
+codegen_lib_build.sh
+tmp.hs

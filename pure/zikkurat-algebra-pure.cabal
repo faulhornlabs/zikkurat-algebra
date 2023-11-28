@@ -97,8 +97,6 @@ test-suite tests
 -- cabal sucks, again...
 executable zikkurat-algebra-pure-tests
 
-  type:                 exitcode-stdio-1.0
-
   build-depends:        base >= 4 && < 5,
                         zikkurat-algebra-pure
 

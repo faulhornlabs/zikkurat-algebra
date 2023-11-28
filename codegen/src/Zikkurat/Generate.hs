@@ -5,6 +5,7 @@ module Zikkurat.Generate
   , generate_bigints
   , generate_primefields_std
   , generate_primefields_montgomery
+  , generate_extfield_towers
   , generate_curves_affine
   , generate_curves_proj
   , generate_curves_jac
@@ -25,6 +26,8 @@ import qualified Zikkurat.CodeGen.Platform              as Platform
 import qualified Zikkurat.CodeGen.BigInt                as BigInt
 import qualified Zikkurat.CodeGen.PrimeField.StdRep     as FpStd
 import qualified Zikkurat.CodeGen.PrimeField.Montgomery as FpMont
+import qualified Zikkurat.CodeGen.ExtField              as Ext
+import qualified Zikkurat.CodeGen.Towers                as Tow
 import qualified Zikkurat.CodeGen.Curve.MontAffine      as Affine
 import qualified Zikkurat.CodeGen.Curve.MontProj        as Proj
 import qualified Zikkurat.CodeGen.Curve.MontJac         as Jac
@@ -34,6 +37,15 @@ import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.Curve.Params
 import Zikkurat.CodeGen.Poly ( PolyParams )
 import Zikkurat.Primes
+
+--------------------------------------------------------------------------------
+
+generate_extfield_towers :: HsOrC -> FilePath -> IO ()
+generate_extfield_towers hsOrC tgtdir = do
+  forM_ Tow.allTowers $ \extparams -> do
+    case hsOrC of 
+      C  -> Ext.extfield_c_codegen  tgtdir extparams
+      Hs -> Ext.extfield_hs_codegen tgtdir extparams
 
 --------------------------------------------------------------------------------
 
@@ -114,10 +126,10 @@ primefiledListReplace stdOrMont = map (primefiledListReplace1 stdOrMont)
 -- (we cannot use ___ for the obvious reasons.....)
 primefield_list :: [FieldDesc]
 primefield_list = 
-  [ ( "BN128/Fp"     , PrimGen 3 , Nothing               , ["ZK","Algebra","Curves", "BN128"    , "Fp", "^^^" ] , ["curves", "fields", ",,,", "bn128_p_,,,"    ] , "Fp" , bn128_base_p       ) 
-  , ( "BN128/Fr"     , PrimGen 5 , Just domain_BN128     , ["ZK","Algebra","Curves", "BN128"    , "Fr", "^^^" ] , ["curves", "fields", ",,,", "bn128_r_,,,"    ] , "Fr" , bn128_scalar_r     )
-  , ( "BLS12-381/Fp" , PrimGen 2 , Nothing               , ["ZK","Algebra","Curves", "BLS12_381", "Fp", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_p_,,,"] , "Fp" , bls12_381_base_p   ) 
-  , ( "BLS12-381/Fr" , PrimGen 7 , Just domain_BLS12_381 , ["ZK","Algebra","Curves", "BLS12_381", "Fr", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_r_,,,"] , "Fr" , bls12_381_scalar_r )
+  [ ( "BN128/Fp"     , PrimGen 3 , Nothing               , ["ZK","Algebra","Curves", "BN128"    , "Fp", "^^^" ] , ["curves", "fields", ",,,", "bn128_Fp_,,,"    ] , "Fp" , bn128_base_p       ) 
+  , ( "BN128/Fr"     , PrimGen 5 , Just domain_BN128     , ["ZK","Algebra","Curves", "BN128"    , "Fr", "^^^" ] , ["curves", "fields", ",,,", "bn128_Fr_,,,"    ] , "Fr" , bn128_scalar_r     )
+  , ( "BLS12-381/Fp" , PrimGen 2 , Nothing               , ["ZK","Algebra","Curves", "BLS12_381", "Fp", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_Fp_,,,"] , "Fp" , bls12_381_base_p   ) 
+  , ( "BLS12-381/Fr" , PrimGen 7 , Just domain_BLS12_381 , ["ZK","Algebra","Curves", "BLS12_381", "Fr", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_Fr_,,,"] , "Fr" , bls12_381_scalar_r )
   ]
 
 -- fft domains
@@ -204,8 +216,8 @@ bn128_cgParams = CodeGenParams
   , prefix_affine  = "bn128_G1_affine_"                                          -- prefix for C names
   , prefix_proj    = "bn128_G1_proj_"                                            -- prefix for C names
   , prefix_jac     = "bn128_G1_jac_"                                             -- prefix for C names
-  , prefix_p       = "bn128_p_mont_"                                             -- prefix for C names for Fp
-  , prefix_r       = "bn128_r_mont_"                                             -- prefix for C names for Fq
+  , prefix_p       = "bn128_Fp_mont_"                                            -- prefix for C names for Fp
+  , prefix_r       = "bn128_Fr_mont_"                                            -- prefix for C names for Fq
   , point_repr     = error "bn128 / point_repr"                                  -- one of "affine", "proj" or "jac"
   , nlimbs_p       = 4                                                           -- number of 64-bit limbs in p
   , nlimbs_r       = 4                                                           -- number of 64-bit limbs in r
@@ -221,18 +233,18 @@ bn128_cgParams = CodeGenParams
   , hs_path_affine = Path ["ZK","Algebra","Curves","BN128","G1","Affine"]        -- path of the Haskell module
   , hs_path_proj   = Path ["ZK","Algebra","Curves","BN128","G1","Proj"]          -- path of the Haskell module
   , hs_path_jac    = Path ["ZK","Algebra","Curves","BN128","G1","Jac"]           -- path of the Haskell module
-  , c_basename_p   = "bn128_p_mont"                                              -- name of the @.c@ / @.h@ file for Fr (without extension)
-  , c_basename_r   = "bn128_r_mont"                                              -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_p   = "bn128_Fp_mont"                                             -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_r   = "bn128_Fr_mont"                                             -- name of the @.c@ / @.h@ file for Fr (without extension)
   , typeName       = "G1"                                                        -- the name of the haskell type for curve points
   }
 
 bn128_polyParams :: PolyParams
 bn128_polyParams = Poly.PolyParams 
   { Poly.prefix     = "bn128_poly_mont_"   
-  , Poly.prefix_r   = "bn128_r_mont_"
+  , Poly.prefix_r   = "bn128_Fr_mont_"
   , Poly.nlimbs     = 4 
   , Poly.c_path     = Path ["curves","poly"  , "mont", "bn128_poly_mont" ]
-  , Poly.c_path_r   = Path ["curves","fields", "mont", "bn128_r_mont" ]
+  , Poly.c_path_r   = Path ["curves","fields", "mont", "bn128_Fr_mont" ]
   , Poly.hs_path    = Path ["ZK","Algebra","Curves","BN128","Poly"]
   , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","BN128","Fr","Mont"] 
   , Poly.typeName   = "Poly" 
@@ -246,8 +258,8 @@ bls12_381_cgParams = CodeGenParams
   , prefix_affine  = "bls12_381_G1_affine_"                                      -- prefix for C names
   , prefix_proj    = "bls12_381_G1_proj_"                                        -- prefix for C names
   , prefix_jac     = "bls12_381_G1_jac_"                                         -- prefix for C names
-  , prefix_p       = "bls12_381_p_mont_"                                         -- prefix for C names for Fp
-  , prefix_r       = "bls12_381_r_mont_"                                         -- prefix for C names for Fq
+  , prefix_p       = "bls12_381_Fp_mont_"                                        -- prefix for C names for Fp
+  , prefix_r       = "bls12_381_Fr_mont_"                                        -- prefix for C names for Fq
   , point_repr     = error "bn128 / point_repr"                                  -- one of "affine", "proj" or "jac"
   , nlimbs_p       = 6                                                           -- number of 64-bit limbs in p
   , nlimbs_r       = 4                                                           -- number of 64-bit limbs in r
@@ -263,18 +275,18 @@ bls12_381_cgParams = CodeGenParams
   , hs_path_affine = Path ["ZK","Algebra","Curves","BLS12_381","G1","Affine"]    -- path of the Haskell module
   , hs_path_proj   = Path ["ZK","Algebra","Curves","BLS12_381","G1","Proj"]      -- path of the Haskell module
   , hs_path_jac    = Path ["ZK","Algebra","Curves","BLS12_381","G1","Jac"]       -- path of the Haskell module
-  , c_basename_p   = "bls12_381_p_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
-  , c_basename_r   = "bls12_381_r_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_p   = "bls12_381_Fp_mont"                                         -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_r   = "bls12_381_Fr_mont"                                         -- name of the @.c@ / @.h@ file for Fr (without extension)
   , typeName       = "G1"                                                        -- the name of the haskell type for curve points
   }
 
 bls12_381_polyParams :: PolyParams
 bls12_381_polyParams = Poly.PolyParams 
   { Poly.prefix     = "bls12_381_poly_mont_"   
-  , Poly.prefix_r   = "bls12_381_r_mont_"
+  , Poly.prefix_r   = "bls12_381_Fr_mont_"
   , Poly.nlimbs     = 4 
   , Poly.c_path     = Path ["curves","poly"  , "mont", "bls12_381_poly_mont" ]
-  , Poly.c_path_r   = Path ["curves","fields", "mont", "bls12_381_r_mont" ]
+  , Poly.c_path_r   = Path ["curves","fields", "mont", "bls12_381_Fr_mont" ]
   , Poly.hs_path    = Path ["ZK","Algebra","Curves","BLS12_381","Poly"]
   , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","BLS12_381","Fr","Mont"] 
   , Poly.typeName   = "Poly" 

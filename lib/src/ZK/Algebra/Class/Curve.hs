@@ -9,6 +9,7 @@ module ZK.Algebra.Class.Curve where
 import Data.Bits
 import Data.Proxy
 import Data.List
+import Data.Kind
 
 import ZK.Algebra.Class.Field
 
@@ -56,9 +57,9 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   -- | name of the ring
   curveNamePxy :: Proxy a -> String            
   -- | base field
-  type BaseField a :: *
+  type BaseField a :: Type
   -- | scalar field
-  type ScalarField a :: *
+  type ScalarField a :: Type
   -- | check whether a point is on the curve
   isOnCurve   :: a -> Bool
   -- | check for being the point at infinity
@@ -84,7 +85,7 @@ class Curve a => AffineCurve a where
 
 class (Curve a, AffineCurve (AffinePoint a)) => ProjCurve a where
   -- | the corresponding affine curve
-  type AffinePoint a :: *
+  type AffinePoint a :: Type
   -- | convert from affine to projective coordinates
   fromAffine :: AffinePoint a -> a 
   -- | convert from projective to affine coordinates

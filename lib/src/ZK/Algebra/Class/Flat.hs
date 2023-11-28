@@ -12,6 +12,7 @@ module ZK.Algebra.Class.Flat where
 import Data.Array
 import Data.Word
 import Data.Proxy
+import Data.Kind
 
 import Control.Monad
 
@@ -41,15 +42,24 @@ makeFlatGeneric wrap nwords srcPtr = do
   withForeignPtr fptr $ \tgtPtr -> copyBytes tgtPtr srcPtr (8*nwords)
   return (wrap fptr)
 
+-- | Read out a list of words
 peekFlat :: forall a. Flat a => a -> IO [Word64]
 peekFlat what = withFlat what $ \ptr -> peekArray (sizeInQWords pxy) ptr where
   pxy = Proxy @a
+
+-- | Create a new instance from a list of @Word64@-s
+newFlat :: forall a. Flat a => [Word64] -> IO a
+newFlat ws = do
+  let n = sizeInQWords (Proxy @a)
+  withArrayLen ws $ \m ptr -> if n == m
+    then makeFlat ptr
+    else error "newFlat: input has wrong length"
 
 --------------------------------------------------------------------------------
 
 -- | Something which is a newtype containing a FlatArray
 class WrappedArray a where
-  type Element a :: *
+  type Element a :: Type
   wrapArray   :: FlatArray (Element a) -> a
   unwrapArray :: a -> FlatArray (Element a)
 

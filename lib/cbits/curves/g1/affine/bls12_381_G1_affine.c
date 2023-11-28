@@ -12,8 +12,8 @@
 
 #include "bls12_381_G1_affine.h"
 #include "bls12_381_G1_proj.h"
-#include "bls12_381_p_mont.h"
-#include "bls12_381_r_mont.h"
+#include "bls12_381_Fp_mont.h"
+#include "bls12_381_Fr_mont.h"
 
 #define NLIMBS_P 6
 #define NLIMBS_R 4
@@ -49,8 +49,8 @@ uint8_t bls12_381_G1_affine_is_ffff( const uint64_t *src ) {
 
 // checks whether two curve points are equal
 uint8_t bls12_381_G1_affine_is_equal( const uint64_t *src1, const uint64_t *src2 ) {
-  return ( bls12_381_p_mont_is_equal( X1, X2 ) &&
-           bls12_381_p_mont_is_equal( Y1, Y2 ) );
+  return ( bls12_381_Fp_mont_is_equal( X1, X2 ) &&
+           bls12_381_Fp_mont_is_equal( Y1, Y2 ) );
 }
 
 // checks whether the underlying representation is the same
@@ -77,13 +77,13 @@ uint8_t bls12_381_G1_affine_is_on_curve ( const uint64_t *src1 ) {
   else {
     uint64_t acc[6];
     uint64_t tmp[6];
-    bls12_381_p_mont_sqr( Y1, acc );             // Y^2
-    bls12_381_p_mont_neg_inplace( acc );         // -Y^2
-    bls12_381_p_mont_sqr( X1, tmp );             // X^2
-    bls12_381_p_mont_mul_inplace( tmp, X1 );     // X^3
-    bls12_381_p_mont_add_inplace( acc, tmp );    // - Y^2 + X^3
-    bls12_381_p_mont_add_inplace( acc, bls12_381_G1_affine_const_B );     // - Y^2*Z + X^3 + A*X + B
-    return bls12_381_p_mont_is_zero( acc );
+    bls12_381_Fp_mont_sqr( Y1, acc );             // Y^2
+    bls12_381_Fp_mont_neg_inplace( acc );         // -Y^2
+    bls12_381_Fp_mont_sqr( X1, tmp );             // X^2
+    bls12_381_Fp_mont_mul_inplace( tmp, X1 );     // X^3
+    bls12_381_Fp_mont_add_inplace( acc, tmp );    // - Y^2 + X^3
+    bls12_381_Fp_mont_add_inplace( acc, bls12_381_G1_affine_const_B );     // - Y^2*Z + X^3 + A*X + B
+    return bls12_381_Fp_mont_is_zero( acc );
   }
 }
 
@@ -117,7 +117,7 @@ void bls12_381_G1_affine_neg( const uint64_t *src1, uint64_t *tgt ) {
   }
   else {
     memcpy( tgt, src1, 48 );
-    bls12_381_p_mont_neg( Y1, Y3 );
+    bls12_381_Fp_mont_neg( Y1, Y3 );
   }
 }
 
@@ -127,7 +127,7 @@ void bls12_381_G1_affine_neg_inplace( uint64_t *tgt ) {
     return;
   }
   else {
-    bls12_381_p_mont_neg_inplace( Y3 );
+    bls12_381_Fp_mont_neg_inplace( Y3 );
   }
 }
 
@@ -141,19 +141,19 @@ void bls12_381_G1_affine_dbl( const uint64_t *src1, uint64_t *tgt ) {
     uint64_t  xx[6];
     uint64_t   t[6];
     uint64_t tmp[6];
-    bls12_381_p_mont_sqr( X1 , xx );            // xx = X1^2
-    bls12_381_p_mont_add( xx , xx, t );         // t  = 2*X1^2
-    bls12_381_p_mont_add_inplace( t, xx );      // t  = 3*X1^2
-    bls12_381_p_mont_add( Y1, Y1, tmp );             // tmp = 2*Y1
-    bls12_381_p_mont_div_inplace( t, tmp );          // t   = (3*X1^2 + A) / (2*Y1)
-    bls12_381_p_mont_sqr( t, tmp );                  // tmp = t^2
-    bls12_381_p_mont_sub_inplace( tmp, X1 );         // tmp = t^2 - X1
-    bls12_381_p_mont_sub_inplace( tmp, X1 );         // tmp = t^2 - 2*X1
-    bls12_381_p_mont_sub( tmp, X1 , xx );            // xx =  (t^2 - 2*X1) - X1 = X3 - X1
-    bls12_381_p_mont_mul_inplace( xx , t );          // xx = t*(X3 - X1)
-    bls12_381_p_mont_add_inplace( xx , Y1);          // xx = Y1 + t*(X3 - X1)
-    bls12_381_p_mont_copy( tmp, X3 );                // X3 = t^2 - 2*X1
-    bls12_381_p_mont_neg ( xx, Y3 );                 // Y3 = - Y1 - t*(X3 - X1)
+    bls12_381_Fp_mont_sqr( X1 , xx );            // xx = X1^2
+    bls12_381_Fp_mont_add( xx , xx, t );         // t  = 2*X1^2
+    bls12_381_Fp_mont_add_inplace( t, xx );      // t  = 3*X1^2
+    bls12_381_Fp_mont_add( Y1, Y1, tmp );             // tmp = 2*Y1
+    bls12_381_Fp_mont_div_inplace( t, tmp );          // t   = (3*X1^2 + A) / (2*Y1)
+    bls12_381_Fp_mont_sqr( t, tmp );                  // tmp = t^2
+    bls12_381_Fp_mont_sub_inplace( tmp, X1 );         // tmp = t^2 - X1
+    bls12_381_Fp_mont_sub_inplace( tmp, X1 );         // tmp = t^2 - 2*X1
+    bls12_381_Fp_mont_sub( tmp, X1 , xx );            // xx =  (t^2 - 2*X1) - X1 = X3 - X1
+    bls12_381_Fp_mont_mul_inplace( xx , t );          // xx = t*(X3 - X1)
+    bls12_381_Fp_mont_add_inplace( xx , Y1);          // xx = Y1 + t*(X3 - X1)
+    bls12_381_Fp_mont_copy( tmp, X3 );                // X3 = t^2 - 2*X1
+    bls12_381_Fp_mont_neg ( xx, Y3 );                 // Y3 = - Y1 - t*(X3 - X1)
   }
 }
 
@@ -178,10 +178,10 @@ void bls12_381_G1_affine_add( const uint64_t *src1, const uint64_t *src2, uint64
     uint64_t xdif[6];
     uint64_t  tmp[6];
     uint64_t    s[6];
-    bls12_381_p_mont_sub( X2, X1, xdif );             // xdif = X2 - X1
-    if (bls12_381_p_mont_is_zero(xdif)) {
+    bls12_381_Fp_mont_sub( X2, X1, xdif );             // xdif = X2 - X1
+    if (bls12_381_Fp_mont_is_zero(xdif)) {
       // X1 == X2
-      if (bls12_381_p_mont_is_equal(Y1,Y2)) {
+      if (bls12_381_Fp_mont_is_equal(Y1,Y2)) {
         // Y1 == Y2, it's a doubling
         bls12_381_G1_affine_dbl( src1, tgt );
         return;
@@ -193,16 +193,16 @@ void bls12_381_G1_affine_add( const uint64_t *src1, const uint64_t *src2, uint64
     }
     else {
       // normal addition
-      bls12_381_p_mont_sub( Y2, Y1, s );             // s   = Y2 - Y1
-      bls12_381_p_mont_div_inplace( s, xdif );       // s   = (Y2 - Y1) / (X2 - X1)
-      bls12_381_p_mont_sqr( s, tmp );                // tmp = s^2
-      bls12_381_p_mont_sub_inplace( tmp, X1 );       // tmp = s^2 - X1
-      bls12_381_p_mont_sub_inplace( tmp, X2 );       // tmp = s^2 - X1 - X2 = X3
-      bls12_381_p_mont_sub( tmp, X1 , xdif );        // xdif = X3 - X1
-      bls12_381_p_mont_mul_inplace( xdif, s );       // xdif = s*(X3 - X1)
-      bls12_381_p_mont_add_inplace( xdif, Y1 );      // xdif = Y1 + s*(X3 - X1)
-      bls12_381_p_mont_copy( tmp  , X3 );
-      bls12_381_p_mont_neg ( xdif , Y3 );
+      bls12_381_Fp_mont_sub( Y2, Y1, s );             // s   = Y2 - Y1
+      bls12_381_Fp_mont_div_inplace( s, xdif );       // s   = (Y2 - Y1) / (X2 - X1)
+      bls12_381_Fp_mont_sqr( s, tmp );                // tmp = s^2
+      bls12_381_Fp_mont_sub_inplace( tmp, X1 );       // tmp = s^2 - X1
+      bls12_381_Fp_mont_sub_inplace( tmp, X2 );       // tmp = s^2 - X1 - X2 = X3
+      bls12_381_Fp_mont_sub( tmp, X1 , xdif );        // xdif = X3 - X1
+      bls12_381_Fp_mont_mul_inplace( xdif, s );       // xdif = s*(X3 - X1)
+      bls12_381_Fp_mont_add_inplace( xdif, Y1 );      // xdif = Y1 + s*(X3 - X1)
+      bls12_381_Fp_mont_copy( tmp  , X3 );
+      bls12_381_Fp_mont_neg ( xdif , Y3 );
     }
   }
 }

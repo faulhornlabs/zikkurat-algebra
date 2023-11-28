@@ -1,13 +1,14 @@
 
 -- | Polymorphic interface for finite fields
 
-{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables, TypeFamilies, FlexibleContexts #-}
 module ZK.Algebra.Class.Field where
 
 --------------------------------------------------------------------------------
 
 import Data.Bits
 import Data.Proxy
+import Data.Kind
 
 import ZK.Algebra.Class.Flat ( Flat , FlatArray )
 
@@ -64,6 +65,34 @@ fieldSizePxy = ringSizePxy
 
 primGen :: forall a. Field a => a
 primGen = primGenPxy (Proxy :: Proxy a)
+
+--------------------------------------------------------------------------------
+-- * Algebraic field extensions
+
+-- | Extension fields
+class (Field f, Field (ExtBase f)) => ExtField f where
+  -- | the base field
+  type ExtBase f :: Type                               
+  -- | the degree of the extension
+  extDeg :: Proxy f -> Int                          
+  -- | coefficients of the defining polynomial (starting from the constant term)
+  definingPolyCoeffs :: Proxy f -> [ExtBase f]
+  -- | embedding of the base field
+  embedExtBase     :: ExtBase f -> f                
+  -- | projection to the base field 
+  projectToExtBase :: f -> Maybe (ExtBase f)        
+
+--------------------------------------------------------------------------------
+
+-- | Quadratic extensions
+class ExtField f => QuadraticExt f where
+  quadraticPack   :: (ExtBase f, ExtBase f) -> f
+  quadraticUnpack :: f -> (ExtBase f, ExtBase f)
+
+-- | Cubic extensions
+class ExtField f => CubicExt f where
+  cubicPack   :: (ExtBase f, ExtBase f, ExtBase f) -> f
+  cubicUnpack :: f -> (ExtBase f, ExtBase f, ExtBase f)
 
 --------------------------------------------------------------------------------
 

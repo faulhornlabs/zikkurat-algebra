@@ -10,99 +10,101 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "bls12_381_p_std.h"
+#include "bls12_381_Fp_std.h"
 #include "bigint384.h"
 #include "platform.h"
 
 #define NLIMBS 6
 
-const uint64_t bls12_381_p_std_prime[6] = { 0xb9feffffffffaaab, 0x1eabfffeb153ffff, 0x6730d2a0f6b0f624, 0x64774b84f38512bf, 0x4b1ba7b6434bacd7, 0x1a0111ea397fe69a };
+const uint64_t bls12_381_Fp_std_prime[6] = { 0xb9feffffffffaaab, 0x1eabfffeb153ffff, 0x6730d2a0f6b0f624, 0x64774b84f38512bf, 0x4b1ba7b6434bacd7, 0x1a0111ea397fe69a };
 
 //------------------------------------------------------------------------------
 
-uint8_t bls12_381_p_std_is_zero( const uint64_t *src ) {
+uint8_t bls12_381_Fp_std_is_zero( const uint64_t *src ) {
   return bigint384_is_zero( src );
 }
 
-uint8_t bls12_381_p_std_is_one( const uint64_t *src ) {
+uint8_t bls12_381_Fp_std_is_one( const uint64_t *src ) {
   return bigint384_is_one( src );
 }
 
-uint8_t bls12_381_p_std_is_equal( const uint64_t *src1, const uint64_t *src2 ) {
+uint8_t bls12_381_Fp_std_is_equal( const uint64_t *src1, const uint64_t *src2 ) {
   return bigint384_is_equal( src1 , src2 );
 }
 
-void bls12_381_p_std_set_zero( uint64_t *tgt ) {
+void bls12_381_Fp_std_set_zero( uint64_t *tgt ) {
   bigint384_set_zero( tgt );
 }
 
-void bls12_381_p_std_set_one( uint64_t *tgt) {
+void bls12_381_Fp_std_set_one( uint64_t *tgt) {
   bigint384_set_one( tgt );
 }
 
-void bls12_381_p_std_copy( const uint64_t *src, uint64_t *tgt ) {
+void bls12_381_Fp_std_copy( const uint64_t *src, uint64_t *tgt ) {
   bigint384_copy( src , tgt );
 }
 
 // adds the prime p to a bigint
-uint8_t bls12_381_p_std_bigint384_add_prime( const uint64_t *src, uint64_t *tgt ) {
-  return bigint384_add( src, bls12_381_p_std_prime, tgt );
+uint8_t bls12_381_Fp_std_bigint384_add_prime( const uint64_t *src, uint64_t *tgt ) {
+  return bigint384_add( src, bls12_381_Fp_std_prime, tgt );
 }
 
 // adds the prime p to a bigint, inplace
-uint8_t bls12_381_p_std_bigint384_add_prime_inplace( uint64_t *tgt ) {
-  return bigint384_add_inplace( tgt, bls12_381_p_std_prime);
+uint8_t bls12_381_Fp_std_bigint384_add_prime_inplace( uint64_t *tgt ) {
+  return bigint384_add_inplace( tgt, bls12_381_Fp_std_prime);
 }
 
 // the constant `p + 1`
-const uint64_t bls12_381_p_std_p_plus_1[6] = { 0xb9feffffffffaaac, 0x1eabfffeb153ffff, 0x6730d2a0f6b0f624, 0x64774b84f38512bf, 0x4b1ba7b6434bacd7, 0x1a0111ea397fe69a };
+const uint64_t bls12_381_Fp_std_p_plus_1[6] = { 0xb9feffffffffaaac, 0x1eabfffeb153ffff, 0x6730d2a0f6b0f624, 0x64774b84f38512bf, 0x4b1ba7b6434bacd7, 0x1a0111ea397fe69a };
 
 // adds `p+1` to the input, inplace
-uint8_t bls12_381_p_std_bigint384_add_prime_plus_1_inplace( uint64_t *tgt ) {
-  return bigint384_add_inplace( tgt, bls12_381_p_std_p_plus_1);
+uint8_t bls12_381_Fp_std_bigint384_add_prime_plus_1_inplace( uint64_t *tgt ) {
+  return bigint384_add_inplace( tgt, bls12_381_Fp_std_p_plus_1);
 }
 
 // subtracts the prime p from a bigint
-uint8_t bls12_381_p_std_bigint384_sub_prime( const uint64_t *src, uint64_t *tgt ) {
-  return bigint384_sub( src, bls12_381_p_std_prime, tgt );
+uint8_t bls12_381_Fp_std_bigint384_sub_prime( const uint64_t *src, uint64_t *tgt ) {
+  return bigint384_sub( src, bls12_381_Fp_std_prime, tgt );
 }
 
 // subtracts the prime p from a bigint, inplace
-uint8_t bls12_381_p_std_bigint384_sub_prime_inplace( uint64_t *tgt ) {
-  return bigint384_sub_inplace( tgt, bls12_381_p_std_prime);
+uint8_t bls12_381_Fp_std_bigint384_sub_prime_inplace( uint64_t *tgt ) {
+  return bigint384_sub_inplace( tgt, bls12_381_Fp_std_prime);
 }
 
 
 // negates a field element
-void bls12_381_p_std_neg( const uint64_t *src, uint64_t *tgt ) {
+void bls12_381_Fp_std_neg( const uint64_t *src, uint64_t *tgt ) {
   if (bigint384_is_zero(src)) {
     bigint384_set_zero(tgt);
   }
   else {
     // mod (-x) p = p - x
+    uint64_t tmp[NLIMBS];
+    memcpy(tmp, src, 8*NLIMBS);   // if tgt==src, it would overwrite `src` below...
     tgt[0] = 0xb9feffffffffaaab ;
     tgt[1] = 0x1eabfffeb153ffff ;
     tgt[2] = 0x6730d2a0f6b0f624 ;
     tgt[3] = 0x64774b84f38512bf ;
     tgt[4] = 0x4b1ba7b6434bacd7 ;
     tgt[5] = 0x1a0111ea397fe69a ;
-    bigint384_sub_inplace(tgt, src);
+    bigint384_sub_inplace(tgt, tmp);  // src);
   }
 }
 
 // negates a field element
-void bls12_381_p_std_neg_inplace( uint64_t *tgt ) {
+void bls12_381_Fp_std_neg_inplace( uint64_t *tgt ) {
   if (bigint384_is_zero(tgt)) {
     return;
   }
   else {
     for(int i=0; i<6; i++) tgt[i] = ~tgt[i];
-    bls12_381_p_std_bigint384_add_prime_plus_1_inplace(tgt);
+    bls12_381_Fp_std_bigint384_add_prime_plus_1_inplace(tgt);
   }
 }
 
 // checks if (x < prime)
-uint8_t bls12_381_p_std_is_valid( const uint64_t *src ) {
+uint8_t bls12_381_Fp_std_is_valid( const uint64_t *src ) {
   if (src[5] <  0x1a0111ea397fe69a) return 1;
   if (src[5] >  0x1a0111ea397fe69a) return 0;
   if (src[4] <  0x4b1ba7b6434bacd7) return 1;
@@ -119,87 +121,87 @@ return 1;
 }
 
 // if (x >= prime) then (x - prime) else x
-void bls12_381_p_std_bigint384_sub_prime_if_above_inplace( uint64_t *tgt ) {
+void bls12_381_Fp_std_bigint384_sub_prime_if_above_inplace( uint64_t *tgt ) {
   if (tgt[5] <  0x1a0111ea397fe69a) return;
-  if (tgt[5] >  0x1a0111ea397fe69a) { bls12_381_p_std_bigint384_sub_prime_inplace( tgt ); return; }
+  if (tgt[5] >  0x1a0111ea397fe69a) { bls12_381_Fp_std_bigint384_sub_prime_inplace( tgt ); return; }
   if (tgt[4] <  0x4b1ba7b6434bacd7) return;
-  if (tgt[4] >  0x4b1ba7b6434bacd7) { bls12_381_p_std_bigint384_sub_prime_inplace( tgt ); return; }
+  if (tgt[4] >  0x4b1ba7b6434bacd7) { bls12_381_Fp_std_bigint384_sub_prime_inplace( tgt ); return; }
   if (tgt[3] <  0x64774b84f38512bf) return;
-  if (tgt[3] >  0x64774b84f38512bf) { bls12_381_p_std_bigint384_sub_prime_inplace( tgt ); return; }
+  if (tgt[3] >  0x64774b84f38512bf) { bls12_381_Fp_std_bigint384_sub_prime_inplace( tgt ); return; }
   if (tgt[2] <  0x6730d2a0f6b0f624) return;
-  if (tgt[2] >  0x6730d2a0f6b0f624) { bls12_381_p_std_bigint384_sub_prime_inplace( tgt ); return; }
+  if (tgt[2] >  0x6730d2a0f6b0f624) { bls12_381_Fp_std_bigint384_sub_prime_inplace( tgt ); return; }
   if (tgt[1] <  0x1eabfffeb153ffff) return;
-  if (tgt[1] >  0x1eabfffeb153ffff) { bls12_381_p_std_bigint384_sub_prime_inplace( tgt ); return; }
+  if (tgt[1] >  0x1eabfffeb153ffff) { bls12_381_Fp_std_bigint384_sub_prime_inplace( tgt ); return; }
   if (tgt[0] <  0xb9feffffffffaaab) return;
-  if (tgt[0] >= 0xb9feffffffffaaab) { bls12_381_p_std_bigint384_sub_prime_inplace( tgt ); return; }
+  if (tgt[0] >= 0xb9feffffffffaaab) { bls12_381_Fp_std_bigint384_sub_prime_inplace( tgt ); return; }
 }
 
 // adds two field elements
-void bls12_381_p_std_add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+void bls12_381_Fp_std_add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
   uint8_t c = 0;
   c = bigint384_add( src1, src2, tgt );
-  bls12_381_p_std_bigint384_sub_prime_if_above_inplace( tgt );
+  bls12_381_Fp_std_bigint384_sub_prime_if_above_inplace( tgt );
 }
 
 // adds two field elements, inplace
-void bls12_381_p_std_add_inplace( uint64_t *tgt, const uint64_t *src2 ) {
+void bls12_381_Fp_std_add_inplace( uint64_t *tgt, const uint64_t *src2 ) {
   uint8_t c = 0;
   c = bigint384_add_inplace( tgt, src2 );
-  bls12_381_p_std_bigint384_sub_prime_if_above_inplace( tgt );
+  bls12_381_Fp_std_bigint384_sub_prime_if_above_inplace( tgt );
 }
 
 // subtracts two field elements
-void bls12_381_p_std_sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+void bls12_381_Fp_std_sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
   uint8_t b = 0;
   b = bigint384_sub( src1, src2, tgt );
-  if (b) { bls12_381_p_std_bigint384_add_prime_inplace( tgt ); }
+  if (b) { bls12_381_Fp_std_bigint384_add_prime_inplace( tgt ); }
 }
 
 // subtracts two field elements
-void bls12_381_p_std_sub_inplace( uint64_t *tgt, const uint64_t *src2 ) {
+void bls12_381_Fp_std_sub_inplace( uint64_t *tgt, const uint64_t *src2 ) {
   uint8_t b = 0;
   b = bigint384_sub_inplace( tgt, src2 );
-  if (b) { bls12_381_p_std_bigint384_add_prime_inplace( tgt ); }
+  if (b) { bls12_381_Fp_std_bigint384_add_prime_inplace( tgt ); }
 }
 
 // tgt := src - tgt
-void bls12_381_p_std_sub_inplace_reverse( uint64_t *tgt, const uint64_t *src1 ) {
+void bls12_381_Fp_std_sub_inplace_reverse( uint64_t *tgt, const uint64_t *src1 ) {
   uint8_t b = 0;
   b = bigint384_sub_inplace_reverse( tgt, src1 );
-  if (b) { bls12_381_p_std_bigint384_add_prime_inplace( tgt ); }
+  if (b) { bls12_381_Fp_std_bigint384_add_prime_inplace( tgt ); }
 }
 
 // squares a field elements
-void bls12_381_p_std_sqr( const uint64_t *src, uint64_t *tgt ) {
+void bls12_381_Fp_std_sqr( const uint64_t *src, uint64_t *tgt ) {
   uint64_t prod[12];
   bigint384_sqr( src, prod );
-  bls12_381_p_std_reduce_modp( prod, tgt );
+  bls12_381_Fp_std_reduce_modp( prod, tgt );
 }
 
-void bls12_381_p_std_sqr_inplace( uint64_t *tgt ) {
+void bls12_381_Fp_std_sqr_inplace( uint64_t *tgt ) {
   uint64_t prod[12];
   bigint384_sqr( tgt, prod );
-  bls12_381_p_std_reduce_modp( prod, tgt );
+  bls12_381_Fp_std_reduce_modp( prod, tgt );
 }
 
 // multiplies two field elements
-void bls12_381_p_std_mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+void bls12_381_Fp_std_mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
   uint64_t prod[12];
   bigint384_mul( src1, src2, prod );
-  bls12_381_p_std_reduce_modp( prod, tgt );
+  bls12_381_Fp_std_reduce_modp( prod, tgt );
 }
 
-void bls12_381_p_std_mul_inplace( uint64_t *tgt, const uint64_t *src2 ) {
+void bls12_381_Fp_std_mul_inplace( uint64_t *tgt, const uint64_t *src2 ) {
   uint64_t prod[12];
   bigint384_mul( tgt, src2, prod );
-  bls12_381_p_std_reduce_modp( prod, tgt );
+  bls12_381_Fp_std_reduce_modp( prod, tgt );
 }
 
 // table of `ceil(2^64 * (2^(64*m) mod p) / p)`
-static const uint64_t bls12_381_p_std_qps_table[12] = { 0x0000000000000001, 0x0000000000000001, 0x0000000000000001, 0x0000000000000001, 0x0000000000000001, 0x000000000000000a, 0xd835d2f3cc9e45cf, 0x28101b0cc7a6ba2a, 0x1b82741ff6a0a94c, 0xdf4771e0286779d4, 0x997167a058f1c07c, 0x13e207f56591ba2f };
+static const uint64_t bls12_381_Fp_std_qps_table[12] = { 0x0000000000000001, 0x0000000000000001, 0x0000000000000001, 0x0000000000000001, 0x0000000000000001, 0x000000000000000a, 0xd835d2f3cc9e45cf, 0x28101b0cc7a6ba2a, 0x1b82741ff6a0a94c, 0xdf4771e0286779d4, 0x997167a058f1c07c, 0x13e207f56591ba2f };
 
 // table of `2^(64*m) mod p`
-static const uint64_t bls12_381_p_std_mps_table[72] = { 
+static const uint64_t bls12_381_Fp_std_mps_table[72] = { 
 0x0000000000000001, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
 0x0000000000000000, 0x0000000000000001, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
 0x0000000000000000, 0x0000000000000000, 0x0000000000000001, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
@@ -215,7 +217,7 @@ static const uint64_t bls12_381_p_std_mps_table[72] = {
 };
 
 // subtracts two big integers made up from `nlimbs+1` limbs
-uint8_t bls12_381_p_std_bigint_sub_inplace_larger( uint64_t *tgt, const uint64_t *src2 ) {
+uint8_t bls12_381_Fp_std_bigint_sub_inplace_larger( uint64_t *tgt, const uint64_t *src2 ) {
   uint8_t b = 0;
   for(int j=0; j<7; j++) {
     b = subborrow_u64( b, tgt[j], src2[j], tgt+j );
@@ -225,24 +227,24 @@ uint8_t bls12_381_p_std_bigint_sub_inplace_larger( uint64_t *tgt, const uint64_t
 
  // reduces a number of size 12 limbs modulo p
  // similar the Barret reduction (?)
-void bls12_381_p_std_reduce_modp( const uint64_t *src, uint64_t *tgt ) {
+void bls12_381_Fp_std_reduce_modp( const uint64_t *src, uint64_t *tgt ) {
   uint64_t tmp1[7];
   uint64_t tmp2[7];
   for(int k=0; k<4; k++) { tgt[k] = src[k]; }
   for(int k=4; k<6; k++) { tgt[k] = 0; }
   for(int m=4; m<12; m++) {
-    bigint384_scale( src[m], bls12_381_p_std_mps_table + 6*m, tmp1 );
+    bigint384_scale( src[m], bls12_381_Fp_std_mps_table + 6*m, tmp1 );
     __uint128_t q = src[m];
-    q = q * bls12_381_p_std_qps_table[m];    // this is `2^(64m) * src[m] / p` in 64-bit fixed-point form
-    bigint384_scale( (uint64_t)(q>>64), bls12_381_p_std_prime, tmp2 );
-    uint8_t b = bls12_381_p_std_bigint_sub_inplace_larger( tmp1, tmp2 );
-    if (b) { bls12_381_p_std_bigint384_add_prime_inplace( tmp1 ); }
-    bls12_381_p_std_add_inplace( tgt , tmp1);
+    q = q * bls12_381_Fp_std_qps_table[m];    // this is `2^(64m) * src[m] / p` in 64-bit fixed-point form
+    bigint384_scale( (uint64_t)(q>>64), bls12_381_Fp_std_prime, tmp2 );
+    uint8_t b = bls12_381_Fp_std_bigint_sub_inplace_larger( tmp1, tmp2 );
+    if (b) { bls12_381_Fp_std_bigint384_add_prime_inplace( tmp1 ); }
+    bls12_381_Fp_std_add_inplace( tgt , tmp1);
   }
 }
 
 // `(p+1) / 2 = (div p 2) + 1`
-const uint64_t bls12_381_p_std_half_p_plus_1[6] = { 0xdcff7fffffffd556, 0x0f55ffff58a9ffff, 0xb39869507b587b12, 0xb23ba5c279c2895f, 0x258dd3db21a5d66b, 0x0d0088f51cbff34d };
+const uint64_t bls12_381_Fp_std_half_p_plus_1[6] = { 0xdcff7fffffffd556, 0x0f55ffff58a9ffff, 0xb39869507b587b12, 0xb23ba5c279c2895f, 0x258dd3db21a5d66b, 0x0d0088f51cbff34d };
 
 // multiply by the inverse of 2
 // if the input is of the form `2k` then we just shift right
@@ -250,18 +252,18 @@ const uint64_t bls12_381_p_std_half_p_plus_1[6] = { 0xdcff7fffffffd556, 0x0f55ff
 //   (2k+1)/2 = (2k+1+p)/2 = (2k+(p+1))/2 = k + (p+1)/2
 // also the latter addition will never overflow.
 //
-void bls12_381_p_std_div_by_2( const uint64_t *src, uint64_t *tgt ) {
+void bls12_381_Fp_std_div_by_2( const uint64_t *src, uint64_t *tgt ) {
   uint8_t odd = bigint384_shift_right_by_1(src, tgt);
-  if (odd) { bigint384_add_inplace(tgt, bls12_381_p_std_half_p_plus_1); }
+  if (odd) { bigint384_add_inplace(tgt, bls12_381_Fp_std_half_p_plus_1); }
 }
 
-void bls12_381_p_std_div_by_2_inplace( uint64_t *tgt ) {
+void bls12_381_Fp_std_div_by_2_inplace( uint64_t *tgt ) {
   uint8_t odd = bigint384_shift_right_by_1(tgt, tgt);
-  if (odd) { bigint384_add_inplace(tgt, bls12_381_p_std_half_p_plus_1); }
+  if (odd) { bigint384_add_inplace(tgt, bls12_381_Fp_std_half_p_plus_1); }
 }
 
 // extended binary euclidean algorithm
-void bls12_381_p_std_euclid( uint64_t *x1, uint64_t *x2, uint64_t *u, uint64_t *v, uint64_t *tgt ) {
+void bls12_381_Fp_std_euclid( uint64_t *x1, uint64_t *x2, uint64_t *u, uint64_t *v, uint64_t *tgt ) {
 
   while( ( (!bigint384_is_one(u)) && (!bigint384_is_one(v)) ) ) {
 
@@ -274,13 +276,13 @@ void bls12_381_p_std_euclid( uint64_t *x1, uint64_t *x2, uint64_t *u, uint64_t *
     while (!(u[0] & 1)) {
       bigint384_shift_right_by_1(u,u);
       uint8_t odd = bigint384_shift_right_by_1(x1,x1);
-      if (odd) { bigint384_add_inplace(x1, bls12_381_p_std_half_p_plus_1); }
+      if (odd) { bigint384_add_inplace(x1, bls12_381_Fp_std_half_p_plus_1); }
     }
 
     while (!(v[0] & 1)) {
       bigint384_shift_right_by_1(v,v);
       uint8_t odd = bigint384_shift_right_by_1(x2,x2);
-      if (odd) { bigint384_add_inplace(x2, bls12_381_p_std_half_p_plus_1); }
+      if (odd) { bigint384_add_inplace(x2, bls12_381_Fp_std_half_p_plus_1); }
     }
 
     uint64_t w[6];
@@ -288,12 +290,12 @@ void bls12_381_p_std_euclid( uint64_t *x1, uint64_t *x2, uint64_t *u, uint64_t *
     if (b) {
       // u-v < 0, that is, u < v
       bigint384_neg(w,v);              // v  := v  - u
-      bls12_381_p_std_sub_inplace(x2,x1);     // x2 := x2 - x1
+      bls12_381_Fp_std_sub_inplace(x2,x1);     // x2 := x2 - x1
     }
     else {
       // u-v >= 0, that is, u >= v
       bigint384_copy(w,u);             // u  := u  - v
-      bls12_381_p_std_sub_inplace(x1,x2);     // x1 := x1 - x2
+      bls12_381_Fp_std_sub_inplace(x1,x2);     // x1 := x1 - x2
     }
   
   }
@@ -307,7 +309,7 @@ void bls12_381_p_std_euclid( uint64_t *x1, uint64_t *x2, uint64_t *u, uint64_t *
 }
 
 // inverse of a field element
-void bls12_381_p_std_inv( const uint64_t *src, uint64_t *tgt ) {
+void bls12_381_Fp_std_inv( const uint64_t *src, uint64_t *tgt ) {
   if (bigint384_is_zero(src)) { 
     bigint384_set_zero(tgt); 
   } 
@@ -320,18 +322,18 @@ void bls12_381_p_std_inv( const uint64_t *src, uint64_t *tgt ) {
     bigint384_set_one   ( x1 );               // x1 := 1     
     bigint384_set_zero  ( x2 );               // x2 := 0     
     bigint384_copy( src       , u );    // u  := src    
-    bigint384_copy( bls12_381_p_std_prime , v );    // v  := p      
+    bigint384_copy( bls12_381_Fp_std_prime , v );    // v  := p      
     
-    bls12_381_p_std_euclid(x1,x2,u,v,tgt);
+    bls12_381_Fp_std_euclid(x1,x2,u,v,tgt);
   }
 }
 
-void bls12_381_p_std_inv_inplace( uint64_t *tgt ) {
-  bls12_381_p_std_inv(tgt,tgt);
+void bls12_381_Fp_std_inv_inplace( uint64_t *tgt ) {
+  bls12_381_Fp_std_inv(tgt,tgt);
 }
 
 // division in the field
-void bls12_381_p_std_div( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+void bls12_381_Fp_std_div( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
   if (bigint384_is_zero(src2)) { 
     bigint384_set_zero(tgt); 
   } 
@@ -344,77 +346,77 @@ void bls12_381_p_std_div( const uint64_t *src1, const uint64_t *src2, uint64_t *
     bigint384_copy( src1 , x1 );         // x1 := src1  
     bigint384_set_zero  ( x2 );                // x2 := 0     
     bigint384_copy( src2      , u );     // u  := src2  
-    bigint384_copy( bls12_381_p_std_prime , v );     // v  := p     
+    bigint384_copy( bls12_381_Fp_std_prime , v );     // v  := p     
     
-    bls12_381_p_std_euclid(x1,x2,u,v,tgt);
+    bls12_381_Fp_std_euclid(x1,x2,u,v,tgt);
   }
 }
 
-void bls12_381_p_std_div_inplace( uint64_t *tgt, const uint64_t *src2 ) {
-  bls12_381_p_std_div(tgt,src2,tgt);
+void bls12_381_Fp_std_div_inplace( uint64_t *tgt, const uint64_t *src2 ) {
+  bls12_381_Fp_std_div(tgt,src2,tgt);
 }
 
 // computes `x^e mod p`
-void bls12_381_p_std_pow_uint64( const uint64_t *src, uint64_t exponent, uint64_t *tgt ) {
+void bls12_381_Fp_std_pow_uint64( const uint64_t *src, uint64_t exponent, uint64_t *tgt ) {
   uint64_t e = exponent;
   uint64_t sqr[6];
-  bls12_381_p_std_copy( src, sqr );                 // sqr := src
-  bls12_381_p_std_set_one( tgt );                   // tgt := 1
+  bls12_381_Fp_std_copy( src, sqr );                 // sqr := src
+  bls12_381_Fp_std_set_one( tgt );                   // tgt := 1
   while(e!=0) {
-    if (e & 1) { bls12_381_p_std_mul_inplace(tgt, sqr); }
-    bls12_381_p_std_mul_inplace(sqr, sqr);
+    if (e & 1) { bls12_381_Fp_std_mul_inplace(tgt, sqr); }
+    bls12_381_Fp_std_mul_inplace(sqr, sqr);
     e = e >> 1;
   }
 }
 
 // computes `x^e mod p` (for `e` non-negative bigint)
-void bls12_381_p_std_pow_gen( const uint64_t *src, const uint64_t *expo, uint64_t *tgt, int expo_len ) {
+void bls12_381_Fp_std_pow_gen( const uint64_t *src, const uint64_t *expo, uint64_t *tgt, int expo_len ) {
   uint64_t sqr[6];
-  bls12_381_p_std_copy( src, sqr );                 // sqr := src
-  bls12_381_p_std_set_one( tgt );                   // tgt := 1
+  bls12_381_Fp_std_copy( src, sqr );                 // sqr := src
+  bls12_381_Fp_std_set_one( tgt );                   // tgt := 1
   int s = expo_len - 1;
   while ((expo[s] == 0) && (s>0)) { s--; }          // skip the unneeded largest powers
   for(int i=0; i<=s; i++) {
     uint64_t e = expo[i];
     for(int j=0; j<64; j++) {
-      if (e & 1) { bls12_381_p_std_mul_inplace(tgt, sqr); }
-      bls12_381_p_std_mul_inplace(sqr, sqr);
+      if (e & 1) { bls12_381_Fp_std_mul_inplace(tgt, sqr); }
+      bls12_381_Fp_std_mul_inplace(sqr, sqr);
       e = e >> 1;
     }
   }
 }
 
-#define SRC(i)   (src    + (i)*NLIMBS)
-#define TGT(i)   (tgt    + (i)*NLIMBS)
-#define PROD(i)  (prods  + (i)*NLIMBS)
-#define RECIP(i) (recips + (i)*NLIMBS)
+#define I_SRC(i)   (src    + (i)*6)
+#define I_TGT(i)   (tgt    + (i)*6)
+#define I_PROD(i)  (prods  + (i)*6)
+#define I_RECIP(i) (recips + (i)*6)
 
 // computes the inverse of many field elements at the same time, efficiently
 // uses the Montgomery batch inversion trick
 // inverse of a field element
-void bls12_381_p_std_batch_inv( int n, const uint64_t *src, uint64_t *tgt ) {
+void bls12_381_Fp_std_batch_inv( int n, const uint64_t *src, uint64_t *tgt ) {
   assert( n >= 1 );
-  uint64_t *prods  = malloc( 8*NLIMBS*n );
-  uint64_t *recips = malloc( 8*NLIMBS*n );
+  uint64_t *prods  = malloc( 8*6*n );
+  uint64_t *recips = malloc( 8*6*n );
   assert( prods  != 0 );
   assert( recips != 0 );
   
   // compute partial products (a[0]*a[1]*...*a[k]) for all k
-  bls12_381_p_std_copy( SRC(0) , PROD(0) );
+  bls12_381_Fp_std_copy( I_SRC(0) , I_PROD(0) );
   for(int i=1; i<n; i++) {
-    bls12_381_p_std_mul( PROD(i-1) , SRC(i) , PROD(i) );
+    bls12_381_Fp_std_mul( I_PROD(i-1) , I_SRC(i) , I_PROD(i) );
   }
   
   // compute inverses of partial products 1/(a[0]*a[1]*...*a[k]) for all k
-  bls12_381_p_std_inv( PROD(n-1) , RECIP(n-1) );
+  bls12_381_Fp_std_inv( I_PROD(n-1) , I_RECIP(n-1) );
   for(int i=n-2; i>=0; i--) {
-    bls12_381_p_std_mul( RECIP(i+1) , SRC(i+1) , RECIP(i) );
+    bls12_381_Fp_std_mul( I_RECIP(i+1) , I_SRC(i+1) , I_RECIP(i) );
   }
   
   // compute the inverses 1/a[k] for all k
-  bls12_381_p_std_copy( RECIP(0) , TGT(0) );
+  bls12_381_Fp_std_copy( I_RECIP(0) , I_TGT(0) );
   for(int i=1; i<n; i++) {
-    bls12_381_p_std_mul( RECIP(i) , PROD(i-1) , TGT(i) );
+    bls12_381_Fp_std_mul( I_RECIP(i) , I_PROD(i-1) , I_TGT(i) );
   }
   
   free(recips);

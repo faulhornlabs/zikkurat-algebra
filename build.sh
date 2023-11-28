@@ -17,8 +17,26 @@ if [ "$CABAL_MAJOR_VER" = "2" ]
 then
   VX=""
 else
-  #VX="v1-"
-  VX="v2-"
+  VX="v1-"
+  #VX="v2-"
+fi
+echo "cabal v1 or v2 flavour = \`$VX\`"
+
+cd ${ROOT}/pure
+echo "============================="
+echo "building the pure haskell lib"
+echo "============================="
+#echo "current directory = `pwd`"
+cabal ${VX}clean
+cabal ${VX}build || error_exit "building the codegen failed"
+#if [ "$CABAL_MAJOR_VER" = "2" ]
+if [ "$VX" = "v2-" ]
+then
+  cabal ${VX}haddock --haddock-hyperlink-source || error_exit "haddock failed"
+  cabal ${VX}install --disable-documentation --force-reinstalls --overwrite-policy=always || error_exit "installing the codegen failed"
+else
+  cabal ${VX}haddock --hyperlink-source         || error_exit "haddock failed"
+  cabal ${VX}install --disable-documentation --force-reinstalls || error_exit "installing the codegen failed"
 fi
 
 cd ${ROOT}/codegen
@@ -28,13 +46,14 @@ echo "===================="
 #echo "current directory = `pwd`"
 cabal ${VX}clean
 cabal ${VX}build || error_exit "building the codegen failed"
-if [ "$CABAL_MAJOR_VER" = "2" ]
+# if [ "$CABAL_MAJOR_VER" = "2" ]
+if [ "$VX" = "v2-" ]
 then
-  cabal ${VX}install --disable-documentation || error_exit "installing the codegen failed"
-else
   # cabal install exe:zikkurat-algebra-codegen       --disable-documentation --force-reinstalls --overwrite-policy=always || error_exit "installing the codegen (exe) failed"
   # cabal install lib:zikkurat-algebra-codegen --lib --disable-documentation --force-reinstalls --overwrite-policy=always || error_exit "installing the codegen (lib) failed"
   cabal ${VX}install --disable-documentation --force-reinstalls --overwrite-policy=always || error_exit "installin gthe codegen failed"
+else
+  cabal ${VX}install --disable-documentation --force-reinstalls || error_exit "installing the codegen failed"
 fi
 
 FLAGS=""
@@ -53,11 +72,11 @@ if [ "$CABAL_MAJOR_VER" = "2" ]
 then
   cabal ${VX}install            || error_exit "installing the lib failed"
 else
-  if [ "$VX" = "v1-" ]
+  if [ "$VX" = "v2-" ]
   then
-    cabal ${VX}install || error_exit "installing the lib failed"
+    cabal ${VX}install --force-reinstalls --lib lib:zikkurat-algebra || error_exit "installing the lib failed"
   else
-    cabal ${VX}install --lib lib:zikkurat-algebra || error_exit "installing the lib failed"
+    cabal ${VX}install --force-reinstalls || error_exit "installing the lib failed"
   fi
 fi
 

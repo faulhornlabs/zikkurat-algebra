@@ -10,19 +10,21 @@ module ZK.Algebra.Pure.Field.Class where
 
 import Data.Proxy
 import Data.Kind
-
+import Data.Array
 import Data.Bits
 import Data.Word
 
 import ZK.Algebra.Pure.Group
 import ZK.Algebra.Pure.Misc
 
+import {-# SOURCE #-} ZK.Algebra.Pure.Poly
+
 import System.Random
 
 --------------------------------------------------------------------------------
 
 -- | A (finite) field
-class (Eq f, Show f, Fractional f, Serialize f, Rnd f) => Field f where
+class (Eq f, Show f, Fractional f, SerializeMontgomery f, Rnd f) => Field f where
   -- | Name of the field
   fieldName      :: Proxy f -> String
   -- | the prime characteristic
@@ -75,10 +77,17 @@ class (Field f, Field (ExtBase f)) => ExtField f where
   type ExtBase f :: Type                               
   -- | the degree of the extension
   extDeg :: Proxy f -> Int                          
+  -- | defining polynomial
+  definingPoly :: Proxy f -> Poly (ExtBase f)
+  -- | coefficients of the defining polynomial (starting from the constant term)
+  definingPolyCoeffs :: Proxy f -> [ExtBase f]
   -- | embedding of the base field
   embedExtBase     :: ExtBase f -> f                
   -- | projection to the base field 
   projectToExtBase :: f -> Maybe (ExtBase f)        
+
+  definingPoly pxy   = Poly $ listArray (0,extDeg pxy) (definingPolyCoeffs pxy)
+  definingPolyCoeffs = polyCoeffList . definingPoly
 
 -- | Quadratic extensions
 class ExtField f => QuadraticExt f where

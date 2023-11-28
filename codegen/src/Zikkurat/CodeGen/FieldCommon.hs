@@ -2,7 +2,7 @@
 -- | Code shared by the standard and Montgomery representations
 
 {-# LANGUAGE BangPatterns, RecordWildCards #-}
-module Zikkurat.CodeGen.PrimeField.FieldCommon where
+module Zikkurat.CodeGen.FieldCommon where
 
 --------------------------------------------------------------------------------
 
@@ -54,37 +54,37 @@ exponentiation CommonParams {..} =
 
 batchInverse :: CommonParams -> [String]
 batchInverse CommonParams{..} = 
-  [ "#define SRC(i)   (src    + (i)*NLIMBS)"
-  , "#define TGT(i)   (tgt    + (i)*NLIMBS)"
-  , "#define PROD(i)  (prods  + (i)*NLIMBS)"
-  , "#define RECIP(i) (recips + (i)*NLIMBS)"
+  [ "#define I_SRC(i)   (src    + (i)*" ++ show nlimbs ++ ")"
+  , "#define I_TGT(i)   (tgt    + (i)*" ++ show nlimbs ++ ")"
+  , "#define I_PROD(i)  (prods  + (i)*" ++ show nlimbs ++ ")"
+  , "#define I_RECIP(i) (recips + (i)*" ++ show nlimbs ++ ")"
   , ""
   , "// computes the inverse of many field elements at the same time, efficiently"
   , "// uses the Montgomery batch inversion trick"
   , "// inverse of a field element"
   , "void " ++ prefix ++ "batch_inv( int n, const uint64_t *src, uint64_t *tgt ) {"
   , "  assert( n >= 1 );"
-  , "  uint64_t *prods  = malloc( 8*NLIMBS*n );"
-  , "  uint64_t *recips = malloc( 8*NLIMBS*n );"
+  , "  uint64_t *prods  = malloc( 8*" ++ show nlimbs ++ "*n );"
+  , "  uint64_t *recips = malloc( 8*" ++ show nlimbs ++ "*n );"
   , "  assert( prods  != 0 );"
   , "  assert( recips != 0 );"
   , "  "
   , "  // compute partial products (a[0]*a[1]*...*a[k]) for all k"
-  , "  " ++ prefix ++ "copy( SRC(0) , PROD(0) );"
+  , "  " ++ prefix ++ "copy( I_SRC(0) , I_PROD(0) );"
   , "  for(int i=1; i<n; i++) {"
-  , "    " ++ prefix ++ "mul( PROD(i-1) , SRC(i) , PROD(i) );"
+  , "    " ++ prefix ++ "mul( I_PROD(i-1) , I_SRC(i) , I_PROD(i) );"
   , "  }"
   , "  "
   , "  // compute inverses of partial products 1/(a[0]*a[1]*...*a[k]) for all k"
-  , "  " ++ prefix ++ "inv( PROD(n-1) , RECIP(n-1) );"
+  , "  " ++ prefix ++ "inv( I_PROD(n-1) , I_RECIP(n-1) );"
   , "  for(int i=n-2; i>=0; i--) {"
-  , "    " ++ prefix ++ "mul( RECIP(i+1) , SRC(i+1) , RECIP(i) );"
+  , "    " ++ prefix ++ "mul( I_RECIP(i+1) , I_SRC(i+1) , I_RECIP(i) );"
   , "  }"
   , "  "
   , "  // compute the inverses 1/a[k] for all k"
-  , "  " ++ prefix ++ "copy( RECIP(0) , TGT(0) );"
+  , "  " ++ prefix ++ "copy( I_RECIP(0) , I_TGT(0) );"
   , "  for(int i=1; i<n; i++) {"
-  , "    " ++ prefix ++ "mul( RECIP(i) , PROD(i-1) , TGT(i) );"
+  , "    " ++ prefix ++ "mul( I_RECIP(i) , I_PROD(i-1) , I_TGT(i) );"
   , "  }"
   , "  "
   , "  free(recips);"
@@ -100,9 +100,32 @@ ffi_exponentiation (CommonParams{..}) =
   , ""
   , "foreign import ccall unsafe \"" ++ prefix ++ "pow_gen\" c_" ++ prefix ++ "pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()"
   , ""
+  , "pow :: " ++ typeName ++ " -> Integer -> " ++ typeName 
+  , "pow x e"
+  , "  | e == 0      = if isZero x then zero else one"
+  , "  | e >  0      =      powNonNeg x         e  " 
+  , "  | otherwise   = inv (powNonNeg x (negate e))"
+  , ""
+  , "withInteger :: Integer -> ((Int, Ptr Word64) -> IO a) -> IO a"
+  , "withInteger !input action = do"
+  , "  let (n,ws) = toWord64sLE_ input"
+  , "  allocaArray n $ \\ptr -> do"
+  , "    pokeArray ptr ws"
+  , "    action (n,ptr)"
+  , ""
+  , "{-# NOINLINE powNonNeg #-}"
+  , "powNonNeg :: " ++ typeName ++ " -> Integer -> " ++ typeName 
+  , "powNonNeg (Mk" ++ typeName ++ " fptr1) expo = unsafePerformIO $ do"
+  , "  fptr3 <- mallocForeignPtrArray " ++ show nlimbs
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withInteger expo $ \\(nwords,ptr2) -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "pow_gen ptr1 ptr2 ptr3 (fromIntegral nwords)"
+  , "  return (Mk" ++ typeName ++ " fptr3)"
+  , ""
   , "{-# NOINLINE pow #-}"
-  , "pow :: " ++ typeName ++ " -> " ++ bigintType ++ " -> " ++ typeName 
-  , "pow (Mk" ++ typeName ++ " fptr1) (Mk" ++ bigintType ++ " fptr2) = unsafePerformIO $ do"
+  , "pow" ++ bigintType ++ " :: " ++ typeName ++ " -> " ++ bigintType ++ " -> " ++ typeName 
+  , "pow" ++ bigintType ++ " (Mk" ++ typeName ++ " fptr1) (Mk" ++ bigintType ++ " fptr2) = unsafePerformIO $ do"
   , "  fptr3 <- mallocForeignPtrArray " ++ show nlimbs
   , "  withForeignPtr fptr1 $ \\ptr1 -> do"
   , "    withForeignPtr fptr2 $ \\ptr2 -> do"
@@ -149,3 +172,5 @@ exportFieldToC (CommonParams{..}) =
   , "  return $ exportWordsArrayToC " ++ show nlimbs ++ " name (concat ws)"
   , ""
   ]
+
+--------------------------------------------------------------------------------

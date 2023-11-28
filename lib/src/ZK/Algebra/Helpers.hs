@@ -1,4 +1,5 @@
 
+{-# LANGUAGE BangPatterns #-}
 module ZK.Algebra.Helpers where
 
 --------------------------------------------------------------------------------
@@ -7,6 +8,14 @@ import Data.Bits
 import Data.Word
 import Data.List
 import Text.Printf
+
+--------------------------------------------------------------------------------
+-- * Integers
+
+happyMod :: Integer -> Integer -> Integer
+happyMod !a !p 
+  | a >= 0 && a < p   = a
+  | otherwise         = mod a p
 
 --------------------------------------------------------------------------------
 -- * Export constants to C
@@ -27,14 +36,22 @@ fromWord64sLE = go where
   go []     = 0
   go (x:xs) = fromIntegral x + shiftL (go xs) 64
 
--- | Convert to @n@ 64-bit words, little-endien
+-- | Convert to @n@ 64-bit words, little-endian
 toWord64sLE :: Int -> Integer -> [Word64]
-toWord64sLE len what = take len $ toWord64sLE_ what ++ repeat 0
+toWord64sLE len what = take len $ toWord64sLE__ what ++ repeat 0
 
-toWord64sLE_ :: Integer -> [Word64]
+-- | Convert to the minimum required nunber of 64-bit words (returning the length), little-endian
+toWord64sLE_ :: Integer -> (Int,[Word64])
 toWord64sLE_ = go where
-  go 0 = []
-  go k = fromInteger (k .&. (2^64-1)) : go (shiftR k 64)
+  go  0 = (0,[])
+  go !k = fromInteger (k .&. (2^64-1)) `cons` go (shiftR k 64)
+  cons !x (!l,!xs) = (l+1, x:xs)
+
+-- | Convert to the minimum required nunber of 64-bit words, little-endian
+toWord64sLE__ :: Integer -> [Word64]
+toWord64sLE__ = go where
+  go  0 = []
+  go !k = fromInteger (k .&. (2^64-1)) : go (shiftR k 64)
 
 --------------------------------------------------------------------------------
 -- ** Export lists of words

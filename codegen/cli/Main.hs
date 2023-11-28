@@ -31,6 +31,7 @@ help = putStrLn $ unlines
   , ""
   , "$ zikkurat-algebra-codegen [c|hs] bigint      <tgt_dir>"
   , "$ zikkurat-algebra-codegen [c|hs] fields      <tgt_dir>"
+  , "$ zikkurat-algebra-codegen [c|hs] towers      <tgt_dir>"
   , "$ zikkurat-algebra-codegen [c|hs] curves      <tgt_dir>"
   , "$ zikkurat-algebra-codegen [c|hs] poly        <tgt_dir>"
   , "$ zikkurat-algebra-codegen [c|hs] testfields  <tgt_dir>"
@@ -47,6 +48,8 @@ main1 hsOrC what tgtdir = case map toLower what of
 
   "fields" -> do Gen.generate_primefields_std        hsOrC tgtdir 
                  Gen.generate_primefields_montgomery hsOrC tgtdir 
+
+  "towers" -> do Gen.generate_extfield_towers        hsOrC tgtdir    
 
   "curves" -> do Gen.generate_curves_proj            hsOrC tgtdir 
                  Gen.generate_curves_jac             hsOrC tgtdir 
@@ -72,6 +75,8 @@ mainAllWhich hsOrC tgtdir = do
   Gen.generate_primefields_std        hsOrC tgtdir 
   Gen.generate_primefields_montgomery hsOrC tgtdir 
 
+  Gen.generate_extfield_towers        hsOrC tgtdir    
+
   Gen.generate_curves_proj            hsOrC tgtdir 
   Gen.generate_curves_jac             hsOrC tgtdir 
   Gen.generate_curves_affine          hsOrC tgtdir 
@@ -83,7 +88,7 @@ mainAllWhich hsOrC tgtdir = do
 main :: IO ()
 main = do
   args <- getArgs
-  case args of
+  case map (map toLower) args of
     []                 -> help
     ("-h"    :_)       -> help
     ("--help":_)       -> help

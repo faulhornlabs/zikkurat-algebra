@@ -1,5 +1,5 @@
 
--- | Finite field extension implementations
+-- | Generic finite field extension implementations
 
 {-# LANGUAGE 
       MultiParamTypeClasses, TypeFamilies, DataKinds, KindSignatures, 
@@ -39,12 +39,18 @@ newtype GF (var :: Symbol) (deg :: Nat) (base :: Type)
 instance (Eq base, Num base) => Eq (GF var deg base) where
   (==) (GF xs) (GF ys) = E.extEq xs ys
 
+-- | Projection to the first coordinate of the vector space over the base field
 constantCoeff :: Num base => GF var deg base -> base
 constantCoeff (GF xs) = case xs of 
   []    -> 0 
   (x:_) -> x 
 
+pad :: (KnownNat deg, Num base) => GF var deg base -> GF var deg base
+pad gf@(GF xs) = GF (take n $ xs ++ replicate n 0) where
+  n = extractDegree gf
+
 --------------------------------------------------------------------------------
+-- * Show
 
 showGF :: (Field base, Ext var deg base) => GF var deg base -> String
 showGF input@(GF coeffs) = "(" ++ showPoly (gfVarString input) coeffs ++ ")"
@@ -68,8 +74,11 @@ showPoly var coeffs =
 -- * Defining polynomial
 
 class (KnownSymbol var, KnownNat deg, Field base) => Ext (var :: Symbol) (deg :: Nat) (base :: Type) where
+  -- | Truncated here means that we omit the highest degree coefficient 1 of
+  -- the monic irreducible polynomial
   truncatedIrredPoly_ :: Proxy var -> Proxy deg -> [base]
 
+-- | This version  includes the highest-degree coefficient "1"
 irredPoly_ :: (Num base, Ext var deg base) => Proxy var -> Proxy deg -> [base]
 irredPoly_ pxy1 pxy2 = truncatedIrredPoly_ pxy1 pxy2 ++ [1]
 
@@ -115,7 +124,8 @@ instance (Rnd base, Ext var deg base) => Rnd (GF var deg base) where
 
 instance (Serialize base, Ext var deg base) => Serialize (GF var deg base) where
   sizeInWords pxy = (sizeInWords $ gfBaseProxy1 pxy)  * (extractDegree1 pxy)
-  toWords (GF xs) = concatMap toWords xs
+
+  toWords           gf = let GF xs = pad gf in concatMap toWords           xs
 
   parseWords ws = gfRest where 
 
@@ -131,11 +141,23 @@ instance (Serialize base, Ext var deg base) => Serialize (GF var deg base) where
       Nothing       -> Nothing
       Just (x,rest) -> constFst x <$> go (k-1) rest
 
-    constFst :: a -> ([a],b) -> ([a],b)
-    constFst x (xs,y) = (x:xs, y)
+instance (SerializeMontgomery base, Ext var deg base) => SerializeMontgomery (GF var deg base) where
 
-    mbFstProxy :: Maybe (a,b) -> Proxy a
-    mbFstProxy _ = Proxy
+  toWordsMontgomery gf = let GF xs = pad gf in concatMap toWordsMontgomery xs
+
+  parseWordsMontgomery ws = gfRest where 
+
+    gfRest = case mb of 
+      Just (cs, rest) -> Just (GF cs, rest)
+      Nothing         -> Nothing
+
+    mb  = go deg ws 
+    deg = extractDegree1 (mbFstProxy gfRest)
+
+    go !0 ws = Just ([],ws)
+    go !k ws = case parseWordsMontgomery ws of
+      Nothing       -> Nothing
+      Just (x,rest) -> constFst x <$> go (k-1) rest
 
 instance (Field base, Ext var deg base) => Field (GF var deg base) where
   fieldName      pxy = fieldName (gfBaseProxy1 pxy) ++ "[" ++ gfVarString1 pxy ++ "]/(" ++ showIrredPoly1 pxy ++ ")"
@@ -157,9 +179,10 @@ instance (Field base, Ext var deg base) => ExtField (GF var deg base) where
     []  -> Just 0
     [x] -> Just x
     _   -> Nothing
+  definingPolyCoeffs pxy = extractIrredPoly1 pxy
 
 --------------------------------------------------------------------------------
--- * type level hackery
+-- * Type level hackery
 
 gfVarProxy :: GF var deg base -> Proxy var
 gfVarProxy _ = Proxy
@@ -199,5 +222,13 @@ gfBaseProxy _ = Proxy
 
 gfBaseProxy1 :: f (GF var deg base) -> Proxy base
 gfBaseProxy1 _ = Proxy
+
+--------------------------------------------------------------------------------
+
+constFst :: a -> ([a],b) -> ([a],b)
+constFst x (xs,y) = (x:xs, y)
+
+mbFstProxy :: Maybe (a,b) -> Proxy a
+mbFstProxy _ = Proxy
 
 --------------------------------------------------------------------------------

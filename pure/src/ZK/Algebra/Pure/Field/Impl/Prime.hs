@@ -60,13 +60,24 @@ instance LowerPrimeField t => Rnd (FF t) where
 
 instance LowerPrimeField t => Serialize (FF t) where
   sizeInWords proxy = integerRequiredNumberOfWords (extractPrime1 proxy)
+
   toWords f@(FF n)  = integerToWordsLE (sizeInWords $ ffToProxyFF f) n 
+
   mbFromWords ws    = mb where
     pxy = proxyOf1 mb 
     n   = integerRequiredNumberOfWords (extractPrime1 pxy) 
     mb  = if length ws == n
             then Just (fromInteger (integerFromWordsLE ws))
             else Nothing
+
+instance LowerPrimeField t => SerializeMontgomery (FF t) where
+  toWordsMontgomery f = toWords $ f * fromInteger multiplier where 
+    multiplier = (2::Integer)^(64 * sizeInWords (ffToProxyFF f))
+
+  mbFromWordsMontgomery ws = (*inv_multiplier) <$> mbFromWords ws where
+    inv_multiplier = inv multiplier_ff
+    multiplier_ff  = fromIntegral multiplier_int
+    multiplier_int = (2::Integer)^(64 * sizeInWords (ffToProxyFF multiplier_ff))
 
 instance LowerPrimeField t => Field (FF t) where
   fieldName      pxy = primeFieldName (loweredPrimeField (ffToProxy1 pxy))

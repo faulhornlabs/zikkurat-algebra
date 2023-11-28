@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bls12_381_r_mont.h"
+#include "bls12_381_Fr_mont.h"
 
 #define NLIMBS 4
 
@@ -26,7 +26,7 @@
 int bls12_381_poly_mont_degree( int n1, const uint64_t *src1 ) {
   int deg = -1;
   for(int i=n1-1; i>=0; i--) {
-    if (!bls12_381_r_mont_is_zero( SRC1(i) )) { deg=i; break; }
+    if (!bls12_381_Fr_mont_is_zero( SRC1(i) )) { deg=i; break; }
   }
   return deg;
 }
@@ -34,10 +34,10 @@ int bls12_381_poly_mont_degree( int n1, const uint64_t *src1 ) {
 // get the k-th coefficient
 void bls12_381_poly_mont_get_coeff( int n1, const uint64_t *src1, int k, uint64_t *tgt ) {
   if ( (k<0) || (k>=n1) ) {
-    bls12_381_r_mont_set_zero( tgt );
+    bls12_381_Fr_mont_set_zero( tgt );
   }
   else {
-    bls12_381_r_mont_copy( SRC1(k), tgt ); 
+    bls12_381_Fr_mont_copy( SRC1(k), tgt ); 
   }
 }
 
@@ -45,7 +45,7 @@ void bls12_381_poly_mont_get_coeff( int n1, const uint64_t *src1, int k, uint64_
 uint8_t bls12_381_poly_mont_is_zero( int n1, const uint64_t *src1 ) {
   uint8_t ok = 1;
   for(int i=0; i<n1; i++) {
-    if (!bls12_381_r_mont_is_zero( SRC1(i) )) { ok = 0; break; }
+    if (!bls12_381_Fr_mont_is_zero( SRC1(i) )) { ok = 0; break; }
   }
   return ok;
 }
@@ -61,19 +61,19 @@ uint8_t bls12_381_poly_mont_is_equal
   uint8_t ok = 1;
 
   for(int i=0; i<M; i++) {
-    if (!bls12_381_r_mont_is_equal( SRC1(i) , SRC2(i) )) { ok = 0; break; }
+    if (!bls12_381_Fr_mont_is_equal( SRC1(i) , SRC2(i) )) { ok = 0; break; }
   }
   if (!ok) return ok;
 
   if (n1 >= n2) {
     for(int i=M; i<N; i++) {
-      if (!bls12_381_r_mont_is_zero( SRC1(i) )) { ok = 0; break; }
+      if (!bls12_381_Fr_mont_is_zero( SRC1(i) )) { ok = 0; break; }
     }
   }
   else {
     // n2 > n1
     for(int i=M; i<N; i++) {
-      if (!bls12_381_r_mont_is_zero( SRC2(i) )) { ok = 0; break; }
+      if (!bls12_381_Fr_mont_is_zero( SRC2(i) )) { ok = 0; break; }
     }
   }  
   return ok;
@@ -86,7 +86,7 @@ void bls12_381_poly_mont_neg
   ,                uint64_t *tgt ) {
 
   for(int i=0; i<n1; i++) {
-    bls12_381_r_mont_neg( SRC1(i) , TGT(i) );
+    bls12_381_Fr_mont_neg( SRC1(i) , TGT(i) );
   }
 }
 
@@ -101,17 +101,17 @@ void bls12_381_poly_mont_add
   int N = MAX( n1 , n2 );
 
   for(int i=0; i<M; i++) {
-    bls12_381_r_mont_add( SRC1(i) , SRC2(i) , TGT(i) );    
+    bls12_381_Fr_mont_add( SRC1(i) , SRC2(i) , TGT(i) );    
   }
   if (n1 >= n2) {
     for(int i=M; i<N; i++) {
-      bls12_381_r_mont_copy( SRC1(i) , TGT(i) );    
+      bls12_381_Fr_mont_copy( SRC1(i) , TGT(i) );    
     }
   }
   else {
     // n2 > n1
     for(int i=M; i<N; i++) {
-      bls12_381_r_mont_copy( SRC2(i) , TGT(i) );    
+      bls12_381_Fr_mont_copy( SRC2(i) , TGT(i) );    
     }
   }
 }
@@ -127,17 +127,17 @@ void bls12_381_poly_mont_sub
   int N = (n1 >= n2) ? n1 : n2;     // max
 
   for(int i=0; i<M; i++) {
-    bls12_381_r_mont_sub( SRC1(i) , SRC2(i) , TGT(i) );    
+    bls12_381_Fr_mont_sub( SRC1(i) , SRC2(i) , TGT(i) );    
   }
   if (n1 >= n2) {
     for(int i=M; i<N; i++) {
-      bls12_381_r_mont_copy( SRC1(i) , TGT(i) );    
+      bls12_381_Fr_mont_copy( SRC1(i) , TGT(i) );    
     }
   }
   else {
     // n2 > n1
     for(int i=M; i<N; i++) {
-      bls12_381_r_mont_neg( SRC2(i) , TGT(i) );    
+      bls12_381_Fr_mont_neg( SRC2(i) , TGT(i) );    
     }
   }
 }
@@ -148,19 +148,19 @@ void bls12_381_poly_mont_scale
   (          const uint64_t *kst1
   , int n2 , const uint64_t *src2
   ,          uint64_t *tgt ) {
-  if (bls12_381_r_mont_is_zero(kst1)) {
+  if (bls12_381_Fr_mont_is_zero(kst1)) {
     // multiply by zero
-    for(int i=0; i<n2; i++) { bls12_381_r_mont_set_zero( TGT(i) ); }
+    for(int i=0; i<n2; i++) { bls12_381_Fr_mont_set_zero( TGT(i) ); }
     return;
   }
-  if (bls12_381_r_mont_is_one(kst1)) {
+  if (bls12_381_Fr_mont_is_one(kst1)) {
     // multiply by one
-    for(int i=0; i<n2; i++) { bls12_381_r_mont_copy( SRC2(i) , TGT(i) ); }
+    for(int i=0; i<n2; i++) { bls12_381_Fr_mont_copy( SRC2(i) , TGT(i) ); }
     return;
   }
   // generic scaling
   for(int i=0; i<n2; i++) {
-    bls12_381_r_mont_mul( kst1 , SRC2(i) , TGT(i) );
+    bls12_381_Fr_mont_mul( kst1 , SRC2(i) , TGT(i) );
   }
 }
 
@@ -181,16 +181,16 @@ void bls12_381_poly_mont_lincomb
 
   for(int i=0; i<N; i++) {
     uint64_t acc[NLIMBS];
-    bls12_381_r_mont_set_zero(acc);
+    bls12_381_Fr_mont_set_zero(acc);
     for(int k=0; k<K; k++) {
       int n = ns[k];
       if (i < n) {
         uint64_t tmp[NLIMBS];
-        bls12_381_r_mont_mul( coeffs[k] , polys[k]+i*NLIMBS , tmp );
-        bls12_381_r_mont_add_inplace( acc , tmp );
+        bls12_381_Fr_mont_mul( coeffs[k] , polys[k]+i*NLIMBS , tmp );
+        bls12_381_Fr_mont_add_inplace( acc , tmp );
       }
     }
-    bls12_381_r_mont_copy( acc, tgt+i*NLIMBS );
+    bls12_381_Fr_mont_copy( acc, tgt+i*NLIMBS );
   }
 }
 
@@ -203,7 +203,7 @@ void bls12_381_poly_mont_mul_naive( int  n1, const uint64_t *src1
   int N = n1+n2-1;
   for(int k=0; k<N; k++) {
     uint64_t acc[NLIMBS];
-    bls12_381_r_mont_set_zero( acc );
+    bls12_381_Fr_mont_set_zero( acc );
     // 0 <= i <= min(k , n1-1)
     // 0 <= j <= min(k , n2-1)
     // k = i + j
@@ -214,30 +214,30 @@ void bls12_381_poly_mont_mul_naive( int  n1, const uint64_t *src1
     for( int i = A ; i <= B ; i++ ) {
       uint64_t tmp[NLIMBS];
       int j = k - i;
-      bls12_381_r_mont_mul( SRC1(i) , SRC2(j) , tmp );
-      bls12_381_r_mont_add_inplace( acc, tmp );      
+      bls12_381_Fr_mont_mul( SRC1(i) , SRC2(j) , tmp );
+      bls12_381_Fr_mont_add_inplace( acc, tmp );      
     }
-    bls12_381_r_mont_copy( acc, TGT(k) );
+    bls12_381_Fr_mont_copy( acc, TGT(k) );
   }
 }
 
 // evaluate a polynomial at a single point
 void bls12_381_poly_mont_eval_at( int  n1, const uint64_t *src1, const uint64_t *loc, uint64_t *tgt ) {
   uint64_t run[NLIMBS];               // x^i
-  bls12_381_r_mont_set_zero(tgt);
-  bls12_381_r_mont_set_one (run);
+  bls12_381_Fr_mont_set_zero(tgt);
+  bls12_381_Fr_mont_set_one (run);
   for(int i=0; i<n1; i++) {
     uint64_t tmp[NLIMBS];
     if (i>0) { 
-      bls12_381_r_mont_mul( SRC1(i) , run , tmp );
-      bls12_381_r_mont_add_inplace( tgt, tmp ); 
+      bls12_381_Fr_mont_mul( SRC1(i) , run , tmp );
+      bls12_381_Fr_mont_add_inplace( tgt, tmp ); 
     }
     else {
       // constant term
-      bls12_381_r_mont_copy( SRC1(i) , tgt );
+      bls12_381_Fr_mont_copy( SRC1(i) , tgt );
     }
     if (i < n1-1) {
-      bls12_381_r_mont_mul_inplace( run, loc );
+      bls12_381_Fr_mont_mul_inplace( run, loc );
     }
   }
 }
@@ -254,41 +254,41 @@ void bls12_381_poly_mont_long_div( int n1, const uint64_t *src1, int n2, const u
 
   if (deg_q < 0) {
     // division by zero
-    if (quot) { for(int j=0; j<nquot; j++) { bls12_381_r_mont_set_zero( QUOT(j) ); } }
-    if (rem ) { for(int j=0; j<nrem ; j++) { bls12_381_r_mont_set_zero( REM(j)  ); } }
+    if (quot) { for(int j=0; j<nquot; j++) { bls12_381_Fr_mont_set_zero( QUOT(j) ); } }
+    if (rem ) { for(int j=0; j<nrem ; j++) { bls12_381_Fr_mont_set_zero( REM(j)  ); } }
     return;
   }
 
   if (deg_p < deg_q) {
     // quotient == 0
-    if (quot) { for(int j=0; j<nquot; j++) { bls12_381_r_mont_set_zero( QUOT(j) ); } }
+    if (quot) { for(int j=0; j<nquot; j++) { bls12_381_Fr_mont_set_zero( QUOT(j) ); } }
     if (rem ) {
-      for(int j=deg_p+1; j<nrem; j++) { bls12_381_r_mont_set_zero( REM(j) ); }
+      for(int j=deg_p+1; j<nrem; j++) { bls12_381_Fr_mont_set_zero( REM(j) ); }
       assert( nrem >= deg_p+1 ); 
       memcpy( rem, src1, 8*(deg_p+1)*NLIMBS );
     }
     return;
   }
 
-  if (quot) { for(int j=MAX(0,deg_p-deg_q+1); j<nquot; j++) { bls12_381_r_mont_set_zero( QUOT(j) ); } }
-  if (rem ) { for(int j=MAX(0,deg_q        ); j<nrem ; j++) { bls12_381_r_mont_set_zero( REM(j)  ); } }
+  if (quot) { for(int j=MAX(0,deg_p-deg_q+1); j<nquot; j++) { bls12_381_Fr_mont_set_zero( QUOT(j) ); } }
+  if (rem ) { for(int j=MAX(0,deg_q        ); j<nrem ; j++) { bls12_381_Fr_mont_set_zero( REM(j)  ); } }
 
   uint64_t *tgt = malloc( 8*(deg_p+1)*NLIMBS );
   assert( tgt != 0 );
   memcpy( tgt, src1, 8*(deg_p+1)*NLIMBS );
 
   uint64_t lead_inv[NLIMBS];
-  bls12_381_r_mont_inv( SRC2(deg_q) , lead_inv );
+  bls12_381_Fr_mont_inv( SRC2(deg_q) , lead_inv );
 
   for(int k=deg_p; k>=deg_q; k--) {
     uint64_t scl[NLIMBS];
-    bls12_381_r_mont_mul( TGT(k) , lead_inv , scl );
+    bls12_381_Fr_mont_mul( TGT(k) , lead_inv , scl );
     for(int i=0; i<=deg_q; i++) {
       uint64_t tmp[NLIMBS];
-      bls12_381_r_mont_mul( SRC2(i) , scl , tmp );
-      bls12_381_r_mont_sub_inplace( TGT(k-deg_q+i) , tmp );
+      bls12_381_Fr_mont_mul( SRC2(i) , scl , tmp );
+      bls12_381_Fr_mont_sub_inplace( TGT(k-deg_q+i) , tmp );
     }
-    if (quot) { bls12_381_r_mont_copy( scl , QUOT(k-deg_q) ); } 
+    if (quot) { bls12_381_Fr_mont_copy( scl , QUOT(k-deg_q) ); } 
   }
 
   if (rem) { memcpy( rem , tgt , 8*NLIMBS * MIN(deg_p+1,deg_q) ); } 
@@ -324,41 +324,41 @@ void bls12_381_poly_mont_div_by_vanishing( int n1, const uint64_t *src1, int exp
 
   if (deg_p < n) {
     // quotient == 0
-    if (quot) { for(int j=0; j<nquot; j++) { bls12_381_r_mont_set_zero( QUOT(j) ); } }
+    if (quot) { for(int j=0; j<nquot; j++) { bls12_381_Fr_mont_set_zero( QUOT(j) ); } }
     if (rem ) {
-      for(int j=deg_p+1; j<nrem; j++) { bls12_381_r_mont_set_zero( REM(j) ); }
+      for(int j=deg_p+1; j<nrem; j++) { bls12_381_Fr_mont_set_zero( REM(j) ); }
       assert( nrem >= deg_p+1 ); 
       memcpy( rem, src1, 8*(deg_p+1)*NLIMBS );
     }
     return;
   }
 
-  if (quot) { for(int j=MAX(0,deg_p-n+1); j<nquot; j++) { bls12_381_r_mont_set_zero( QUOT(j) ); } }
-  if (rem ) { for(int j=MAX(0,n        ); j<nrem ; j++) { bls12_381_r_mont_set_zero( REM(j)  ); } }
+  if (quot) { for(int j=MAX(0,deg_p-n+1); j<nquot; j++) { bls12_381_Fr_mont_set_zero( QUOT(j) ); } }
+  if (rem ) { for(int j=MAX(0,n        ); j<nrem ; j++) { bls12_381_Fr_mont_set_zero( REM(j)  ); } }
 
-  if (bls12_381_r_mont_is_one(eta)) {
+  if (bls12_381_Fr_mont_is_one(eta)) {
     // 
     // eta = 1, we don't need to multiply by it
     // 
     for(int j=deg_p-n; j>=0; j--) {
       if (j+n <= deg_p-n) {
         // as[j+n] + bs[j+n]
-        bls12_381_r_mont_add( SRC1(j+n) , QUOT(j+n) , QUOT(j) );
+        bls12_381_Fr_mont_add( SRC1(j+n) , QUOT(j+n) , QUOT(j) );
       }
       else {
         // bs[j+n] is zero
-        bls12_381_r_mont_copy( SRC1(j+n) , QUOT(j) );
+        bls12_381_Fr_mont_copy( SRC1(j+n) , QUOT(j) );
       }
     }
     if (rem) {
       for(int j=0; j<n; j++) {
         if (j <= deg_p-n) {
           // as[j] + bs[j]
-          bls12_381_r_mont_add( SRC1(j) , QUOT(j) , REM(j) );
+          bls12_381_Fr_mont_add( SRC1(j) , QUOT(j) , REM(j) );
         }
         else {
           // bs[j] is zero
-          bls12_381_r_mont_copy( SRC1(j) , REM(j) );
+          bls12_381_Fr_mont_copy( SRC1(j) , REM(j) );
         }
       }
     }
@@ -371,12 +371,12 @@ void bls12_381_poly_mont_div_by_vanishing( int n1, const uint64_t *src1, int exp
       if (j+n <= deg_p-n) {
         uint64_t tmp[NLIMBS];
         // as[j+n] + eta * bs[j+n]
-        bls12_381_r_mont_mul( QUOT(j+n) , eta , tmp );
-        bls12_381_r_mont_add( SRC1(j+n) , tmp , QUOT(j) );
+        bls12_381_Fr_mont_mul( QUOT(j+n) , eta , tmp );
+        bls12_381_Fr_mont_add( SRC1(j+n) , tmp , QUOT(j) );
       }
       else {
         // bs[j+n] is zero
-        bls12_381_r_mont_copy( SRC1(j+n) , QUOT(j) );
+        bls12_381_Fr_mont_copy( SRC1(j+n) , QUOT(j) );
       }
     }
     if (rem) {
@@ -384,12 +384,12 @@ void bls12_381_poly_mont_div_by_vanishing( int n1, const uint64_t *src1, int exp
         if (j <= deg_p-n) {
           uint64_t tmp[NLIMBS];
           // as[j] + eta * bs[j]
-          bls12_381_r_mont_mul( QUOT(j) , eta , tmp );
-          bls12_381_r_mont_add( SRC1(j) , tmp , REM(j) );
+          bls12_381_Fr_mont_mul( QUOT(j) , eta , tmp );
+          bls12_381_Fr_mont_add( SRC1(j) , tmp , REM(j) );
         }
         else {
           // bs[j] is zero
-          bls12_381_r_mont_copy( SRC1(j) , REM(j) );
+          bls12_381_Fr_mont_copy( SRC1(j) , REM(j) );
         }
       }
     }
@@ -406,7 +406,7 @@ uint8_t bls12_381_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int
   bls12_381_poly_mont_div_by_vanishing( n1, src1, expo_n, eta, nquot, quot, nrem, rem );
   int ok = 1;
   for(int j=0; j<nrem; j++) {
-    if (!bls12_381_r_mont_is_zero(REM(j))) { ok = 0; break; }
+    if (!bls12_381_Fr_mont_is_zero(REM(j))) { ok = 0; break; }
   }
   free(rem);
   return ok;
@@ -418,14 +418,14 @@ uint8_t bls12_381_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int
 void bls12_381_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
 
   if (m==0) {
-    bls12_381_r_mont_copy( src, tgt );
+    bls12_381_Fr_mont_copy( src, tgt );
     return;
   }
 
   if (m==1) {
     // N = 2
-    bls12_381_r_mont_add( src , src + src_stride*NLIMBS , tgt          );    // x + y
-    bls12_381_r_mont_sub( src , src + src_stride*NLIMBS , tgt + NLIMBS );    // x - y
+    bls12_381_Fr_mont_add( src , src + src_stride*NLIMBS , tgt          );    // x + y
+    bls12_381_Fr_mont_sub( src , src + src_stride*NLIMBS , tgt + NLIMBS );    // x - y
     return;
   }
 
@@ -435,18 +435,18 @@ void bls12_381_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64
     int halfN = (1<<(m-1));
 
     uint64_t gpow[NLIMBS];
-    bls12_381_r_mont_sqr( gen, gpow );  // gen^2
+    bls12_381_Fr_mont_sqr( gen, gpow );  // gen^2
     
     bls12_381_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src                     , buf + N*NLIMBS , buf                );
     bls12_381_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src + src_stride*NLIMBS , buf + N*NLIMBS , buf + halfN*NLIMBS );
 
-    bls12_381_r_mont_set_one(gpow);
+    bls12_381_Fr_mont_set_one(gpow);
     for(int j=0; j<halfN; j++) {
-      bls12_381_r_mont_mul ( buf + (j+halfN)*NLIMBS , gpow , tgt +  j       *NLIMBS );  //   g*v[k]
-      bls12_381_r_mont_neg ( tgt +  j       *NLIMBS ,        tgt + (j+halfN)*NLIMBS );  // - g*v[k]
-      bls12_381_r_mont_add_inplace( tgt +  j       *NLIMBS , buf + j*NLIMBS );          // u[k] + g*v[k]
-      bls12_381_r_mont_add_inplace( tgt + (j+halfN)*NLIMBS , buf + j*NLIMBS );          // u[k] - g*v[k]
-      bls12_381_r_mont_mul_inplace( gpow , gen );      
+      bls12_381_Fr_mont_mul ( buf + (j+halfN)*NLIMBS , gpow , tgt +  j       *NLIMBS );  //   g*v[k]
+      bls12_381_Fr_mont_neg ( tgt +  j       *NLIMBS ,        tgt + (j+halfN)*NLIMBS );  // - g*v[k]
+      bls12_381_Fr_mont_add_inplace( tgt +  j       *NLIMBS , buf + j*NLIMBS );          // u[k] + g*v[k]
+      bls12_381_Fr_mont_add_inplace( tgt + (j+halfN)*NLIMBS , buf + j*NLIMBS );          // u[k] - g*v[k]
+      bls12_381_Fr_mont_mul_inplace( gpow , gen );      
     }
   }
 }
@@ -472,16 +472,16 @@ const uint64_t bls12_381_poly_mont_oneHalf[4] = { 0x00000000ffffffff, 0xac425bfd
  void bls12_381_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
  
    if (m==0) {
-     bls12_381_r_mont_copy( src, tgt );
+     bls12_381_Fr_mont_copy( src, tgt );
      return;
    }
  
    if (m==1) {
      // N = 2
-     bls12_381_r_mont_add( src , src + NLIMBS , tgt                     );   // x + y
-     bls12_381_r_mont_sub( src , src + NLIMBS , tgt + tgt_stride*NLIMBS );   // x - y
-     bls12_381_r_mont_mul_inplace( tgt                     , bls12_381_poly_mont_oneHalf );      // (x + y)/2
-     bls12_381_r_mont_mul_inplace( tgt + tgt_stride*NLIMBS , bls12_381_poly_mont_oneHalf );      // (x - y)/2
+     bls12_381_Fr_mont_add( src , src + NLIMBS , tgt                     );   // x + y
+     bls12_381_Fr_mont_sub( src , src + NLIMBS , tgt + tgt_stride*NLIMBS );   // x - y
+     bls12_381_Fr_mont_mul_inplace( tgt                     , bls12_381_poly_mont_oneHalf );      // (x + y)/2
+     bls12_381_Fr_mont_mul_inplace( tgt + tgt_stride*NLIMBS , bls12_381_poly_mont_oneHalf );      // (x - y)/2
      return;
    }
  
@@ -491,19 +491,19 @@ const uint64_t bls12_381_poly_mont_oneHalf[4] = { 0x00000000ffffffff, 0xac425bfd
      int halfN = (1<<(m-1));
  
      uint64_t ginv[NLIMBS];
-     bls12_381_r_mont_inv( gen , ginv );  // gen^-1
+     bls12_381_Fr_mont_inv( gen , ginv );  // gen^-1
  
      uint64_t gpow[NLIMBS];    
-     bls12_381_r_mont_copy(bls12_381_poly_mont_oneHalf , gpow);  // 1/2
+     bls12_381_Fr_mont_copy(bls12_381_poly_mont_oneHalf , gpow);  // 1/2
      for(int j=0; j<halfN; j++) {
-       bls12_381_r_mont_add( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + j        *NLIMBS  );    // x + y
-       bls12_381_r_mont_sub( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + (j+halfN)*NLIMBS  );    // x - y
-       bls12_381_r_mont_mul_inplace( buf + j        *NLIMBS , bls12_381_poly_mont_oneHalf  );    // (x + y) /  2
-       bls12_381_r_mont_mul_inplace( buf + (j+halfN)*NLIMBS , gpow     );    // (x - y) / (2*g^k)
-       bls12_381_r_mont_mul_inplace( gpow , ginv );      
+       bls12_381_Fr_mont_add( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + j        *NLIMBS  );    // x + y
+       bls12_381_Fr_mont_sub( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + (j+halfN)*NLIMBS  );    // x - y
+       bls12_381_Fr_mont_mul_inplace( buf + j        *NLIMBS , bls12_381_poly_mont_oneHalf  );    // (x + y) /  2
+       bls12_381_Fr_mont_mul_inplace( buf + (j+halfN)*NLIMBS , gpow     );    // (x - y) / (2*g^k)
+       bls12_381_Fr_mont_mul_inplace( gpow , ginv );      
      }
  
-     bls12_381_r_mont_sqr( gen, gpow );  // gen^2
+     bls12_381_Fr_mont_sqr( gen, gpow );  // gen^2
      bls12_381_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf                , buf + N*NLIMBS , tgt                     );
      bls12_381_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf + halfN*NLIMBS , buf + N*NLIMBS , tgt + tgt_stride*NLIMBS );
  

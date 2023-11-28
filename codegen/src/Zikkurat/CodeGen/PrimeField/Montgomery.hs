@@ -14,7 +14,7 @@ import Data.Maybe
 import Control.Monad
 import System.FilePath
 
-import Zikkurat.CodeGen.PrimeField.FieldCommon
+import Zikkurat.CodeGen.FieldCommon
 import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.FFI
 import Zikkurat.Primes -- ( integerLog2 )
@@ -51,6 +51,7 @@ c_header (Params{..}) =
   , "extern void " ++ prefix ++ "from_std   ( const uint64_t *src ,       uint64_t *tgt );"
   , "extern void " ++ prefix ++ "to_std     ( const uint64_t *src ,       uint64_t *tgt );"
   , ""
+  , "extern uint8_t " ++ prefix ++ "is_valid ( const uint64_t *src );"
   , "extern uint8_t " ++ prefix ++ "is_zero  ( const uint64_t *src );"
   , "extern uint8_t " ++ prefix ++ "is_one   ( const uint64_t *src );"
   , "extern uint8_t " ++ prefix ++ "is_equal ( const uint64_t *src1, const uint64_t *src2 );"
@@ -213,7 +214,8 @@ hsBegin params@(Params{..}) =
   , "  zero   = " ++ hsModule hs_path ++ ".zero"
   , "  one    = " ++ hsModule hs_path ++ ".one"
   , "  square = " ++ hsModule hs_path ++ ".sqr"
-  , "  power x e = pow x (B.to (mod e (prime-1)))"
+  , "  power  = " ++ hsModule hs_path ++ ".pow"
+  , "  -- power x e = pow x (B.to (mod e (prime-1)))"
   , ""
   , "instance C.Field " ++ typeName ++ " where"
   , "  charPxy    _ = prime"
@@ -272,9 +274,9 @@ hsConvert (Params{..}) = ffiMarshal "" typeName nlimbs
 hsFFI :: Params -> Code
 hsFFI (Params{..}) = catCode $ 
   [ mkffi "isValid"     $ cfun' "is_valid"        (CTyp [CArgInPtr                          ] CRetBool)
-  , mkffi "isZero"      $ cfun_ "is_zero"         (CTyp [CArgInPtr                          ] CRetBool)
+  , mkffi "isZero"      $ cfun  "is_zero"         (CTyp [CArgInPtr                          ] CRetBool)
   , mkffi "isOne"       $ cfun  "is_one"          (CTyp [CArgInPtr                          ] CRetBool)
-  , mkffi "isEqual"     $ cfun_ "is_equal"        (CTyp [CArgInPtr , CArgInPtr              ] CRetBool)
+  , mkffi "isEqual"     $ cfun  "is_equal"        (CTyp [CArgInPtr , CArgInPtr              ] CRetBool)
     --
 --  , mkffi "fromStd"     $ cfun "from_std"         (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
 --  , mkffi "toStd"       $ cfun "to_std"           (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
@@ -368,9 +370,11 @@ negField Params{..} =
   , "  }"
   , "  else {" 
   , "    // mod (-x) p = p - x" 
+  , "    uint64_t tmp[NLIMBS];"
+  , "    memcpy(tmp, src, 8*NLIMBS);   // if tgt==src, it would overwrite `src` below..."
   ] ++
   [ "    " ++ index j "tgt" ++ " = " ++ showHex64 (ws!!j) ++ " ;" | j<-[0..nlimbs-1] ] ++
-  [ "    " ++ bigint_ ++ "sub_inplace(tgt, src);"
+  [ "    " ++ bigint_ ++ "sub_inplace(tgt, tmp);  // src);"
   , "  }"
   , "}"
   , ""
@@ -547,6 +551,22 @@ montREDC Params{..} =
   where
     mont = precalcMontgomery thePrime
 
+montIsValid :: Params -> Code
+montIsValid Params{..} =
+  [ "// checks if (x < prime)"
+  , "uint8_t " ++ prefix ++ "is_valid( const uint64_t *src ) {"
+  ] ++ 
+  [ "  if (" ++ index (nlimbs-j-1) "src" ++ " <  " ++ showHex64 (ws!!(nlimbs-j-1)) ++ ") return 1;" ++ "\n" ++
+    "  if (" ++ index (nlimbs-j-1) "src" ++ gt j   ++ showHex64 (ws!!(nlimbs-j-1)) ++ ") return 0;"
+  | j<-[0..nlimbs-1]
+  ] ++ 
+  [ "return 1;"
+  , "}"
+  ]
+  where
+    gt j = if j == nlimbs-1 then " >= " else " >  "
+    ws = toWord64sLE thePrime
+
 montIsOne :: Params -> Code
 montIsOne Params{..} = 
   [ "uint8_t " ++ prefix ++ "is_zero( const uint64_t *src ) {"
@@ -689,6 +709,7 @@ c_code params = concat $ map ("":)
   , exponentiation (toCommonParams params)
   , batchInverse   (toCommonParams params)
     --
+  , montIsValid params
   , montIsOne   params
   , montConvert params
   ]

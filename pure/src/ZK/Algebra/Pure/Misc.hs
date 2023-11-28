@@ -29,15 +29,15 @@ class Rnd a where
   rndIO :: IO a
 
 class Serialize a where
-  sizeInWords :: Proxy a -> Int
-  toWords     :: a -> [Word64]
-  parseWords  :: [Word64] -> Maybe (a,[Word64])
-  mbFromWords :: [Word64] -> Maybe a
+  sizeInWords            :: Proxy a -> Int
+  toWords                :: a -> [Word64]
+  parseWords             :: [Word64] -> Maybe (a,[Word64])
+  mbFromWords            :: [Word64] -> Maybe a
 
   mbFromWords ws = case parseWords ws of
     Just (x,rest) -> if null rest then Just x else Nothing
     Nothing       -> Nothing
- 
+
   parseWords  ws = mb where
     pxy = proxyOfLeft1 mb
     n   = sizeInWords pxy
@@ -46,8 +46,28 @@ class Serialize a where
       Just y  -> Just (y,rest) 
       Nothing -> Nothing
 
+class Serialize a => SerializeMontgomery a where
+  toWordsMontgomery      :: a -> [Word64]
+  parseWordsMontgomery   :: [Word64] -> Maybe (a,[Word64])
+  mbFromWordsMontgomery  :: [Word64] -> Maybe a
+
+  mbFromWordsMontgomery ws = case parseWordsMontgomery ws of
+    Just (x,rest) -> if null rest then Just x else Nothing
+    Nothing       -> Nothing
+
+  parseWordsMontgomery ws = mb where
+    pxy = proxyOfLeft1 mb
+    n   = sizeInWords pxy
+    (this,rest) = splitAt n ws
+    mb  = case mbFromWordsMontgomery this of
+      Just y  -> Just (y,rest) 
+      Nothing -> Nothing
+
 fromWords :: Serialize a => [Word64] -> a
 fromWords ws = case mbFromWords ws of { Just y -> y ; Nothing -> error "fromWords: invalid" }
+
+fromWordsMontgomery :: SerializeMontgomery a => [Word64] -> a
+fromWordsMontgomery ws = case mbFromWordsMontgomery ws of { Just y -> y ; Nothing -> error "fromWordsMontgomery: invalid" }
 
 --------------------------------------------------------------------------------
 

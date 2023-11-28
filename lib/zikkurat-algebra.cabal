@@ -63,6 +63,9 @@ Library
   if flag(BN128)
     Exposed-Modules:    ZK.Algebra.Curves.BN128.Fp.Std
                         ZK.Algebra.Curves.BN128.Fp.Mont
+                        ZK.Algebra.Curves.BN128.Fp2.Mont
+                        ZK.Algebra.Curves.BN128.Fp6.Mont
+                        ZK.Algebra.Curves.BN128.Fp12.Mont
                         ZK.Algebra.Curves.BN128.Fr.Std
                         ZK.Algebra.Curves.BN128.Fr.Mont
                         ZK.Algebra.Curves.BN128.G1.Affine
@@ -73,6 +76,9 @@ Library
   if flag(BLS12_381)
     Exposed-Modules:    ZK.Algebra.Curves.BLS12_381.Fp.Std
                         ZK.Algebra.Curves.BLS12_381.Fp.Mont
+                        ZK.Algebra.Curves.BLS12_381.Fp2.Mont
+                        ZK.Algebra.Curves.BLS12_381.Fp6.Mont
+                        ZK.Algebra.Curves.BLS12_381.Fp12.Mont
                         ZK.Algebra.Curves.BLS12_381.Fr.Std
                         ZK.Algebra.Curves.BLS12_381.Fr.Mont
                         ZK.Algebra.Curves.BLS12_381.G1.Affine
@@ -91,10 +97,13 @@ Library
 
   if flag(BN128)
 
-    c-sources:          cbits/curves/fields/std/bn128_p_std.c
-                        cbits/curves/fields/std/bn128_r_std.c
-                        cbits/curves/fields/mont/bn128_p_mont.c
-                        cbits/curves/fields/mont/bn128_r_mont.c
+    c-sources:          cbits/curves/fields/std/bn128_Fp_std.c
+                        cbits/curves/fields/std/bn128_Fr_std.c
+                        cbits/curves/fields/mont/bn128_Fp_mont.c
+                        cbits/curves/fields/mont/bn128_Fp2_mont.c
+                        cbits/curves/fields/mont/bn128_Fp6_mont.c
+                        cbits/curves/fields/mont/bn128_Fp12_mont.c
+                        cbits/curves/fields/mont/bn128_Fr_mont.c
                         cbits/curves/g1/affine/bn128_G1_affine.c
                         cbits/curves/g1/proj/bn128_G1_proj.c
                         cbits/curves/g1/jac/bn128_G1_jac.c
@@ -102,10 +111,13 @@ Library
 
   if flag(BLS12_381)
 
-    c-sources:          cbits/curves/fields/std/bls12_381_p_std.c
-                        cbits/curves/fields/std/bls12_381_r_std.c
-                        cbits/curves/fields/mont/bls12_381_p_mont.c
-                        cbits/curves/fields/mont/bls12_381_r_mont.c
+    c-sources:          cbits/curves/fields/std/bls12_381_Fp_std.c
+                        cbits/curves/fields/std/bls12_381_Fr_std.c
+                        cbits/curves/fields/mont/bls12_381_Fp_mont.c
+                        cbits/curves/fields/mont/bls12_381_Fp2_mont.c
+                        cbits/curves/fields/mont/bls12_381_Fp6_mont.c
+                        cbits/curves/fields/mont/bls12_381_Fp12_mont.c
+                        cbits/curves/fields/mont/bls12_381_Fr_mont.c
                         cbits/curves/g1/affine/bls12_381_G1_affine.c
                         cbits/curves/g1/proj/bls12_381_G1_proj.c
                         cbits/curves/g1/jac/bls12_381_G1_jac.c

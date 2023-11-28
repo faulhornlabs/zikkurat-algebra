@@ -33,6 +33,8 @@ help = do
   putStrLn " - bigint"
   putStrLn " - std_field"
   putStrLn " - montgomery"
+  putStrLn " - towers"
+  putStrLn " - againstref"
   putStrLn " - affine_curve"
   putStrLn " - proj_curve"
   putStrLn " - jac_curve"
@@ -48,6 +50,8 @@ validNames =
   , "bigint"
   , "stdfield"
   , "montfield" , "montgomery"
+  , "towers" , "extfield"
+  , "compare" , "againstref" , "reference"
   , "projcurve" , "projective"
   , "jaccurve" , "jacobiancurve" , "jacobian"
   , "affcurve" , "affinecurve" , "affine"
@@ -66,6 +70,13 @@ testMain what n = case canonicalizeName what of
 
   "montfield"  -> runTestsMontField n
   "montgomery" -> runTestsMontField n
+
+  "towers"     -> runTestsFieldTowers n     
+  "extfield"   -> runTestsFieldTowers n     
+
+  "compare"    -> runTestsCompare n
+  "againstref" -> runTestsCompare n 
+  "reference"  -> runTestsCompare n
 
   "projcurve"  -> runTestsProjCurve n
   "projective" -> runTestsProjCurve n

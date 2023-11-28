@@ -1,7 +1,7 @@
 
 -- | Polymorphic interface for (univariate) polynomials
 
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, TypeFamilies, FlexibleContexts #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables, TypeFamilies, FlexibleContexts, TypeOperators #-}
 module ZK.Algebra.Class.Poly where
 
 --------------------------------------------------------------------------------
@@ -10,6 +10,7 @@ import Data.Bits
 import Data.Proxy
 import Data.Array
 import Data.List
+import Data.Kind
 
 import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Flat
@@ -20,7 +21,7 @@ import ZK.Algebra.Class.FFT
 
 class (Ring p, Field (Coeff p), WrappedArray p, Element p ~ Coeff p) => Univariate p where
   -- | the type of coefficients
-  type Coeff p :: *
+  type Coeff p :: Type
   -- | Degree
   degree :: p -> Int
   -- | The k-th coefficient

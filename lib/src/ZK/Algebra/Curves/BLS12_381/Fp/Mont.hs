@@ -118,7 +118,8 @@ instance C.Ring Fp where
   zero   = ZK.Algebra.Curves.BLS12_381.Fp.Mont.zero
   one    = ZK.Algebra.Curves.BLS12_381.Fp.Mont.one
   square = ZK.Algebra.Curves.BLS12_381.Fp.Mont.sqr
-  power x e = pow x (B.to (mod e (prime-1)))
+  power  = ZK.Algebra.Curves.BLS12_381.Fp.Mont.pow
+  -- power x e = pow x (B.to (mod e (prime-1)))
 
 instance C.Field Fp where
   charPxy    _ = prime
@@ -129,7 +130,7 @@ instance C.Field Fp where
 
 ----------------------------------------
 
-foreign import ccall unsafe "bls12_381_p_mont_from_std" c_bls12_381_p_mont_from_std :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_from_std" c_bls12_381_Fp_mont_from_std :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE fromStd#-}
 fromStd :: Std.Fp -> Fp
@@ -137,10 +138,10 @@ fromStd (Std.MkFp fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 6
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_p_mont_from_std ptr1 ptr2
+      c_bls12_381_Fp_mont_from_std ptr1 ptr2
   return (MkFp fptr2)
 
-foreign import ccall unsafe "bls12_381_p_mont_to_std" c_bls12_381_p_mont_to_std :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_to_std" c_bls12_381_Fp_mont_to_std :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE toStd#-}
 toStd :: Fp -> Std.Fp
@@ -148,7 +149,7 @@ toStd (MkFp fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 6
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_p_mont_to_std ptr1 ptr2
+      c_bls12_381_Fp_mont_to_std ptr1 ptr2
   return (Std.MkFp fptr2)
 
 
@@ -166,21 +167,44 @@ exportListToCDef name vals = unsafePerformIO $ do
 
 ----------------------------------------
 
-foreign import ccall unsafe "bls12_381_p_mont_pow_gen" c_bls12_381_p_mont_pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_pow_gen" c_bls12_381_Fp_mont_pow_gen :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
+
+pow :: Fp -> Integer -> Fp
+pow x e
+  | e == 0      = if isZero x then zero else one
+  | e >  0      =      powNonNeg x         e  
+  | otherwise   = inv (powNonNeg x (negate e))
+
+withInteger :: Integer -> ((Int, Ptr Word64) -> IO a) -> IO a
+withInteger !input action = do
+  let (n,ws) = toWord64sLE_ input
+  allocaArray n $ \ptr -> do
+    pokeArray ptr ws
+    action (n,ptr)
+
+{-# NOINLINE powNonNeg #-}
+powNonNeg :: Fp -> Integer -> Fp
+powNonNeg (MkFp fptr1) expo = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 6
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withInteger expo $ \(nwords,ptr2) -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bls12_381_Fp_mont_pow_gen ptr1 ptr2 ptr3 (fromIntegral nwords)
+  return (MkFp fptr3)
 
 {-# NOINLINE pow #-}
-pow :: Fp -> BigInt384 -> Fp
-pow (MkFp fptr1) (MkBigInt384 fptr2) = unsafePerformIO $ do
+powBigInt384 :: Fp -> BigInt384 -> Fp
+powBigInt384 (MkFp fptr1) (MkBigInt384 fptr2) = unsafePerformIO $ do
   fptr3 <- mallocForeignPtrArray 6
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_p_mont_pow_gen ptr1 ptr2 ptr3 6
+        c_bls12_381_Fp_mont_pow_gen ptr1 ptr2 ptr3 6
   return (MkFp fptr3)
 
 ----------------------------------------
 
-foreign import ccall unsafe "bls12_381_p_mont_batch_inv" c_bls12_381_p_mont_batch_inv :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_batch_inv" c_bls12_381_Fp_mont_batch_inv :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE batchInv #-}
 batchInv :: FlatArray Fp -> FlatArray Fp
@@ -188,7 +212,7 @@ batchInv (MkFlatArray n fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray (n*6)
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_p_mont_batch_inv (fromIntegral n) ptr1 ptr2
+      c_bls12_381_Fp_mont_batch_inv (fromIntegral n) ptr1 ptr2
   return (MkFlatArray n fptr2)
 
 ----------------------------------------
@@ -216,44 +240,44 @@ unsafeTo x = unsafePerformIO (unsafeMk x)
 unsafeFrom :: Fp -> Integer
 unsafeFrom f = unsafePerformIO (unsafeGet f)
 
-foreign import ccall unsafe "bls12_381_p_std_is_valid" c_bls12_381_p_std_is_valid :: Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_Fp_std_is_valid" c_bls12_381_Fp_std_is_valid :: Ptr Word64 -> IO Word8
 
 {-# NOINLINE isValid #-}
 isValid :: Fp -> Bool
 isValid (MkFp fptr) = unsafePerformIO $ do
   cret <- withForeignPtr fptr $ \ptr -> do
-    c_bls12_381_p_std_is_valid ptr
+    c_bls12_381_Fp_std_is_valid ptr
   return (cret /= 0)
 
-foreign import ccall unsafe "bigint384_is_zero" c_bigint384_is_zero :: Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_Fp_mont_is_zero" c_bls12_381_Fp_mont_is_zero :: Ptr Word64 -> IO Word8
 
 {-# NOINLINE isZero #-}
 isZero :: Fp -> Bool
 isZero (MkFp fptr) = unsafePerformIO $ do
   cret <- withForeignPtr fptr $ \ptr -> do
-    c_bigint384_is_zero ptr
+    c_bls12_381_Fp_mont_is_zero ptr
   return (cret /= 0)
 
-foreign import ccall unsafe "bls12_381_p_mont_is_one" c_bls12_381_p_mont_is_one :: Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_Fp_mont_is_one" c_bls12_381_Fp_mont_is_one :: Ptr Word64 -> IO Word8
 
 {-# NOINLINE isOne #-}
 isOne :: Fp -> Bool
 isOne (MkFp fptr) = unsafePerformIO $ do
   cret <- withForeignPtr fptr $ \ptr -> do
-    c_bls12_381_p_mont_is_one ptr
+    c_bls12_381_Fp_mont_is_one ptr
   return (cret /= 0)
 
-foreign import ccall unsafe "bigint384_is_equal" c_bigint384_is_equal :: Ptr Word64 -> Ptr Word64 -> IO Word8
+foreign import ccall unsafe "bls12_381_Fp_mont_is_equal" c_bls12_381_Fp_mont_is_equal :: Ptr Word64 -> Ptr Word64 -> IO Word8
 
 {-# NOINLINE isEqual #-}
 isEqual :: Fp -> Fp -> Bool
 isEqual (MkFp fptr1) (MkFp fptr2) = unsafePerformIO $ do
   cret <- withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bigint384_is_equal ptr1 ptr2
+      c_bls12_381_Fp_mont_is_equal ptr1 ptr2
   return (cret /= 0)
 
-foreign import ccall unsafe "bls12_381_p_mont_neg" c_bls12_381_p_mont_neg :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_neg" c_bls12_381_Fp_mont_neg :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE neg #-}
 neg :: Fp -> Fp
@@ -261,10 +285,10 @@ neg (MkFp fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 6
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_p_mont_neg ptr1 ptr2
+      c_bls12_381_Fp_mont_neg ptr1 ptr2
   return (MkFp fptr2)
 
-foreign import ccall unsafe "bls12_381_p_mont_add" c_bls12_381_p_mont_add :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_add" c_bls12_381_Fp_mont_add :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE add #-}
 add :: Fp -> Fp -> Fp
@@ -273,10 +297,10 @@ add (MkFp fptr1) (MkFp fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_p_mont_add ptr1 ptr2 ptr3
+        c_bls12_381_Fp_mont_add ptr1 ptr2 ptr3
   return (MkFp fptr3)
 
-foreign import ccall unsafe "bls12_381_p_mont_sub" c_bls12_381_p_mont_sub :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_sub" c_bls12_381_Fp_mont_sub :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sub #-}
 sub :: Fp -> Fp -> Fp
@@ -285,10 +309,10 @@ sub (MkFp fptr1) (MkFp fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_p_mont_sub ptr1 ptr2 ptr3
+        c_bls12_381_Fp_mont_sub ptr1 ptr2 ptr3
   return (MkFp fptr3)
 
-foreign import ccall unsafe "bls12_381_p_mont_sqr" c_bls12_381_p_mont_sqr :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_sqr" c_bls12_381_Fp_mont_sqr :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE sqr #-}
 sqr :: Fp -> Fp
@@ -296,10 +320,10 @@ sqr (MkFp fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 6
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_p_mont_sqr ptr1 ptr2
+      c_bls12_381_Fp_mont_sqr ptr1 ptr2
   return (MkFp fptr2)
 
-foreign import ccall unsafe "bls12_381_p_mont_mul" c_bls12_381_p_mont_mul :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_mul" c_bls12_381_Fp_mont_mul :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE mul #-}
 mul :: Fp -> Fp -> Fp
@@ -308,10 +332,10 @@ mul (MkFp fptr1) (MkFp fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_p_mont_mul ptr1 ptr2 ptr3
+        c_bls12_381_Fp_mont_mul ptr1 ptr2 ptr3
   return (MkFp fptr3)
 
-foreign import ccall unsafe "bls12_381_p_mont_inv" c_bls12_381_p_mont_inv :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_inv" c_bls12_381_Fp_mont_inv :: Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE inv #-}
 inv :: Fp -> Fp
@@ -319,10 +343,10 @@ inv (MkFp fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 6
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_p_mont_inv ptr1 ptr2
+      c_bls12_381_Fp_mont_inv ptr1 ptr2
   return (MkFp fptr2)
 
-foreign import ccall unsafe "bls12_381_p_mont_div" c_bls12_381_p_mont_div :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_div" c_bls12_381_Fp_mont_div :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE div #-}
 div :: Fp -> Fp -> Fp
@@ -331,10 +355,10 @@ div (MkFp fptr1) (MkFp fptr2) = unsafePerformIO $ do
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       withForeignPtr fptr3 $ \ptr3 -> do
-        c_bls12_381_p_mont_div ptr1 ptr2 ptr3
+        c_bls12_381_Fp_mont_div ptr1 ptr2 ptr3
   return (MkFp fptr3)
 
-foreign import ccall unsafe "bls12_381_p_mont_pow_uint64" c_bls12_381_p_mont_pow_uint64 :: Ptr Word64 -> Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_pow_uint64" c_bls12_381_Fp_mont_pow_uint64 :: Ptr Word64 -> Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE pow_ #-}
 pow_ :: Fp -> Word64 -> Fp
@@ -342,5 +366,5 @@ pow_ (MkFp fptr1) x = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 6
   cret <- withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_p_mont_pow_uint64 ptr1 x ptr2
+      c_bls12_381_Fp_mont_pow_uint64 ptr1 x ptr2
   return (MkFp fptr2)

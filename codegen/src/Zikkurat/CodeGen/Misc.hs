@@ -29,6 +29,13 @@ parseHsOrC str = case map toLower str of
 
 --------------------------------------------------------------------------------
 
+partitionIntoChunks :: Int -> [a] -> [[a]]
+partitionIntoChunks k = go where
+  go [] = []
+  go xs = take k xs : go (drop k xs)
+
+--------------------------------------------------------------------------------
+
 -- | A path (module or c source file or c header). The last entry is the 
 -- the base filename (no extension!)
 newtype Path 
@@ -63,6 +70,13 @@ createTgtDirectory fpath = createDirectoryIfMissing True (takeDirectory fpath)
 
 showHex64 :: Word64 -> String
 showHex64 = printf "0x%016x"
+
+wordsToCHexString :: String -> [Word64] -> String
+wordsToCHexString cname input = unlines ([header]++stuff++[finish]) where
+  header = "uint64_t " ++ cname ++ "[" ++ show (length input) ++ "] ="
+  stuff  = zipWith f ('{':repeat ',') $ partitionIntoChunks 4 input
+  finish = "  };"
+  f ch ws = "  " ++ [ch] ++ " " ++ intercalate ", " (map showHex64 ws)
 
 --------------------------------------------------------------------------------
 

@@ -11,8 +11,8 @@
 
 #include "bls12_381_G1_jac.h"
 #include "bls12_381_G1_affine.h"
-#include "bls12_381_p_mont.h"
-#include "bls12_381_r_mont.h"
+#include "bls12_381_Fp_mont.h"
+#include "bls12_381_Fr_mont.h"
 
 #define NLIMBS_P 6
 #define NLIMBS_R 4
@@ -49,24 +49,24 @@ void bls12_381_G1_jac_scale_by_A_inplace( uint64_t *tgt ) {
 // scale a field element by B = 4
 void bls12_381_G1_jac_scale_by_B(const uint64_t *src, uint64_t *tgt ) {
   uint64_t tmp[6];
-  bls12_381_p_mont_add( src, src, tmp );
-  bls12_381_p_mont_add( tmp, tmp, tgt );
+  bls12_381_Fp_mont_add( src, src, tmp );
+  bls12_381_Fp_mont_add( tmp, tmp, tgt );
 }
 
 void bls12_381_G1_jac_scale_by_B_inplace( uint64_t *tgt ) {
   uint64_t tmp[6];
-  bls12_381_p_mont_add( tgt, tgt, tmp );
-  bls12_381_p_mont_add( tmp, tmp, tgt );
+  bls12_381_Fp_mont_add( tgt, tgt, tmp );
+  bls12_381_Fp_mont_add( tmp, tmp, tgt );
 }
 
 void bls12_381_G1_jac_normalize( const uint64_t *src1, uint64_t *tgt ) {
-  if (bls12_381_p_mont_is_zero( Z1 ) ) {
+  if (bls12_381_Fp_mont_is_zero( Z1 ) ) {
     // Z == 0, it must be the point at infinity
     memset( tgt, 0, 144 );
-    bls12_381_p_mont_set_one( Y3 );
+    bls12_381_Fp_mont_set_one( Y3 );
   }
   else {
-    if (bls12_381_p_mont_is_one( Z1 )) {
+    if (bls12_381_Fp_mont_is_one( Z1 )) {
       // already normalized
       if (tgt != src1) { memcpy( tgt, src1, 144 ); }
     }
@@ -74,12 +74,12 @@ void bls12_381_G1_jac_normalize( const uint64_t *src1, uint64_t *tgt ) {
       uint64_t zinv [6];
       uint64_t zinv2[6];
       uint64_t zinv3[6];
-      bls12_381_p_mont_inv( Z1, zinv );
-      bls12_381_p_mont_sqr( zinv, zinv2 );
-      bls12_381_p_mont_mul( zinv, zinv2, zinv3 );
-      bls12_381_p_mont_mul( X1, zinv2, X3 );
-      bls12_381_p_mont_mul( Y1, zinv3, Y3 );
-      bls12_381_p_mont_set_one( Z3 );
+      bls12_381_Fp_mont_inv( Z1, zinv );
+      bls12_381_Fp_mont_sqr( zinv, zinv2 );
+      bls12_381_Fp_mont_mul( zinv, zinv2, zinv3 );
+      bls12_381_Fp_mont_mul( X1, zinv2, X3 );
+      bls12_381_Fp_mont_mul( Y1, zinv3, Y3 );
+      bls12_381_Fp_mont_set_one( Z3 );
     }
   }
 }
@@ -90,9 +90,9 @@ void bls12_381_G1_jac_normalize_inplace( uint64_t *tgt ) {
 
 // checks whether the underlying representation (projective coordinates) are the same
 uint8_t bls12_381_G1_jac_is_same( const uint64_t *src1, const uint64_t *src2 ) {
-  return ( bls12_381_p_mont_is_equal( X1, X2 ) &&
-           bls12_381_p_mont_is_equal( Y1, Y2 ) &&
-           bls12_381_p_mont_is_equal( Z1, Z2 ) );
+  return ( bls12_381_Fp_mont_is_equal( X1, X2 ) &&
+           bls12_381_Fp_mont_is_equal( Y1, Y2 ) &&
+           bls12_381_Fp_mont_is_equal( Z1, Z2 ) );
 }
 
 // checks whether two curve points are equal
@@ -111,14 +111,14 @@ void bls12_381_G1_jac_from_affine( const uint64_t *src1 , uint64_t *tgt ) {
     bls12_381_G1_jac_set_infinity( tgt );
   }
   else {
-    bls12_381_p_mont_set_one( Z3 );
+    bls12_381_Fp_mont_set_one( Z3 );
   }
 }
 
 // converts to affine coordinates
 // remark: the point at infinity will result in the special string `0xffff...ffff`
 void bls12_381_G1_jac_to_affine( const uint64_t *src1 , uint64_t *tgt ) {
-  if (bls12_381_p_mont_is_zero( Z1 )) {
+  if (bls12_381_Fp_mont_is_zero( Z1 )) {
     // in the affine coordinate system, the point at infinity is represented by a hack
     // consisting all 0xff bytes (note that that's an invalid value for prime fields)
     memset( tgt, 0xff, 96 );
@@ -127,11 +127,11 @@ void bls12_381_G1_jac_to_affine( const uint64_t *src1 , uint64_t *tgt ) {
     uint64_t zinv [6];
     uint64_t zinv2[6];
     uint64_t zinv3[6];
-    bls12_381_p_mont_inv( Z1, zinv );
-    bls12_381_p_mont_mul( zinv, zinv , zinv2 );
-    bls12_381_p_mont_mul( zinv, zinv2, zinv3 );
-    bls12_381_p_mont_mul( X1, zinv2, X3 );
-    bls12_381_p_mont_mul( Y1, zinv3, Y3 );
+    bls12_381_Fp_mont_inv( Z1, zinv );
+    bls12_381_Fp_mont_mul( zinv, zinv , zinv2 );
+    bls12_381_Fp_mont_mul( zinv, zinv2, zinv3 );
+    bls12_381_Fp_mont_mul( X1, zinv2, X3 );
+    bls12_381_Fp_mont_mul( Y1, zinv3, Y3 );
   }
 }
 
@@ -140,17 +140,17 @@ void bls12_381_G1_jac_copy( const uint64_t *src1 , uint64_t *tgt ) {
 }
 
 uint8_t bls12_381_G1_jac_is_infinity ( const uint64_t *src1 ) {
-  if ( ( bls12_381_p_mont_is_zero( Z1 )) &&
-       (!bls12_381_p_mont_is_zero( X1 )) &&
-       (!bls12_381_p_mont_is_zero( Y1 )) ) {
+  if ( ( bls12_381_Fp_mont_is_zero( Z1 )) &&
+       (!bls12_381_Fp_mont_is_zero( X1 )) &&
+       (!bls12_381_Fp_mont_is_zero( Y1 )) ) {
     // for Z=0 we have the equation Y^2 = X^3
     uint64_t XX [6];
     uint64_t XXX[6];
     uint64_t YY [6];
-    bls12_381_p_mont_sqr(X1, XX);
-    bls12_381_p_mont_mul(X1, XX, XXX);
-    bls12_381_p_mont_sqr(Y1, YY);
-    return bls12_381_p_mont_is_equal( YY, XXX );
+    bls12_381_Fp_mont_sqr(X1, XX);
+    bls12_381_Fp_mont_mul(X1, XX, XXX);
+    bls12_381_Fp_mont_sqr(Y1, YY);
+    return bls12_381_Fp_mont_is_equal( YY, XXX );
   }
   else {
     return 0;
@@ -159,9 +159,9 @@ uint8_t bls12_381_G1_jac_is_infinity ( const uint64_t *src1 ) {
 
 // note: In Jacobian coordinates, the point at infinity is [1:1:0]
 void bls12_381_G1_jac_set_infinity ( uint64_t *tgt ) {
-  bls12_381_p_mont_set_one ( X3 );
-  bls12_381_p_mont_set_one ( Y3 );
-  bls12_381_p_mont_set_zero( Z3 );
+  bls12_381_Fp_mont_set_one ( X3 );
+  bls12_381_Fp_mont_set_one ( Y3 );
+  bls12_381_Fp_mont_set_zero( Z3 );
 }
 
 // checks the curve equation
@@ -171,19 +171,19 @@ uint8_t bls12_381_G1_jac_is_on_curve ( const uint64_t *src1 ) {
   uint64_t ZZ4[6];
   uint64_t acc[6];
   uint64_t tmp[6];
-  bls12_381_p_mont_sqr( Y1, acc );             // Y^2
-  bls12_381_p_mont_neg_inplace( acc );         // -Y^2
-  bls12_381_p_mont_sqr( X1, tmp );             // X^2
-  bls12_381_p_mont_mul_inplace( tmp, X1 );     // X^3
-  bls12_381_p_mont_add_inplace( acc, tmp );    // - Y^2 + X^3
-  bls12_381_p_mont_sqr( Z1 , ZZ2 );            // Z^2
-  bls12_381_p_mont_sqr( ZZ2, ZZ4 );            // Z^4
-  bls12_381_p_mont_mul( ZZ2, ZZ4, tmp );        // Z^6
+  bls12_381_Fp_mont_sqr( Y1, acc );             // Y^2
+  bls12_381_Fp_mont_neg_inplace( acc );         // -Y^2
+  bls12_381_Fp_mont_sqr( X1, tmp );             // X^2
+  bls12_381_Fp_mont_mul_inplace( tmp, X1 );     // X^3
+  bls12_381_Fp_mont_add_inplace( acc, tmp );    // - Y^2 + X^3
+  bls12_381_Fp_mont_sqr( Z1 , ZZ2 );            // Z^2
+  bls12_381_Fp_mont_sqr( ZZ2, ZZ4 );            // Z^4
+  bls12_381_Fp_mont_mul( ZZ2, ZZ4, tmp );        // Z^6
   bls12_381_G1_jac_scale_by_B_inplace( tmp );   // B*Z^6
-  bls12_381_p_mont_add_inplace( acc, tmp );     // - Y^2 + X^3 + A*X*Z^4 + B*Z^6
-  return (bls12_381_p_mont_is_zero( acc ) &&
-           ( (!bls12_381_p_mont_is_zero( Z1 )) || 
-             (!bls12_381_p_mont_is_zero( Y1 )) ) );
+  bls12_381_Fp_mont_add_inplace( acc, tmp );     // - Y^2 + X^3 + A*X*Z^4 + B*Z^6
+  return (bls12_381_Fp_mont_is_zero( acc ) &&
+           ( (!bls12_381_Fp_mont_is_zero( Z1 )) || 
+             (!bls12_381_Fp_mont_is_zero( Y1 )) ) );
 }
 
 // checks whether the given point is in the subgroup G1
@@ -201,12 +201,12 @@ uint8_t bls12_381_G1_jac_is_in_subgroup ( const uint64_t *src1 ) {
 // negates an elliptic curve point
 void bls12_381_G1_jac_neg( const uint64_t *src, uint64_t *tgt ) {
   if (tgt != src) { memcpy( tgt, src, 144 ); }
-  bls12_381_p_mont_neg_inplace( Y3 );
+  bls12_381_Fp_mont_neg_inplace( Y3 );
 }
 
 // negates an elliptic curve point
 void bls12_381_G1_jac_neg_inplace( uint64_t *tgt ) {
-  bls12_381_p_mont_neg_inplace( Y3 );
+  bls12_381_Fp_mont_neg_inplace( Y3 );
 }
 
 // doubles an elliptic curve point
@@ -219,31 +219,31 @@ void bls12_381_G1_jac_dbl( const uint64_t *src1, uint64_t *tgt ) {
   uint64_t    S[6];
   uint64_t    M[6];
   uint64_t    T[6];
-  bls12_381_p_mont_sqr( X1, XX );           // XX = X1^2
-  bls12_381_p_mont_sqr( Y1, YY );           // YY = Y1^2
-  bls12_381_p_mont_sqr( YY, YYYY );         // YYYY = Y1^4
-  bls12_381_p_mont_sqr( Z1, ZZ );           // ZZ = Z1^2
-  bls12_381_p_mont_add( X1, YY , S );       // = (X1+YY)
-  bls12_381_p_mont_sqr_inplace( S );        // = (X1+YY)^2
-  bls12_381_p_mont_sub_inplace( S, XX );    // = (X1+YY)^2 - XX
-  bls12_381_p_mont_sub_inplace( S, YYYY );  // = (X1+YY)^2 - XX -YYYY
-  bls12_381_p_mont_add_inplace( S, S );     // = S = 2*((X1+YY)^2-XX-YYYY)
-  bls12_381_p_mont_add( XX, XX, M );        // = 2*XX
-  bls12_381_p_mont_add_inplace( M, XX );    // M = 3*XX
-  bls12_381_p_mont_sqr( M, T );                // T = M^2
-  bls12_381_p_mont_sub_inplace( T, S );        // T = M^2 - S
-  bls12_381_p_mont_sub_inplace( T, S );        // T = M^2 - 2*S
-  bls12_381_p_mont_copy( T, X3 );              // X3  = T
-  bls12_381_p_mont_add( Z1, Y1, Z3 );          // Z3  = Y1+Z1
-  bls12_381_p_mont_sqr_inplace( Z3 );          // Z3  = (Y1+Z1)^2
-  bls12_381_p_mont_sub_inplace( Z3, YY );      // Z3  = (Y1+Z1)^2 - YY
-  bls12_381_p_mont_sub_inplace( Z3, ZZ );      // Z3  = (Y1+Z1)^2 - YY - ZZ
-  bls12_381_p_mont_sub( S, T, Y3 );            // Y3  = S - T
-  bls12_381_p_mont_mul_inplace( Y3, M );       // Y3  = M*(S - T)
-  bls12_381_p_mont_add_inplace( YYYY , YYYY ); // 2 * YYYY
-  bls12_381_p_mont_add_inplace( YYYY , YYYY ); // 4 * YYYY
-  bls12_381_p_mont_add_inplace( YYYY , YYYY ); // 8 * YYYY
-  bls12_381_p_mont_sub_inplace( Y3 , YYYY);    // Y3  = M*(S - T) - 8*YYYY
+  bls12_381_Fp_mont_sqr( X1, XX );           // XX = X1^2
+  bls12_381_Fp_mont_sqr( Y1, YY );           // YY = Y1^2
+  bls12_381_Fp_mont_sqr( YY, YYYY );         // YYYY = Y1^4
+  bls12_381_Fp_mont_sqr( Z1, ZZ );           // ZZ = Z1^2
+  bls12_381_Fp_mont_add( X1, YY , S );       // = (X1+YY)
+  bls12_381_Fp_mont_sqr_inplace( S );        // = (X1+YY)^2
+  bls12_381_Fp_mont_sub_inplace( S, XX );    // = (X1+YY)^2 - XX
+  bls12_381_Fp_mont_sub_inplace( S, YYYY );  // = (X1+YY)^2 - XX -YYYY
+  bls12_381_Fp_mont_add_inplace( S, S );     // = S = 2*((X1+YY)^2-XX-YYYY)
+  bls12_381_Fp_mont_add( XX, XX, M );        // = 2*XX
+  bls12_381_Fp_mont_add_inplace( M, XX );    // M = 3*XX
+  bls12_381_Fp_mont_sqr( M, T );                // T = M^2
+  bls12_381_Fp_mont_sub_inplace( T, S );        // T = M^2 - S
+  bls12_381_Fp_mont_sub_inplace( T, S );        // T = M^2 - 2*S
+  bls12_381_Fp_mont_copy( T, X3 );              // X3  = T
+  bls12_381_Fp_mont_add( Z1, Y1, Z3 );          // Z3  = Y1+Z1
+  bls12_381_Fp_mont_sqr_inplace( Z3 );          // Z3  = (Y1+Z1)^2
+  bls12_381_Fp_mont_sub_inplace( Z3, YY );      // Z3  = (Y1+Z1)^2 - YY
+  bls12_381_Fp_mont_sub_inplace( Z3, ZZ );      // Z3  = (Y1+Z1)^2 - YY - ZZ
+  bls12_381_Fp_mont_sub( S, T, Y3 );            // Y3  = S - T
+  bls12_381_Fp_mont_mul_inplace( Y3, M );       // Y3  = M*(S - T)
+  bls12_381_Fp_mont_add_inplace( YYYY , YYYY ); // 2 * YYYY
+  bls12_381_Fp_mont_add_inplace( YYYY , YYYY ); // 4 * YYYY
+  bls12_381_Fp_mont_add_inplace( YYYY , YYYY ); // 8 * YYYY
+  bls12_381_Fp_mont_sub_inplace( Y3 , YYYY);    // Y3  = M*(S - T) - 8*YYYY
 }
 
 // doubles an elliptic curve point
@@ -273,20 +273,20 @@ void bls12_381_G1_jac_add( const uint64_t *src1, const uint64_t *src2, uint64_t 
   uint64_t  J[6];
   uint64_t  r[6];
   uint64_t  V[6];
-  bls12_381_p_mont_sqr( Z1, Z1Z1 );           // Z1Z1 = Z1^2
-  bls12_381_p_mont_sqr( Z2, Z2Z2 );           // Z2Z2 = Z2^2
-  bls12_381_p_mont_mul( X1, Z2Z2 , U1 );      // U1 = X1*Z2Z2
-  bls12_381_p_mont_mul( X2, Z1Z1 , U2 );      // U2 = X2*Z1Z1
-  bls12_381_p_mont_mul( Y1, Z2 , S1 );        //    = Y1 * Z2
-  bls12_381_p_mont_mul_inplace(  S1, Z2Z2 );  // S1 = Y1 * Z2 * Z2Z2
-  bls12_381_p_mont_mul( Y2, Z1 , S2 );        //    = Y2 * Z1
-  bls12_381_p_mont_mul_inplace(  S2, Z1Z1 );  // S2 = Y2 * Z1 * Z1Z1
-  bls12_381_p_mont_sub( U2, U1, H );          // H  = U2-U1
-  if (bls12_381_p_mont_is_zero( H )) {
+  bls12_381_Fp_mont_sqr( Z1, Z1Z1 );           // Z1Z1 = Z1^2
+  bls12_381_Fp_mont_sqr( Z2, Z2Z2 );           // Z2Z2 = Z2^2
+  bls12_381_Fp_mont_mul( X1, Z2Z2 , U1 );      // U1 = X1*Z2Z2
+  bls12_381_Fp_mont_mul( X2, Z1Z1 , U2 );      // U2 = X2*Z1Z1
+  bls12_381_Fp_mont_mul( Y1, Z2 , S1 );        //    = Y1 * Z2
+  bls12_381_Fp_mont_mul_inplace(  S1, Z2Z2 );  // S1 = Y1 * Z2 * Z2Z2
+  bls12_381_Fp_mont_mul( Y2, Z1 , S2 );        //    = Y2 * Z1
+  bls12_381_Fp_mont_mul_inplace(  S2, Z1Z1 );  // S2 = Y2 * Z1 * Z1Z1
+  bls12_381_Fp_mont_sub( U2, U1, H );          // H  = U2-U1
+  if (bls12_381_Fp_mont_is_zero( H )) {
     // X1/Z1^2 == X2/Z2^2
     // so either Y1/Z1^3 == Y2/Z2^3, in which case it's a doubling
     // or not, in which case Y1/Z1^3 == - Y2/Z2^3 and the result is infinity
-    if (bls12_381_p_mont_is_equal( S1, S2)) {
+    if (bls12_381_Fp_mont_is_equal( S1, S2)) {
       // Y1/Z1^3 == Y2/Z2^3
       bls12_381_G1_jac_dbl( src1, tgt );
       return;
@@ -297,26 +297,26 @@ void bls12_381_G1_jac_add( const uint64_t *src1, const uint64_t *src2, uint64_t 
       return;
     }
   }
-  bls12_381_p_mont_add( H, H, I );            //    = 2*H
-  bls12_381_p_mont_sqr_inplace( I );          // I  = (2*H)^2
-  bls12_381_p_mont_mul( H, I, J );            // J  = H*I
-  bls12_381_p_mont_sub( S2, S1, r );          //    = S2-S1
-  bls12_381_p_mont_add_inplace( r, r );       // r  = 2*(S2-S1)
-  bls12_381_p_mont_mul( U1, I, V );           // V  = U1*I
-  bls12_381_p_mont_sqr( r, X3 );              //    = r^2
-  bls12_381_p_mont_sub_inplace( X3, J );      //    = r^2 - J
-  bls12_381_p_mont_sub_inplace( X3, V );      //    = r^2 - J - V
-  bls12_381_p_mont_sub_inplace( X3, V );      // X3 = r^2 - J - 2*V
-  bls12_381_p_mont_sub( V, X3, Y3 );          //    = V-X3
-  bls12_381_p_mont_mul_inplace( Y3, r );      //    = r*(V-X3)
-  bls12_381_p_mont_mul_inplace( J, S1 );      // J := S1*J
-  bls12_381_p_mont_sub_inplace( Y3, J );      //    = r*(V-X3) - S1*J
-  bls12_381_p_mont_sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*S1*J
-  bls12_381_p_mont_add( Z1, Z2, Z3 );         //    = Z1+Z2
-  bls12_381_p_mont_sqr_inplace( Z3 );         //    = (Z1+Z2)^2
-  bls12_381_p_mont_sub_inplace( Z3, Z1Z1 );   //    = (Z1+Z2)^2-Z1Z1
-  bls12_381_p_mont_sub_inplace( Z3, Z2Z2 );   //    = (Z1+Z2)^2-Z1Z1-Z2Z2
-  bls12_381_p_mont_mul_inplace( Z3, H );      // Z3 = ((Z1+Z2)^2-Z1Z1-Z2Z2)*H
+  bls12_381_Fp_mont_add( H, H, I );            //    = 2*H
+  bls12_381_Fp_mont_sqr_inplace( I );          // I  = (2*H)^2
+  bls12_381_Fp_mont_mul( H, I, J );            // J  = H*I
+  bls12_381_Fp_mont_sub( S2, S1, r );          //    = S2-S1
+  bls12_381_Fp_mont_add_inplace( r, r );       // r  = 2*(S2-S1)
+  bls12_381_Fp_mont_mul( U1, I, V );           // V  = U1*I
+  bls12_381_Fp_mont_sqr( r, X3 );              //    = r^2
+  bls12_381_Fp_mont_sub_inplace( X3, J );      //    = r^2 - J
+  bls12_381_Fp_mont_sub_inplace( X3, V );      //    = r^2 - J - V
+  bls12_381_Fp_mont_sub_inplace( X3, V );      // X3 = r^2 - J - 2*V
+  bls12_381_Fp_mont_sub( V, X3, Y3 );          //    = V-X3
+  bls12_381_Fp_mont_mul_inplace( Y3, r );      //    = r*(V-X3)
+  bls12_381_Fp_mont_mul_inplace( J, S1 );      // J := S1*J
+  bls12_381_Fp_mont_sub_inplace( Y3, J );      //    = r*(V-X3) - S1*J
+  bls12_381_Fp_mont_sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*S1*J
+  bls12_381_Fp_mont_add( Z1, Z2, Z3 );         //    = Z1+Z2
+  bls12_381_Fp_mont_sqr_inplace( Z3 );         //    = (Z1+Z2)^2
+  bls12_381_Fp_mont_sub_inplace( Z3, Z1Z1 );   //    = (Z1+Z2)^2-Z1Z1
+  bls12_381_Fp_mont_sub_inplace( Z3, Z2Z2 );   //    = (Z1+Z2)^2-Z1Z1-Z2Z2
+  bls12_381_Fp_mont_mul_inplace( Z3, H );      // Z3 = ((Z1+Z2)^2-Z1Z1-Z2Z2)*H
 }
 
 void bls12_381_G1_jac_add_inplace( uint64_t *tgt, const uint64_t *src2 ) {
@@ -356,20 +356,20 @@ void bls12_381_G1_jac_madd_jac_aff( const uint64_t *src1, const uint64_t *src2, 
   uint64_t  J[6];
   uint64_t  r[6];
   uint64_t  V[6];
-  bls12_381_p_mont_sqr( Z1, Z1Z1 );           // Z1Z1 = Z1^2
-  bls12_381_p_mont_mul( X2, Z1Z1 , U2 );      // U2 = X2*Z1Z1
-  bls12_381_p_mont_mul( Y2, Z1 , S2 );        //    = Y2 * Z1
-  bls12_381_p_mont_mul_inplace( S2, Z1Z1 );   // S2 = Y2 * Z1 * Z1Z1
-  bls12_381_p_mont_sub( U2, X1, H );          // H  = U2-X1
-  bls12_381_p_mont_sqr( H, HH );              // HH = H^2
-  bls12_381_p_mont_add( HH, HH, I );          //    = 2*HH
-  bls12_381_p_mont_add_inplace( I, I );       // I  = 4*HH
-  bls12_381_p_mont_mul( H, I, J );            // J  = H*I
-  bls12_381_p_mont_sub( S2, Y1, r );          //    = S2-Y1
-  if (bls12_381_p_mont_is_zero(H)) {
+  bls12_381_Fp_mont_sqr( Z1, Z1Z1 );           // Z1Z1 = Z1^2
+  bls12_381_Fp_mont_mul( X2, Z1Z1 , U2 );      // U2 = X2*Z1Z1
+  bls12_381_Fp_mont_mul( Y2, Z1 , S2 );        //    = Y2 * Z1
+  bls12_381_Fp_mont_mul_inplace( S2, Z1Z1 );   // S2 = Y2 * Z1 * Z1Z1
+  bls12_381_Fp_mont_sub( U2, X1, H );          // H  = U2-X1
+  bls12_381_Fp_mont_sqr( H, HH );              // HH = H^2
+  bls12_381_Fp_mont_add( HH, HH, I );          //    = 2*HH
+  bls12_381_Fp_mont_add_inplace( I, I );       // I  = 4*HH
+  bls12_381_Fp_mont_mul( H, I, J );            // J  = H*I
+  bls12_381_Fp_mont_sub( S2, Y1, r );          //    = S2-Y1
+  if (bls12_381_Fp_mont_is_zero(H)) {
     // H=0  <==>  X1/Z1^2 = X2
     // either a doubling or the result is infinity
-    if (bls12_381_p_mont_is_zero(r)) {
+    if (bls12_381_Fp_mont_is_zero(r)) {
       // r=0  <==>  Y1/Z1^2 = Y2
       // it's a doubling
       bls12_381_G1_jac_dbl( src1, tgt );
@@ -382,21 +382,21 @@ void bls12_381_G1_jac_madd_jac_aff( const uint64_t *src1, const uint64_t *src2, 
       return;
     }
   }
-  bls12_381_p_mont_add_inplace( r, r );       // r  = 2*(S2-Y1)
-  bls12_381_p_mont_mul( X1, I, V );           // V  = X1*I
-  bls12_381_p_mont_sqr( r, X3 );              //    = r^2
-  bls12_381_p_mont_sub_inplace( X3, J );      //    = r^2 - J
-  bls12_381_p_mont_sub_inplace( X3, V );      //    = r^2 - J - V
-  bls12_381_p_mont_sub_inplace( X3, V );      // X3 = r^2 - J - 2*V
-  bls12_381_p_mont_mul_inplace( J, Y1 );      // J := Y1*J - careful, in the next row we possibly overwrite Y1!
-  bls12_381_p_mont_sub( V, X3, Y3 );          //    = V-X3
-  bls12_381_p_mont_mul_inplace( Y3, r );      // Y3 = r*(V-X3)
-  bls12_381_p_mont_sub_inplace( Y3, J );      //    = r*(V-X3) - Y1*J
-  bls12_381_p_mont_sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*Y1*J
-  bls12_381_p_mont_add( Z1, H , Z3 );         //    = Z1+H
-  bls12_381_p_mont_sqr_inplace( Z3 );         //    = (Z1+H)^2
-  bls12_381_p_mont_sub_inplace( Z3, Z1Z1 );   //    = (Z1+H)^2-Z1Z1
-  bls12_381_p_mont_sub_inplace( Z3, HH );     // Z3 = (Z1+H)^2-Z1Z1-HH
+  bls12_381_Fp_mont_add_inplace( r, r );       // r  = 2*(S2-Y1)
+  bls12_381_Fp_mont_mul( X1, I, V );           // V  = X1*I
+  bls12_381_Fp_mont_sqr( r, X3 );              //    = r^2
+  bls12_381_Fp_mont_sub_inplace( X3, J );      //    = r^2 - J
+  bls12_381_Fp_mont_sub_inplace( X3, V );      //    = r^2 - J - V
+  bls12_381_Fp_mont_sub_inplace( X3, V );      // X3 = r^2 - J - 2*V
+  bls12_381_Fp_mont_mul_inplace( J, Y1 );      // J := Y1*J - careful, in the next row we possibly overwrite Y1!
+  bls12_381_Fp_mont_sub( V, X3, Y3 );          //    = V-X3
+  bls12_381_Fp_mont_mul_inplace( Y3, r );      // Y3 = r*(V-X3)
+  bls12_381_Fp_mont_sub_inplace( Y3, J );      //    = r*(V-X3) - Y1*J
+  bls12_381_Fp_mont_sub_inplace( Y3, J );      // Y3 = r*(V-X3) - 2*Y1*J
+  bls12_381_Fp_mont_add( Z1, H , Z3 );         //    = Z1+H
+  bls12_381_Fp_mont_sqr_inplace( Z3 );         //    = (Z1+H)^2
+  bls12_381_Fp_mont_sub_inplace( Z3, Z1Z1 );   //    = (Z1+H)^2-Z1Z1
+  bls12_381_Fp_mont_sub_inplace( Z3, HH );     // Z3 = (Z1+H)^2-Z1Z1-HH
 }
 
 // adds an affine point (src1) to a projective one (src2)
@@ -473,7 +473,7 @@ void bls12_381_G1_jac_scl_windowed(const uint64_t *expo, const uint64_t *grp, ui
     uint64_t e = expo[i];
     for(int j=0; j<16; j++) {
       // we can skip doubling when infinity
-      if (!bls12_381_p_mont_is_zero(tgt+2*NLIMBS_P)) {
+      if (!bls12_381_Fp_mont_is_zero(tgt+2*NLIMBS_P)) {
         bls12_381_G1_jac_dbl_inplace( tgt );
         bls12_381_G1_jac_dbl_inplace( tgt );
         bls12_381_G1_jac_dbl_inplace( tgt );
@@ -504,7 +504,7 @@ void bls12_381_G1_jac_scl_Fr_std(const uint64_t *expo, const uint64_t *grp, uint
 // where `grp` is a group element in G1, and `expo` is in Fr *in Montgomery repr*
 void bls12_381_G1_jac_scl_Fr_mont(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
   uint64_t expo_std[NLIMBS_R];
-  bls12_381_r_mont_to_std(expo, expo_std);
+  bls12_381_Fr_mont_to_std(expo, expo_std);
   bls12_381_G1_jac_scl_generic(expo_std, grp, tgt, NLIMBS_R);
 }
 
@@ -661,7 +661,7 @@ void bls12_381_G1_jac_MSM_mont_coeff_jac_out(int npoints, const uint64_t *expos,
   p = expos;
   q = std_expos;
   for(int i=0; i<npoints; i++) {
-    bls12_381_r_mont_to_std( p , q );
+    bls12_381_Fr_mont_to_std( p , q );
     p += expo_nlimbs;
     q += expo_nlimbs;
   }

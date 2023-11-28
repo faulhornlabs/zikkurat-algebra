@@ -71,20 +71,25 @@ Currently, we have the following ones.
     - BLS12-381
     - ...
 - General curves:
+    - Curve25519
     - ...
 - TODO:
     - secp256k1 / secq256k1
     - Pasta (Pallas / Vesta)
-    - ..
+    - BLS12-377
+    - ...
 
 ### Supported fields
 
-All the base and scalar fields of the curves, plus:
+All the base and scalar fields of the curves, the field extension towers required 
+for pairing, plus:
 
 - TODO:
     - some prime fields selected specifically for testing purposes
-    - the field extensions required for pairing
     - Goldilocks: `p = 2^64 - 2^32 + 1`
+    - Mersenne-31
+    - Baby Bear
+    - binary fields; Wiedeman's binary tower
     - ...
 
 
@@ -127,10 +132,10 @@ TODO
 - [ ] square roots in prime fields 
 - [ ] hash-to-curve & better (faster) random curve points  
 - [ ] add benchmarking
-- [ ] implement field extensions
+- [x] implement field extensions
 - [ ] implement "G2" twisted curves
 - [ ] figure out a better meta-programming story
-- [ ] add pure Haskell reference implementations (not really necessary, but would make codegen nicer)
+- [x] add pure Haskell reference implementations (not really necessary, but would make codegen nicer)
 - [ ] try to optimize a bit more
 - [ ] add an explicit discrete logarithm type (integers modulo `p-1`)
 - [ ] implement pairings

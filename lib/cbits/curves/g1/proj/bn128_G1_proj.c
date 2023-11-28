@@ -11,8 +11,8 @@
 
 #include "bn128_G1_proj.h"
 #include "bn128_G1_affine.h"
-#include "bn128_p_mont.h"
-#include "bn128_r_mont.h"
+#include "bn128_Fp_mont.h"
+#include "bn128_Fr_mont.h"
 
 #define NLIMBS_P 4
 #define NLIMBS_R 4
@@ -49,23 +49,23 @@ void bn128_G1_proj_scale_by_A_inplace( uint64_t *tgt ) {
 // scale a field element by B = 3
 void bn128_G1_proj_scale_by_B(const uint64_t *src, uint64_t *tgt ) {
   uint64_t tmp[4];
-  bn128_p_mont_add( src, src, tmp );
-  bn128_p_mont_add( src, tmp, tgt );
+  bn128_Fp_mont_add( src, src, tmp );
+  bn128_Fp_mont_add( src, tmp, tgt );
 }
 
 void bn128_G1_proj_scale_by_B_inplace( uint64_t *tgt ) {
   uint64_t tmp[4];
-  bn128_p_mont_add( tgt, tgt, tmp );
-  bn128_p_mont_add_inplace( tgt, tmp );
+  bn128_Fp_mont_add( tgt, tgt, tmp );
+  bn128_Fp_mont_add_inplace( tgt, tmp );
 }
 
 // scale a field element by (3*B) = 9
 void bn128_G1_proj_scale_by_3B(const uint64_t *src, uint64_t *tgt ) {
   uint64_t tmp[NLIMBS_P];
-  bn128_p_mont_add( src, src, tmp );       // 2*B
-  bn128_p_mont_add_inplace( tmp, tmp );    // 4*B
-  bn128_p_mont_add_inplace( tmp, tmp );    // 8*B
-  bn128_p_mont_add( src, tmp, tgt );       // 9*B
+  bn128_Fp_mont_add( src, src, tmp );       // 2*B
+  bn128_Fp_mont_add_inplace( tmp, tmp );    // 4*B
+  bn128_Fp_mont_add_inplace( tmp, tmp );    // 8*B
+  bn128_Fp_mont_add( src, tmp, tgt );       // 9*B
 }
 
 void bn128_G1_proj_scale_by_3B_inplace( uint64_t *tgt ) {
@@ -74,21 +74,21 @@ void bn128_G1_proj_scale_by_3B_inplace( uint64_t *tgt ) {
 
 void bn128_G1_proj_normalize( const uint64_t *src1, uint64_t *tgt ) {
   uint64_t zinv[4];
-  if (bn128_p_mont_is_zero( Z1 ) ) {
+  if (bn128_Fp_mont_is_zero( Z1 ) ) {
     // Z == 0, it must be the point at infinity
     memset( tgt, 0, 96 );
-    bn128_p_mont_set_one( Y3 );
+    bn128_Fp_mont_set_one( Y3 );
   }
   else {
-    if (bn128_p_mont_is_one( Z1 )) {
+    if (bn128_Fp_mont_is_one( Z1 )) {
       // already normalized
       if (tgt != src1) { memcpy( tgt, src1, 96 ); }
     }
     else {
-      bn128_p_mont_inv( Z1, zinv );
-      bn128_p_mont_mul( X1, zinv, X3 );
-      bn128_p_mont_mul( Y1, zinv, Y3 );
-      bn128_p_mont_set_one( Z3 );
+      bn128_Fp_mont_inv( Z1, zinv );
+      bn128_Fp_mont_mul( X1, zinv, X3 );
+      bn128_Fp_mont_mul( Y1, zinv, Y3 );
+      bn128_Fp_mont_set_one( Z3 );
     }
   }
 }
@@ -99,9 +99,9 @@ void bn128_G1_proj_normalize_inplace( uint64_t *tgt ) {
 
 // checks whether the underlying representation (projective coordinates) are the same
 uint8_t bn128_G1_proj_is_same( const uint64_t *src1, const uint64_t *src2 ) {
-  return ( bn128_p_mont_is_equal( X1, X2 ) &&
-           bn128_p_mont_is_equal( Y1, Y2 ) &&
-           bn128_p_mont_is_equal( Z1, Z2 ) );
+  return ( bn128_Fp_mont_is_equal( X1, X2 ) &&
+           bn128_Fp_mont_is_equal( Y1, Y2 ) &&
+           bn128_Fp_mont_is_equal( Z1, Z2 ) );
 }
 
 // checks whether two curve points are equal
@@ -120,23 +120,23 @@ void bn128_G1_proj_from_affine( const uint64_t *src1 , uint64_t *tgt ) {
     bn128_G1_proj_set_infinity( tgt );
   }
   else {
-    bn128_p_mont_set_one( Z3 );
+    bn128_Fp_mont_set_one( Z3 );
   }
 }
 
 // converts to affine coordinates
 // remark: the point at infinity will result in the special string `0xffff...ffff`
 void bn128_G1_proj_to_affine( const uint64_t *src1 , uint64_t *tgt ) {
-  if (bn128_p_mont_is_zero( Z1 )) {
+  if (bn128_Fp_mont_is_zero( Z1 )) {
     // in the affine coordinate system, the point at infinity is represented by a hack
     // consisting all 0xff bytes (note that that's an invalid value for prime fields)
     memset( tgt, 0xff, 64 );
   }
   else {
     uint64_t zinv[4];
-    bn128_p_mont_inv( Z1, zinv );
-    bn128_p_mont_mul( X1, zinv, X3 );
-    bn128_p_mont_mul( Y1, zinv, Y3 );
+    bn128_Fp_mont_inv( Z1, zinv );
+    bn128_Fp_mont_mul( X1, zinv, X3 );
+    bn128_Fp_mont_mul( Y1, zinv, Y3 );
   }
 }
 
@@ -145,15 +145,15 @@ void bn128_G1_proj_copy( const uint64_t *src1 , uint64_t *tgt ) {
 }
 
 uint8_t bn128_G1_proj_is_infinity ( const uint64_t *src1 ) {
-  return ( ( bn128_p_mont_is_zero( Z1 )) &&
-           (!bn128_p_mont_is_zero( Y1 )) &&
-           ( bn128_p_mont_is_zero( X1 )) );
+  return ( ( bn128_Fp_mont_is_zero( Z1 )) &&
+           (!bn128_Fp_mont_is_zero( Y1 )) &&
+           ( bn128_Fp_mont_is_zero( X1 )) );
 }
 
 void bn128_G1_proj_set_infinity ( uint64_t *tgt ) {
-  bn128_p_mont_set_zero( X3 );
-  bn128_p_mont_set_one ( Y3 );
-  bn128_p_mont_set_zero( Z3 );
+  bn128_Fp_mont_set_zero( X3 );
+  bn128_Fp_mont_set_one ( Y3 );
+  bn128_Fp_mont_set_zero( Z3 );
 }
 
 // checks the curve equation
@@ -162,19 +162,19 @@ uint8_t bn128_G1_proj_is_on_curve ( const uint64_t *src1 ) {
   uint64_t  ZZ[4];
   uint64_t acc[4];
   uint64_t tmp[4];
-  bn128_p_mont_sqr( Y1, acc );             // Y^2
-  bn128_p_mont_mul_inplace( acc, Z1 );     // Y^2*Z
-  bn128_p_mont_neg_inplace( acc );         // -Y^2*Z
-  bn128_p_mont_sqr( X1, tmp );             // X^2
-  bn128_p_mont_mul_inplace( tmp, X1 );     // X^3
-  bn128_p_mont_add_inplace( acc, tmp );    // - Y^2*Z + X^3
-  bn128_p_mont_sqr( Z1, ZZ );              // Z^2
-  bn128_p_mont_mul( Z1, ZZ, tmp );          // Z^3
+  bn128_Fp_mont_sqr( Y1, acc );             // Y^2
+  bn128_Fp_mont_mul_inplace( acc, Z1 );     // Y^2*Z
+  bn128_Fp_mont_neg_inplace( acc );         // -Y^2*Z
+  bn128_Fp_mont_sqr( X1, tmp );             // X^2
+  bn128_Fp_mont_mul_inplace( tmp, X1 );     // X^3
+  bn128_Fp_mont_add_inplace( acc, tmp );    // - Y^2*Z + X^3
+  bn128_Fp_mont_sqr( Z1, ZZ );              // Z^2
+  bn128_Fp_mont_mul( Z1, ZZ, tmp );          // Z^3
   bn128_G1_proj_scale_by_B_inplace( tmp );   // B*Z^3
-  bn128_p_mont_add_inplace( acc, tmp );     // - Y^2*Z + X^3 + A*X*Z^2 + B*Z^3
-  return (bn128_p_mont_is_zero( acc ) &&
-           ( (!bn128_p_mont_is_zero( Z1 )) || 
-             (!bn128_p_mont_is_zero( Y1 )) ) );
+  bn128_Fp_mont_add_inplace( acc, tmp );     // - Y^2*Z + X^3 + A*X*Z^2 + B*Z^3
+  return (bn128_Fp_mont_is_zero( acc ) &&
+           ( (!bn128_Fp_mont_is_zero( Z1 )) || 
+             (!bn128_Fp_mont_is_zero( Y1 )) ) );
 }
 
 // checks whether the given point is in the subgroup G1
@@ -192,12 +192,12 @@ uint8_t bn128_G1_proj_is_in_subgroup ( const uint64_t *src1 ) {
 // negates an elliptic curve point
 void bn128_G1_proj_neg( const uint64_t *src, uint64_t *tgt ) {
   if (tgt != src) { memcpy( tgt, src, 96 ); }
-  bn128_p_mont_neg_inplace( Y3 );
+  bn128_Fp_mont_neg_inplace( Y3 );
 }
 
 // negates an elliptic curve point
 void bn128_G1_proj_neg_inplace( uint64_t *tgt ) {
-  bn128_p_mont_neg_inplace( Y3 );
+  bn128_Fp_mont_neg_inplace( Y3 );
 }
 
 // doubles an elliptic curve point
@@ -213,28 +213,28 @@ void bn128_G1_proj_dbl( const uint64_t *src1, uint64_t *tgt ) {
   uint64_t  RR[4];
   uint64_t   B[4];
   uint64_t   h[4];
-  bn128_p_mont_sqr( X1 , XX );         // XX = X1^2
-  bn128_p_mont_sqr( Z1 , ZZ );         // ZZ = Z1^2
-  bn128_p_mont_add( XX, XX, w );       // w  = 2*XX
-  bn128_p_mont_add_inplace( w, XX );   // w  = 3*XX
-  bn128_p_mont_mul( Y1 , Z1 , s );         // s   = Y1*Z1
-  bn128_p_mont_add_inplace( s, s );        // s   = 2*Y1*Z1
-  bn128_p_mont_sqr( s , ss );              // ss  = s^2
-  bn128_p_mont_mul( Y1 , s , R);           // R   = Y1*s
-  bn128_p_mont_sqr( R , RR );              // RR  = R^2
-  bn128_p_mont_add( X1 , R , B);           // B   = (X1+R)
-  bn128_p_mont_sqr_inplace( B );           // B   = (X1+R)^2
-  bn128_p_mont_sub_inplace( B , XX );      // B   = (X1+R)^2 - XX
-  bn128_p_mont_sub_inplace( B , RR );      // B   = (X1+R)^2 - XX - RR
-  bn128_p_mont_sqr( w , h );               // h   = w^2
-  bn128_p_mont_sub_inplace( h , B );       // h   = w^2 - B
-  bn128_p_mont_sub_inplace( h , B );       // h   = w^2 - 2*B
-  bn128_p_mont_mul( s , ss , Z3 );         // Z3  = s^3
-  bn128_p_mont_mul( h , s , X3 );          // X3  = h*s
-  bn128_p_mont_sub( B , h , Y3 );          // Y3  = B-h
-  bn128_p_mont_mul_inplace( Y3 , w  );     // Y3  = w*(B-h)
-  bn128_p_mont_sub_inplace( Y3 , RR );     // Y3  = w*(B-h) - RR
-  bn128_p_mont_sub_inplace( Y3 , RR );     // Y3  = w*(B-h) - 2*RR
+  bn128_Fp_mont_sqr( X1 , XX );         // XX = X1^2
+  bn128_Fp_mont_sqr( Z1 , ZZ );         // ZZ = Z1^2
+  bn128_Fp_mont_add( XX, XX, w );       // w  = 2*XX
+  bn128_Fp_mont_add_inplace( w, XX );   // w  = 3*XX
+  bn128_Fp_mont_mul( Y1 , Z1 , s );         // s   = Y1*Z1
+  bn128_Fp_mont_add_inplace( s, s );        // s   = 2*Y1*Z1
+  bn128_Fp_mont_sqr( s , ss );              // ss  = s^2
+  bn128_Fp_mont_mul( Y1 , s , R);           // R   = Y1*s
+  bn128_Fp_mont_sqr( R , RR );              // RR  = R^2
+  bn128_Fp_mont_add( X1 , R , B);           // B   = (X1+R)
+  bn128_Fp_mont_sqr_inplace( B );           // B   = (X1+R)^2
+  bn128_Fp_mont_sub_inplace( B , XX );      // B   = (X1+R)^2 - XX
+  bn128_Fp_mont_sub_inplace( B , RR );      // B   = (X1+R)^2 - XX - RR
+  bn128_Fp_mont_sqr( w , h );               // h   = w^2
+  bn128_Fp_mont_sub_inplace( h , B );       // h   = w^2 - B
+  bn128_Fp_mont_sub_inplace( h , B );       // h   = w^2 - 2*B
+  bn128_Fp_mont_mul( s , ss , Z3 );         // Z3  = s^3
+  bn128_Fp_mont_mul( h , s , X3 );          // X3  = h*s
+  bn128_Fp_mont_sub( B , h , Y3 );          // Y3  = B-h
+  bn128_Fp_mont_mul_inplace( Y3 , w  );     // Y3  = w*(B-h)
+  bn128_Fp_mont_sub_inplace( Y3 , RR );     // Y3  = w*(B-h) - RR
+  bn128_Fp_mont_sub_inplace( Y3 , RR );     // Y3  = w*(B-h) - 2*RR
 }
 
 // doubles an elliptic curve point
@@ -251,40 +251,40 @@ void bn128_G1_proj_add( const uint64_t *src1, const uint64_t *src2, uint64_t *tg
   uint64_t t3[4];
   uint64_t t4[4];
   uint64_t t5[4];
-  bn128_p_mont_mul( X1, X2, t0 );              // t0 = X1*X2
-  bn128_p_mont_mul( Y1, Y2, t1 );              // t1 = Y1*Y2
-  bn128_p_mont_mul( Z1, Z2, t2 );              // t2 = Z1*Z2
-  bn128_p_mont_add( X1, Y1, t3 );              // t3 = X1+Y1
-  bn128_p_mont_add( X2, Y2, t4 );              // t4 = X2+Y2
-  bn128_p_mont_mul_inplace( t3, t4 );          // t3 = t3*t4
-  bn128_p_mont_add( t0, t1, t4 );              // t4 = t0+t1
-  bn128_p_mont_sub_inplace( t3 , t4 );         // t3 = t3-t4
-  bn128_p_mont_add( X1, Z1, t4 );              // t4 = X1+Z1
-  bn128_p_mont_add( X2, Z2, t5 );              // t5 = X2+Z2
-  bn128_p_mont_mul_inplace( t4, t5 );          // t4 = t4*t5
-  bn128_p_mont_add( t0, t2, t5 );              // t5 = t0+t2
-  bn128_p_mont_sub_inplace( t4, t5 );          // t4 = t4-t5
-  bn128_p_mont_add( Y1, Z1, t5 );              // t5 = Y1+Z1
-  bn128_p_mont_add( Y2, Z2, X3 );              // X3 = Y2+Z2
-  bn128_p_mont_mul_inplace( t5, X3 );          // t5 = t5*X3
-  bn128_p_mont_add( t1, t2, X3 );              // X3 = t1+t2
-  bn128_p_mont_sub_inplace( t5, X3 );          // t5 = t5-X3
+  bn128_Fp_mont_mul( X1, X2, t0 );              // t0 = X1*X2
+  bn128_Fp_mont_mul( Y1, Y2, t1 );              // t1 = Y1*Y2
+  bn128_Fp_mont_mul( Z1, Z2, t2 );              // t2 = Z1*Z2
+  bn128_Fp_mont_add( X1, Y1, t3 );              // t3 = X1+Y1
+  bn128_Fp_mont_add( X2, Y2, t4 );              // t4 = X2+Y2
+  bn128_Fp_mont_mul_inplace( t3, t4 );          // t3 = t3*t4
+  bn128_Fp_mont_add( t0, t1, t4 );              // t4 = t0+t1
+  bn128_Fp_mont_sub_inplace( t3 , t4 );         // t3 = t3-t4
+  bn128_Fp_mont_add( X1, Z1, t4 );              // t4 = X1+Z1
+  bn128_Fp_mont_add( X2, Z2, t5 );              // t5 = X2+Z2
+  bn128_Fp_mont_mul_inplace( t4, t5 );          // t4 = t4*t5
+  bn128_Fp_mont_add( t0, t2, t5 );              // t5 = t0+t2
+  bn128_Fp_mont_sub_inplace( t4, t5 );          // t4 = t4-t5
+  bn128_Fp_mont_add( Y1, Z1, t5 );              // t5 = Y1+Z1
+  bn128_Fp_mont_add( Y2, Z2, X3 );              // X3 = Y2+Z2
+  bn128_Fp_mont_mul_inplace( t5, X3 );          // t5 = t5*X3
+  bn128_Fp_mont_add( t1, t2, X3 );              // X3 = t1+t2
+  bn128_Fp_mont_sub_inplace( t5, X3 );          // t5 = t5-X3
   bn128_G1_proj_scale_by_3B( t2, X3 );          // X3 = b3*t2
-  bn128_p_mont_copy( X3, Z3 );                 // Z3 = X3
-  bn128_p_mont_sub( t1, Z3, X3 );              // X3 = t1-Z3
-  bn128_p_mont_add_inplace( Z3, t1 );          // Z3 = t1+Z3
-  bn128_p_mont_mul( X3, Z3, Y3 );              // Y3 = X3*Z3
-  bn128_p_mont_add( t0, t0, t1 );              // t1 = t0+t0
-  bn128_p_mont_add_inplace( t1, t0 );          // t1 = t1+t0
+  bn128_Fp_mont_copy( X3, Z3 );                 // Z3 = X3
+  bn128_Fp_mont_sub( t1, Z3, X3 );              // X3 = t1-Z3
+  bn128_Fp_mont_add_inplace( Z3, t1 );          // Z3 = t1+Z3
+  bn128_Fp_mont_mul( X3, Z3, Y3 );              // Y3 = X3*Z3
+  bn128_Fp_mont_add( t0, t0, t1 );              // t1 = t0+t0
+  bn128_Fp_mont_add_inplace( t1, t0 );          // t1 = t1+t0
   bn128_G1_proj_scale_by_3B_inplace( t4 );      // t4 = b3*t4
-  bn128_p_mont_mul( t1, t4, t0 );              // t0 = t1*t4
-  bn128_p_mont_add_inplace( Y3, t0 );          // Y3 = Y3+t0
-  bn128_p_mont_mul( t4, t5, t0 );              // t0 = t5*t4
-  bn128_p_mont_mul_inplace( X3, t3 );          // X3 = t3*X3
-  bn128_p_mont_sub_inplace( X3, t0 );          // X3 = X3-t0
-  bn128_p_mont_mul( t1, t3, t0 );              // t0 = t3*t1
-  bn128_p_mont_mul_inplace( Z3, t5 );          // Z3 = t5*Z3
-  bn128_p_mont_add_inplace( Z3, t0 );          // Z3 = Z3+t0
+  bn128_Fp_mont_mul( t1, t4, t0 );              // t0 = t1*t4
+  bn128_Fp_mont_add_inplace( Y3, t0 );          // Y3 = Y3+t0
+  bn128_Fp_mont_mul( t4, t5, t0 );              // t0 = t5*t4
+  bn128_Fp_mont_mul_inplace( X3, t3 );          // X3 = t3*X3
+  bn128_Fp_mont_sub_inplace( X3, t0 );          // X3 = X3-t0
+  bn128_Fp_mont_mul( t1, t3, t0 );              // t0 = t3*t1
+  bn128_Fp_mont_mul_inplace( Z3, t5 );          // Z3 = t5*Z3
+  bn128_Fp_mont_add_inplace( Z3, t0 );          // Z3 = Z3+t0
 }
 
 void bn128_G1_proj_add_inplace( uint64_t *tgt, const uint64_t *src2 ) {
@@ -322,29 +322,29 @@ void bn128_G1_proj_madd_proj_aff( const uint64_t *src1, const uint64_t *src2, ui
   uint64_t vvv[4];
   uint64_t   R[4];
   uint64_t   A[4];
-  bn128_p_mont_mul( Y2, Z1, u );              //  u = Y2*Z1     
-  bn128_p_mont_sub_inplace( u , Y1 );         //  u = Y2*Z1-Y1  
-  bn128_p_mont_mul( X2, Z1, v );              //  v = X2*Z1     
-  bn128_p_mont_sub_inplace( v , X1 );         //  v = X2*Z1-X1  
-  if (bn128_p_mont_is_zero(u) && bn128_p_mont_is_zero(v) ) {
+  bn128_Fp_mont_mul( Y2, Z1, u );              //  u = Y2*Z1     
+  bn128_Fp_mont_sub_inplace( u , Y1 );         //  u = Y2*Z1-Y1  
+  bn128_Fp_mont_mul( X2, Z1, v );              //  v = X2*Z1     
+  bn128_Fp_mont_sub_inplace( v , X1 );         //  v = X2*Z1-X1  
+  if (bn128_Fp_mont_is_zero(u) && bn128_Fp_mont_is_zero(v) ) {
     // it's doubling, the naive result would be (0,0,0)
     bn128_G1_proj_dbl( src1 , tgt );
     return;
   }
-  bn128_p_mont_sqr( u , uu );                 //  uu = u2       
-  bn128_p_mont_sqr( v, vv );                  //  vv = v2       
-  bn128_p_mont_mul( v, vv, vvv );             //  vvv = v*vv    
-  bn128_p_mont_mul( vv, X1, R );              //  R = vv*X1     
-  bn128_p_mont_mul( uu, Z1, A );              //  A = uu*Z1     
-  bn128_p_mont_sub_inplace( A, vvv );         //  A = uu*Z1-vvv 
-  bn128_p_mont_sub_inplace( A, R );           //  A = uu*Z1-vvv-2  
-  bn128_p_mont_sub_inplace( A, R );           //  A = uu*Z1-vvv-2*R
-  bn128_p_mont_mul( v, A, X3 );               //  X3 = v*A      
-  bn128_p_mont_mul( Z1, vvv, Z3 );            //  Z3 = vvv*Z1   
-  bn128_p_mont_sub_inplace( R , A );          //  R' =  R-A     
-  bn128_p_mont_mul_inplace( vvv , Y1 );       //  vvv' = vvv*Y1 
-  bn128_p_mont_mul( u , R , Y3 );             //  Y3 = u*(R-A)  
-  bn128_p_mont_sub_inplace( Y3, vvv );        //  Y3 = u*(R-A)-vvv*Y1
+  bn128_Fp_mont_sqr( u , uu );                 //  uu = u2       
+  bn128_Fp_mont_sqr( v, vv );                  //  vv = v2       
+  bn128_Fp_mont_mul( v, vv, vvv );             //  vvv = v*vv    
+  bn128_Fp_mont_mul( vv, X1, R );              //  R = vv*X1     
+  bn128_Fp_mont_mul( uu, Z1, A );              //  A = uu*Z1     
+  bn128_Fp_mont_sub_inplace( A, vvv );         //  A = uu*Z1-vvv 
+  bn128_Fp_mont_sub_inplace( A, R );           //  A = uu*Z1-vvv-2  
+  bn128_Fp_mont_sub_inplace( A, R );           //  A = uu*Z1-vvv-2*R
+  bn128_Fp_mont_mul( v, A, X3 );               //  X3 = v*A      
+  bn128_Fp_mont_mul( Z1, vvv, Z3 );            //  Z3 = vvv*Z1   
+  bn128_Fp_mont_sub_inplace( R , A );          //  R' =  R-A     
+  bn128_Fp_mont_mul_inplace( vvv , Y1 );       //  vvv' = vvv*Y1 
+  bn128_Fp_mont_mul( u , R , Y3 );             //  Y3 = u*(R-A)  
+  bn128_Fp_mont_sub_inplace( Y3, vvv );        //  Y3 = u*(R-A)-vvv*Y1
 }
 
 // adds an affine point (src1) to a projective one (src2)
@@ -421,7 +421,7 @@ void bn128_G1_proj_scl_windowed(const uint64_t *expo, const uint64_t *grp, uint6
     uint64_t e = expo[i];
     for(int j=0; j<16; j++) {
       // we can skip doubling when infinity
-      if (!bn128_p_mont_is_zero(tgt+2*NLIMBS_P)) {
+      if (!bn128_Fp_mont_is_zero(tgt+2*NLIMBS_P)) {
         bn128_G1_proj_dbl_inplace( tgt );
         bn128_G1_proj_dbl_inplace( tgt );
         bn128_G1_proj_dbl_inplace( tgt );
@@ -452,7 +452,7 @@ void bn128_G1_proj_scl_Fr_std(const uint64_t *expo, const uint64_t *grp, uint64_
 // where `grp` is a group element in G1, and `expo` is in Fr *in Montgomery repr*
 void bn128_G1_proj_scl_Fr_mont(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
   uint64_t expo_std[NLIMBS_R];
-  bn128_r_mont_to_std(expo, expo_std);
+  bn128_Fr_mont_to_std(expo, expo_std);
   bn128_G1_proj_scl_generic(expo_std, grp, tgt, NLIMBS_R);
 }
 
@@ -609,7 +609,7 @@ void bn128_G1_proj_MSM_mont_coeff_proj_out(int npoints, const uint64_t *expos, c
   p = expos;
   q = std_expos;
   for(int i=0; i<npoints; i++) {
-    bn128_r_mont_to_std( p , q );
+    bn128_Fr_mont_to_std( p , q );
     p += expo_nlimbs;
     q += expo_nlimbs;
   }

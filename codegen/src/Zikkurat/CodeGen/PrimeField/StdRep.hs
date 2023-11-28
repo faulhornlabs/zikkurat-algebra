@@ -14,7 +14,7 @@ import Data.Maybe
 import Control.Monad
 import System.FilePath
 
-import Zikkurat.CodeGen.PrimeField.FieldCommon
+import Zikkurat.CodeGen.FieldCommon
 import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.FFI
 import Zikkurat.Primes -- ( integerLog2 )
@@ -213,7 +213,8 @@ hsBegin params@(Params{..}) =
   , "  zero   = " ++ hsModule hs_path ++ ".zero"
   , "  one    = " ++ hsModule hs_path ++ ".one"
   , "  square = " ++ hsModule hs_path ++ ".sqr"
-  , "  power x e = pow x (B.to (mod e (prime-1)))"
+  , "  power  = " ++ hsModule hs_path ++ ".pow"
+  , "  -- power x e = pow x (B.to (mod e (prime-1)))"
   , ""
   , "instance C.Field " ++ typeName ++ " where"
   , "  charPxy      _ = prime"
@@ -377,9 +378,11 @@ negField Params{..} =
   , "  }"
   , "  else {" 
   , "    // mod (-x) p = p - x" 
+  , "    uint64_t tmp[NLIMBS];"
+  , "    memcpy(tmp, src, 8*NLIMBS);   // if tgt==src, it would overwrite `src` below..."
   ] ++
   [ "    " ++ index j "tgt" ++ " = " ++ showHex64 (ws!!j) ++ " ;" | j<-[0..nlimbs-1] ] ++
-  [ "    " ++ bigint_ ++ "sub_inplace(tgt, src);"
+  [ "    " ++ bigint_ ++ "sub_inplace(tgt, tmp);  // src);"
   , "  }"
   , "}"
   , ""

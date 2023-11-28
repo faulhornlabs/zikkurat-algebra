@@ -13,6 +13,8 @@ import ZK.Test.Platform.Properties  ( runPlatformTests )
 import ZK.Test.Field.Properties ( runRingTests  , runFieldTests )
 import ZK.Test.Curve.Properties ( runGroupTests , runCurveTests , runProjCurveTests )
 import ZK.Test.Poly.Properties  ( runPolyTests )
+import ZK.Test.Field.Ref_BN254     ( runTests_compare_BN254     )
+import ZK.Test.Field.Ref_BLS12_381 ( runTests_compare_BLS12_381 )
 
 import qualified ZK.Algebra.BigInt.Platform            as Platform
 
@@ -22,15 +24,21 @@ import qualified ZK.Algebra.BigInt.BigInt256           as BigInt256
 import qualified ZK.Algebra.BigInt.BigInt320           as BigInt320
 import qualified ZK.Algebra.BigInt.BigInt384           as BigInt384
 
-import qualified ZK.Algebra.Curves.BN128.Fp.Std        as BN128_Fp_Std
 import qualified ZK.Algebra.Curves.BN128.Fr.Std        as BN128_Fr_Std
-import qualified ZK.Algebra.Curves.BN128.Fp.Mont       as BN128_Fp_Mont
+import qualified ZK.Algebra.Curves.BN128.Fp.Std        as BN128_Fp_Std
 import qualified ZK.Algebra.Curves.BN128.Fr.Mont       as BN128_Fr_Mont
+import qualified ZK.Algebra.Curves.BN128.Fp.Mont       as BN128_Fp_Mont
+import qualified ZK.Algebra.Curves.BN128.Fp2.Mont      as BN128_Fp2_Mont
+import qualified ZK.Algebra.Curves.BN128.Fp6.Mont      as BN128_Fp6_Mont
+import qualified ZK.Algebra.Curves.BN128.Fp12.Mont     as BN128_Fp12_Mont
 
-import qualified ZK.Algebra.Curves.BLS12_381.Fp.Std    as BLS12_381_Fp_Std
 import qualified ZK.Algebra.Curves.BLS12_381.Fr.Std    as BLS12_381_Fr_Std
-import qualified ZK.Algebra.Curves.BLS12_381.Fp.Mont   as BLS12_381_Fp_Mont
+import qualified ZK.Algebra.Curves.BLS12_381.Fp.Std    as BLS12_381_Fp_Std
 import qualified ZK.Algebra.Curves.BLS12_381.Fr.Mont   as BLS12_381_Fr_Mont
+import qualified ZK.Algebra.Curves.BLS12_381.Fp.Mont   as BLS12_381_Fp_Mont
+import qualified ZK.Algebra.Curves.BLS12_381.Fp2.Mont  as BLS12_381_Fp2_Mont
+import qualified ZK.Algebra.Curves.BLS12_381.Fp6.Mont  as BLS12_381_Fp6_Mont
+import qualified ZK.Algebra.Curves.BLS12_381.Fp12.Mont as BLS12_381_Fp12_Mont
 
 import qualified ZK.Algebra.Curves.BN128.G1.Proj       as BN128_G1_Proj
 import qualified ZK.Algebra.Curves.BN128.G1.Jac        as BN128_G1_Jac
@@ -63,6 +71,7 @@ runTestsAll n = do
   runTestsAffineCurve n
   runTestsJacCurve    n
   runTestsPolys       n
+  runTestsCompare     n
 
 ----------------------------------------
 
@@ -70,6 +79,14 @@ runTestsPlatform :: IO ()
 runTestsPlatform = do
   printHeader "running tests for platform-specific C/asm code"
   runPlatformTests
+
+----------------------------------------
+
+runTestsCompare :: Int -> IO ()
+runTestsCompare n = do
+  printHeader "running tests comparing against pure Haskell implementation"
+  runTests_compare_BN254     n
+  runTests_compare_BLS12_381 n 
 
 ----------------------------------------
 
@@ -171,3 +188,27 @@ runTestsMontField n = do
 
 --------------------------------------------------------------------------------
 
+runTestsFieldTowers :: Int -> IO ()
+runTestsFieldTowers n = do
+
+  printHeader "running tests for BN128/Fp2/Montgomery"
+  runFieldTests n (Proxy @BN128_Fp2_Mont.Fp2)
+
+  printHeader "running tests for BN128/Fp6/Montgomery"
+  runFieldTests n (Proxy @BN128_Fp6_Mont.Fp6)
+
+  printHeader "running tests for BN128/Fp12/Montgomery"
+  runFieldTests n (Proxy @BN128_Fp12_Mont.Fp12)
+
+  --
+
+  printHeader "running tests for BLS12_381/Fp2/Montgomery"
+  runFieldTests n (Proxy @BLS12_381_Fp2_Mont.Fp2)
+
+  printHeader "running tests for BLS12_381/Fp6/Montgomery"
+  runFieldTests n (Proxy @BLS12_381_Fp6_Mont.Fp6)
+
+  printHeader "running tests for BLS12_381/Fp12/Montgomery"
+  runFieldTests n (Proxy @BLS12_381_Fp12_Mont.Fp12)
+
+--------------------------------------------------------------------------------

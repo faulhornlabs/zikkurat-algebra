@@ -128,19 +128,19 @@ ringProps =
 
 fieldOnlyProps :: [FieldProp]
 fieldOnlyProps = 
-  [ FieldProp1 prop_mul_left_inv               "mul left inf"
-  , FieldProp1 prop_mul_right_inv              "mul right inf"
+  [ FieldProp1 prop_mul_left_inv               "mul left inv"
+  , FieldProp1 prop_mul_right_inv              "mul right inv"
   , FieldProp2 prop_div_def                    "div def"
   , FieldProp1 prop_inv_def                    "inv def"
   , FieldProp2 prop_div_test                   "div defining prop."
-  , FieldProp1 prop_inv_fermat                 "inv == fermat"
-  , FieldProp1 prop_fermat_1                   "fermat/1"
-  , FieldProp1 prop_fermat_2                   "fermat/2"
   , FieldProp1 prop_power_neg                  "negative power"
   , FieldProp3 prop_mul_div_associative_1      "mul-div assoc /1"
   , FieldProp3 prop_mul_div_associative_2      "mul-div assoc /2"
   , FieldProp3 prop_mul_div_associative_3      "mul-div assoc /3"
   , FieldProp3 prop_batch_inverse              "batch inverse"
+  , FieldProp1 prop_inv_fermat                 "inv == fermat"
+  , FieldProp1 prop_fermat_1                   "fermat/1"
+  , FieldProp1 prop_fermat_2                   "fermat/2"
   ]
 
 --------------------------------------------------------------------------------
@@ -269,13 +269,13 @@ prop_div_test :: Field a => a -> a -> Bool
 prop_div_test x y = isZero y || (x/y)*y == x
 
 prop_inv_fermat :: forall a. Field a => a -> Bool
-prop_inv_fermat x = (inverse x) == power x (p - 2) where p = charPxy (Proxy @a)
+prop_inv_fermat x = (inverse x) == power x (q - 2) where q = fieldSizePxy (Proxy @a)
 
 prop_fermat_1 :: forall a. Field a => a -> Bool
-prop_fermat_1 x = power x p == x where p = charPxy (Proxy @a)
+prop_fermat_1 x = power x q == x where q = fieldSizePxy (Proxy @a)
 
 prop_fermat_2 :: forall a. Field a => a -> Bool
-prop_fermat_2 x = power x (p - 1) == one where p = charPxy (Proxy @a)
+prop_fermat_2 x = power x (q - 1) == one where q = fieldSizePxy (Proxy @a)
 
 prop_power_neg :: forall a. Field a => a -> Bool
 prop_power_neg x = power x (-1) == inverse x

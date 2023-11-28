@@ -26,7 +26,8 @@ Library
 
   Build-Depends:        base >= 4 && < 5, 
                         filepath  >= 1.2,
-                        directory >= 1.2
+                        directory >= 1.2,
+                        zikkurat-algebra-pure == 0.0.1
 
   Exposed-Modules:      Zikkurat.Generate
                         Zikkurat.CodeGen.Poly
@@ -38,10 +39,13 @@ Library
                         Zikkurat.CodeGen.Curve.CurveFFI
                         Zikkurat.CodeGen.PrimeField.StdRep
                         Zikkurat.CodeGen.PrimeField.Montgomery
-                        Zikkurat.CodeGen.PrimeField.FieldCommon
+                        Zikkurat.CodeGen.ExtField
+                        Zikkurat.CodeGen.Towers
+                        Zikkurat.CodeGen.FieldCommon
                         Zikkurat.CodeGen.BigInt
                         Zikkurat.CodeGen.Platform
                         Zikkurat.CodeGen.FFI
+                        Zikkurat.CodeGen.Expr
                         Zikkurat.CodeGen.Misc
                         Zikkurat.Primes
 
