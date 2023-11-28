@@ -44,6 +44,7 @@ Sub-projects:
 
 - `docs` - description of the algorithms
 - `codegen` - the code generator
+- `pure` - finite fields in pure Haskell (used in the codegen)
 - `lib` - the Haskell library
 - `test` - testing
 - `examples` - examples of using the library

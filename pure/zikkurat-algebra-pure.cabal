@@ -1,0 +1,72 @@
+Cabal-Version:        2.4
+Name:                 zikkurat-algebra-pure
+Version:              0.0.1
+Synopsis:             Pure Haskell implementation of finite fields etc for ZK cryptography
+
+Description:          Pure Haskell implementation of algebraic primitives 
+                      (finite fields, elliptic curves and polynomials) used 
+                      in zero-knowledge proofs and related subjects.
+
+License:              MIT OR Apache-2.0
+License-files:        LICENSE-MIT
+                      LICENSE-APACHE-2.0
+
+Author:               Balazs Komuves
+Copyright:            (c) 2023 Faulhorn Labs
+Maintainer:           balazs.komuves (at) faulhornlabs (dot) com
+Homepage:             https://github.com/faulhornlabs/zikkurat-algebra
+
+Stability:            Experimental
+Category:             Math, Cryptography
+Tested-With:          GHC == 9.6.2
+Build-Type:           Simple
+
+--------------------------------------------------------------------------------
+
+source-repository head
+  type:                git 
+  location:            https://github.com/faulhornlabs/zikkurat-algebra/pure
+
+--------------------------------------------------------------------------------
+
+Library
+
+  Build-Depends:        base >= 4 && < 5, 
+                        array >= 0.5,
+                        random >= 1.1
+
+  Exposed-Modules:      ZK.Algebra.Pure.Field
+                        ZK.Algebra.Pure.Field.Class
+                        ZK.Algebra.Pure.Field.SomeFields
+                        ZK.Algebra.Pure.Field.Impl
+                        ZK.Algebra.Pure.Field.Sqrt
+                        ZK.Algebra.Pure.Field.Synonyms.BN254
+                        ZK.Algebra.Pure.Field.Synonyms.BLS12_381
+                        ZK.Algebra.Pure.Field.Synonyms.BLS12_377
+                        ZK.Algebra.Pure.Field.Synonyms.All
+                        ZK.Algebra.Pure.Curve
+                        ZK.Algebra.Pure.Curve.Class
+                        ZK.Algebra.Pure.Curve.SomeCurves
+                        ZK.Algebra.Pure.Curve.Cubic
+                        ZK.Algebra.Pure.Group
+                        ZK.Algebra.Pure.Poly
+                        ZK.Algebra.Pure.NTT
+                        ZK.Algebra.Pure.Jacobi
+                        ZK.Algebra.Pure.Misc
+
+  Other-Modules:        ZK.Algebra.Pure.Field.Raw.Generic
+                        ZK.Algebra.Pure.Field.Raw.Extension
+
+  Default-Language:     Haskell2010
+  Default-Extensions:   CPP, BangPatterns
+
+  Hs-Source-Dirs:       src
+
+  ghc-options:          -fwarn-tabs 
+                        -fno-warn-unused-matches 
+                        -fno-warn-name-shadowing 
+                        -fno-warn-unused-imports                        
+--                        -fno-warn-star-is-type
+
+--------------------------------------------------------------------------------
+
