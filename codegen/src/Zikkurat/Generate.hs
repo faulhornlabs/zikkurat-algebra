@@ -1,6 +1,7 @@
 
 module Zikkurat.Generate 
   ( HsOrC(..)
+  , generate_platform
   , generate_bigints
   , generate_primefields_std
   , generate_primefields_montgomery
@@ -20,6 +21,7 @@ import System.Environment
 import System.FilePath
 import System.Directory
 
+import qualified Zikkurat.CodeGen.Platform              as Platform
 import qualified Zikkurat.CodeGen.BigInt                as BigInt
 import qualified Zikkurat.CodeGen.PrimeField.StdRep     as FpStd
 import qualified Zikkurat.CodeGen.PrimeField.Montgomery as FpMont
@@ -32,6 +34,23 @@ import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.Curve.Params
 import Zikkurat.CodeGen.Poly ( PolyParams )
 import Zikkurat.Primes
+
+--------------------------------------------------------------------------------
+
+generate_platform :: HsOrC -> FilePath -> IO ()
+generate_platform hsOrC tgtdir = do
+
+  let c_tgtdir  = tgtdir 
+  let hs_tgtdir = tgtdir </> "ZK/Algebra/BigInt"
+
+  case hsOrC of
+    C  -> do
+      createDirectoryIfMissing True c_tgtdir
+      writeFile (c_tgtdir </> "platform.h") (unlines Platform.add_with_carry_header)
+      writeFile (c_tgtdir </> "platform.c") (unlines Platform.add_with_carry_wrapper)
+    Hs -> do
+      createDirectoryIfMissing True hs_tgtdir
+      writeFile (hs_tgtdir </> "Platform.hs") (unlines Platform.hsAddCarry)
 
 --------------------------------------------------------------------------------
 

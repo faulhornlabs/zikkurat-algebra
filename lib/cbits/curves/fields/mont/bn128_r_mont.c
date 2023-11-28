@@ -6,24 +6,18 @@
 // NOTE: generated code, do not edit!
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdint.h>
-#include <x86intrin.h>
 #include <assert.h>
 
 #include "bn128_r_mont.h"
 #include "bn128_r_std.h"
 #include "bigint256.h"
+#include "platform.h"
 
 #define NLIMBS 4
 
 const uint64_t bn128_r_mont_prime[4] = { 0x43e1f593f0000001, 0x2833e84879b97091, 0xb85045b68181585d, 0x30644e72e131a029 };
-
-inline uint8_t addcarry_u128_inplace(  uint64_t *tgt_lo, uint64_t *tgt_hi, uint64_t arg_lo, uint64_t arg_hi) {
-  uint8_t c;
-  c = _addcarry_u64( 0, *tgt_lo, arg_lo, tgt_lo );
-  c = _addcarry_u64( c, *tgt_hi, arg_hi, tgt_hi );
-  return c;
-}
 
 //------------------------------------------------------------------------------
 
@@ -152,9 +146,9 @@ void bn128_r_mont_REDC_unsafe( uint64_t *T, uint64_t *tgt ) {
     x = ((__uint128_t)m) * bn128_r_mont_prime[3] + T[i+3] + c;    // note: cannot overflow in 128 bits
     c = x >> 64;
     T[i+3] = (uint64_t) x;
-    uint8_t d = _addcarry_u64( 0 , T[i+4] , c , T+i+4 );
+    uint8_t d = addcarry_u64( 0 , T[i+4] , c , T+i+4 );
     for(int j=5; (d>0) && (j<=8-i); j++) {
-      d = _addcarry_u64( d , T[i+j] , 0 , T+i+j );
+      d = addcarry_u64( d , T[i+j] , 0 , T+i+j );
     }
   }
   memcpy( tgt, T+4, 32);

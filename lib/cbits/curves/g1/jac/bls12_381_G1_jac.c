@@ -4,8 +4,8 @@
 // NOTE: generated code, do not edit!
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdint.h>
-#include <x86intrin.h>
 #include <assert.h>
 #include <math.h>         // used only for log2()
 

@@ -321,29 +321,22 @@ begin (Params{..}) =
   , "#include <stdint.h>"
   , "#include <string.h>"
   , "#include <stdio.h>"
-  , "#include <x86intrin.h>"
   , "#include <assert.h>"
   , "#include \"" ++ c_basename ++ ".h\""
+  , "#include \"platform.h\""
   , ""
   , "#define NLIMBS " ++ show nlimbs
   , ""
   , "#define MIN(a,b) ( ((a)<=(b)) ? (a) : (b) )"
   , "#define MAX(a,b) ( ((a)>=(b)) ? (a) : (b) )"
   , ""
-  , "inline uint8_t addcarry_u128_inplace(  uint64_t *tgt_lo, uint64_t *tgt_hi, uint64_t arg_lo, uint64_t arg_hi) {"
-  , "  uint8_t c;"
-  , "  c = _addcarry_u64( 0, *tgt_lo, arg_lo, tgt_lo );"
-  , "  c = _addcarry_u64( c, *tgt_hi, arg_hi, tgt_hi );"
-  , "  return c;"
-  , "}"
-  , ""
   , "//------------------------------------------------------------------------------"
   ]
 
 --  , "inline uint8_t addcarry_u128( uint64_t lo1, uint64_t hi1, uint64_t lo2, uint64_t hi2, uint64_t *lo3, uint64_t *hi3) {"
 --  , "  uint8_t c;"
---  , "  c = _addcarry_u64( 0, lo1, lo2, lo3 );"
---  , "  c = _addcarry_u64( c, hi1, hi2, hi3 );"
+--  , "  c = addcarry_u64( 0, lo1, lo2, lo3 );"
+--  , "  c = addcarry_u64( c, hi1, hi2, hi3 );"
 --  , "  return c;"
 --  , "}"
 --  , ""
@@ -411,7 +404,7 @@ incDecBigint (Params{..}) =
   , "uint8_t " ++ prefix ++ "inc_inplace( uint64_t *tgt ) {"
   , "  uint8_t c = 0;" 
   ] ++ 
-  [ "  c = _addcarry_u64( c, " ++ index j "tgt" ++ ", " ++ (if j==0 then "1" else "0") ++ ", " ++ advance j "tgt" ++ " );"
+  [ "  c = addcarry_u64( c, " ++ index j "tgt" ++ ", " ++ (if j==0 then "1" else "0") ++ ", " ++ advance j "tgt" ++ " );"
   | j<-[0..nlimbs-1]
   ] ++ 
   [ "  return c;"
@@ -421,7 +414,7 @@ incDecBigint (Params{..}) =
   , "uint8_t " ++ prefix ++ "dec_inplace( uint64_t *tgt ) {"
   , "  uint8_t b = 0;" 
   ] ++ 
-  [ "  b = _subborrow_u64( b, " ++ index j "tgt" ++ ", " ++ (if j==0 then "1" else "0") ++ ", " ++ advance j "tgt" ++ " );"
+  [ "  b = subborrow_u64( b, " ++ index j "tgt" ++ ", " ++ (if j==0 then "1" else "0") ++ ", " ++ advance j "tgt" ++ " );"
   | j<-[0..nlimbs-1]
   ] ++ 
   [ "  return b;"
@@ -434,7 +427,7 @@ negBigInt (Params{..}) =
   , "void " ++ prefix ++ "neg( const uint64_t *src, uint64_t *tgt ) {"
   , "  uint8_t b = 0;" 
   ] ++
-  [ "  b = _subborrow_u64( b, 0, " ++ index j "src" ++ ", " ++advance j "tgt" ++ " );"
+  [ "  b = subborrow_u64( b, 0, " ++ index j "src" ++ ", " ++advance j "tgt" ++ " );"
   | j<-[0..nlimbs-1]
   ] ++ 
   [ "}"
@@ -443,7 +436,7 @@ negBigInt (Params{..}) =
   , "void " ++ prefix ++ "neg_inplace( uint64_t *tgt ) {"
   , "  uint8_t b = 0;" 
   ] ++
-  [ "  b = _subborrow_u64( b, 0, " ++ index  j "tgt" ++ ", " ++ advance j "tgt" ++ " );"
+  [ "  b = subborrow_u64( b, 0, " ++ index  j "tgt" ++ ", " ++ advance j "tgt" ++ " );"
   | j<-[0..nlimbs-1]
   ] ++ 
   [ "}"
@@ -455,7 +448,7 @@ addBigInt (Params{..}) =
   , "uint8_t " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  uint8_t c = 0;" 
   ] ++
-  [ "  c = _addcarry_u64( c, " ++ index j "src1" ++ ", " ++ index j "src2" ++ ",  tgt+" ++ show j ++ " );"
+  [ "  c = addcarry_u64( c, " ++ index j "src1" ++ ", " ++ index j "src2" ++ ",  tgt+" ++ show j ++ " );"
   | j<-[0..nlimbs-1]
   ] ++ 
   [ "  return c;"
@@ -465,7 +458,7 @@ addBigInt (Params{..}) =
   , "uint8_t " ++ prefix ++ "add_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
   , "  uint8_t c = 0;" 
   ] ++
-  [ "  c = _addcarry_u64( c, " ++ index j "tgt" ++ ", " ++ index j "src2" ++ ",  tgt+" ++ show j ++ " );"
+  [ "  c = addcarry_u64( c, " ++ index j "tgt" ++ ", " ++ index j "src2" ++ ",  tgt+" ++ show j ++ " );"
   | j<-[0..nlimbs-1]
   ] ++ 
   [ "  return c;"
@@ -478,7 +471,7 @@ subBigInt (Params{..}) =
   , "uint8_t " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  uint8_t b = 0;" 
   ] ++
-  [ "  b = _subborrow_u64( b, " ++ index j "src1" ++ ", " ++ index j "src2" ++ ",  tgt+" ++ show j ++ " );"
+  [ "  b = subborrow_u64( b, " ++ index j "src1" ++ ", " ++ index j "src2" ++ ",  tgt+" ++ show j ++ " );"
   | j<-[0..nlimbs-1]
   ] ++ 
   [ "  return b;"
@@ -488,7 +481,7 @@ subBigInt (Params{..}) =
   , "uint8_t " ++ prefix ++ "sub_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
   , "  uint8_t b = 0;" 
   ] ++
-  [ "  b = _subborrow_u64( b, " ++ index j "tgt" ++ ", " ++ index j "src2" ++ ",  tgt+" ++ show j ++ " );"
+  [ "  b = subborrow_u64( b, " ++ index j "tgt" ++ ", " ++ index j "src2" ++ ",  tgt+" ++ show j ++ " );"
   | j<-[0..nlimbs-1]
   ] ++ 
   [ "  return b;"
@@ -498,7 +491,7 @@ subBigInt (Params{..}) =
   , "uint8_t " ++ prefix ++ "sub_inplace_reverse( uint64_t *tgt, const uint64_t *src1 ) {"
   , "  uint8_t b = 0;" 
   ] ++
-  [ "  b = _subborrow_u64( b, " ++ index j "src1" ++ ", " ++ index j "tgt" ++ ",  tgt+" ++ show j ++ " );"
+  [ "  b = subborrow_u64( b, " ++ index j "src1" ++ ", " ++ index j "tgt" ++ ",  tgt+" ++ show j ++ " );"
   | j<-[0..nlimbs-1]
   ] ++ 
   [ "  return b;"
@@ -511,7 +504,7 @@ addBigInt_gen (Params{..}) =
   , "uint8_t " ++ prefix ++ "add_inplace_gen( uint64_t *tgt, const uint64_t *src2, int nlimbs ) {"
   , "  uint8_t c = 0;" 
   , "  for(int j=0; j<nlimbs; j++) {"
-  , "    c = _addcarry_u64( c, tgt[j], src2[j], tgt+j );"
+  , "    c = addcarry_u64( c, tgt[j], src2[j], tgt+j );"
   , "  }"
   , "  return c;"
   , "}"
@@ -520,7 +513,7 @@ addBigInt_gen (Params{..}) =
 --  , "uint8_t " ++ prefix ++ "sub_inplace_gen( uint64_t *tgt, const uint64_t *src2, int nlimbs ) {"
 --  , "  uint8_t b = 0;" 
 --  , "  for(int j=0; j<nlimbs; j++) {"
---  , "    b = _subborrow_u64( b, tgt[j], src2[j], tgt+j );"
+--  , "    b = subborrow_u64( b, tgt[j], src2[j], tgt+j );"
 --  , "  }"
 --  , "  return b;"
 --  , "}"
@@ -543,7 +536,7 @@ scaleBigInt (Params{..}) =
     , "  x = ((__uint128_t) src[" ++ show m ++ "]) * z;"
     , "  lo = (uint64_t) x;"
     , "  hi = (uint64_t)(x >> 64);"
-    , "  c = _addcarry_u64( 0, tgt[" ++ show m ++"], lo, tgt+" ++ show m ++ " );"
+    , "  c = addcarry_u64( 0, tgt[" ++ show m ++"], lo, tgt+" ++ show m ++ " );"
     , "  tgt[" ++ show (m+1) ++ "] = hi + c;    // note: cannot overflow because `hi <= 2^64-2`"
     ]
   | m <- [0..nlimbs-1]
@@ -563,7 +556,7 @@ scaleBigInt_gen (Params{..}) =
   , "    uint64_t hi,lo;"
   , "    lo = (uint64_t) x;"
   , "    hi = (uint64_t)(x >> 64);"
-  , "    c = _addcarry_u64( 0, tgt[m], lo , tgt+m );"
+  , "    c = addcarry_u64( 0, tgt[m], lo , tgt+m );"
   , "    tgt[m+1] = hi + c;"
   , "  }"
   , "}"

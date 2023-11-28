@@ -9,9 +9,12 @@ import Data.Proxy
 import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Curve
 
+import ZK.Test.Platform.Properties  ( runPlatformTests )
 import ZK.Test.Field.Properties ( runRingTests  , runFieldTests )
 import ZK.Test.Curve.Properties ( runGroupTests , runCurveTests , runProjCurveTests )
 import ZK.Test.Poly.Properties  ( runPolyTests )
+
+import qualified ZK.Algebra.BigInt.Platform            as Platform
 
 import qualified ZK.Algebra.BigInt.BigInt128           as BigInt128
 import qualified ZK.Algebra.BigInt.BigInt192           as BigInt192
@@ -52,6 +55,7 @@ printHeader str = do
 
 runTestsAll :: Int -> IO ()
 runTestsAll n = do
+  runTestsPlatform   
   runTestsBigInt      n 
   runTestsStdField    n
   runTestsMontField   n
@@ -59,6 +63,13 @@ runTestsAll n = do
   runTestsAffineCurve n
   runTestsJacCurve    n
   runTestsPolys       n
+
+----------------------------------------
+
+runTestsPlatform :: IO ()
+runTestsPlatform = do
+  printHeader "running tests for platform-specific C/asm code"
+  runPlatformTests
 
 ----------------------------------------
 

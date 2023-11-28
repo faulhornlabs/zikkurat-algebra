@@ -311,24 +311,18 @@ c_begin params@(Params{..}) =
   , "// NOTE: generated code, do not edit!"
   , ""
   , "#include <string.h>"
+  , "#include <stdlib.h>"
   , "#include <stdint.h>"
-  , "#include <x86intrin.h>"
   , "#include <assert.h>"
   , ""
   , "#include \"" ++ pathBaseName c_path     ++ ".h\""
   , "#include \"" ++ pathBaseName c_path_std ++ ".h\""
   , "#include \"bigint" ++ show (64*nlimbs) ++ ".h\""
+  , "#include \"platform.h\""
   , ""
   , "#define NLIMBS " ++ show nlimbs
   , ""
   , mkConst nlimbs (prefix ++ "prime") thePrime
-  , ""
-  , "inline uint8_t addcarry_u128_inplace(  uint64_t *tgt_lo, uint64_t *tgt_hi, uint64_t arg_lo, uint64_t arg_hi) {"
-  , "  uint8_t c;"
-  , "  c = _addcarry_u64( 0, *tgt_lo, arg_lo, tgt_lo );"
-  , "  c = _addcarry_u64( c, *tgt_hi, arg_hi, tgt_hi );"
-  , "  return c;"
-  , "}"
   , ""
   , "//------------------------------------------------------------------------------"
   ] 
@@ -535,9 +529,9 @@ montREDC Params{..} =
     ]
   | j <- [0..nlimbs-1]
   ] ++
-  [ "    uint8_t d = _addcarry_u64( 0 , T[i+" ++ show nlimbs ++ "] , c , T+i+" ++ show nlimbs ++ " );"
+  [ "    uint8_t d = addcarry_u64( 0 , T[i+" ++ show nlimbs ++ "] , c , T+i+" ++ show nlimbs ++ " );"
   , "    for(int j=" ++ show (nlimbs+1) ++ "; (d>0) && (j<=" ++ show (2*nlimbs) ++ "-i); j++) {"
-  , "      d = _addcarry_u64( d , T[i+j] , 0 , T+i+j );"
+  , "      d = addcarry_u64( d , T[i+j] , 0 , T+i+j );"
   , "    }"
   , "  }"
   , "  memcpy( tgt, T+" ++ show nlimbs ++ ", " ++ show (nlimbs*8) ++ ");"

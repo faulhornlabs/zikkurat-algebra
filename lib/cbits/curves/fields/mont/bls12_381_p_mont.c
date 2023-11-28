@@ -6,24 +6,18 @@
 // NOTE: generated code, do not edit!
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdint.h>
-#include <x86intrin.h>
 #include <assert.h>
 
 #include "bls12_381_p_mont.h"
 #include "bls12_381_p_std.h"
 #include "bigint384.h"
+#include "platform.h"
 
 #define NLIMBS 6
 
 const uint64_t bls12_381_p_mont_prime[6] = { 0xb9feffffffffaaab, 0x1eabfffeb153ffff, 0x6730d2a0f6b0f624, 0x64774b84f38512bf, 0x4b1ba7b6434bacd7, 0x1a0111ea397fe69a };
-
-inline uint8_t addcarry_u128_inplace(  uint64_t *tgt_lo, uint64_t *tgt_hi, uint64_t arg_lo, uint64_t arg_hi) {
-  uint8_t c;
-  c = _addcarry_u64( 0, *tgt_lo, arg_lo, tgt_lo );
-  c = _addcarry_u64( c, *tgt_hi, arg_hi, tgt_hi );
-  return c;
-}
 
 //------------------------------------------------------------------------------
 
@@ -166,9 +160,9 @@ void bls12_381_p_mont_REDC_unsafe( uint64_t *T, uint64_t *tgt ) {
     x = ((__uint128_t)m) * bls12_381_p_mont_prime[5] + T[i+5] + c;    // note: cannot overflow in 128 bits
     c = x >> 64;
     T[i+5] = (uint64_t) x;
-    uint8_t d = _addcarry_u64( 0 , T[i+6] , c , T+i+6 );
+    uint8_t d = addcarry_u64( 0 , T[i+6] , c , T+i+6 );
     for(int j=7; (d>0) && (j<=12-i); j++) {
-      d = _addcarry_u64( d , T[i+j] , 0 , T+i+j );
+      d = addcarry_u64( d , T[i+j] , 0 , T+i+j );
     }
   }
   memcpy( tgt, T+6, 48);
