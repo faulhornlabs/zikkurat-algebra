@@ -61,8 +61,15 @@ polyDegree = go (-1) 0 where
   go sofar d []     = sofar
   go sofar d (x:xs) = go (if x/=0 then d else sofar) (d+1) xs
 
+polyEqual :: (Eq a, Num a) => [a] -> [a] -> Bool
+polyEqual xs ys = and (longZipWith 0 0 (==) xs ys)
+
 polyIsZero :: (Eq a, Num a) => [a] -> Bool
 polyIsZero = all (==0)
+
+polyIsOne :: (Eq a, Num a) => [a] -> Bool
+polyIsOne [] =  False
+polyIsOne (x:xs) = (x==1) && all (==0) xs
 
 polyScale :: (Eq a, Num a) => a -> [a] -> [a]
 polyScale 0 _  = []
@@ -103,6 +110,9 @@ polyLongDivRem xs ys = snd $ polyLongDiv xs ys
 
 --------------------------------------------------------------------------------
 -- * field operations
+
+extEq :: (Eq a, Num a) => [a] -> [a] -> Bool
+extEq = polyEqual
 
 extNeg :: Num a => [a] -> [a]
 extNeg = polyNeg

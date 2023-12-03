@@ -38,12 +38,10 @@ Library
   Exposed-Modules:      ZK.Algebra.Pure.Field
                         ZK.Algebra.Pure.Field.Class
                         ZK.Algebra.Pure.Field.SomeFields
+                        ZK.Algebra.Pure.Field.Impl.Prime
+                        ZK.Algebra.Pure.Field.Impl.Ext
                         ZK.Algebra.Pure.Field.Impl
                         ZK.Algebra.Pure.Field.Sqrt
-                        ZK.Algebra.Pure.Field.Synonyms.BN254
-                        ZK.Algebra.Pure.Field.Synonyms.BLS12_381
-                        ZK.Algebra.Pure.Field.Synonyms.BLS12_377
-                        ZK.Algebra.Pure.Field.Synonyms.All
                         ZK.Algebra.Pure.Curve
                         ZK.Algebra.Pure.Curve.Class
                         ZK.Algebra.Pure.Curve.SomeCurves
@@ -53,12 +51,16 @@ Library
                         ZK.Algebra.Pure.NTT
                         ZK.Algebra.Pure.Jacobi
                         ZK.Algebra.Pure.Misc
+                        ZK.Algebra.Pure.Instances.BN254
+                        ZK.Algebra.Pure.Instances.BLS12_381
+                        ZK.Algebra.Pure.Instances.BLS12_377
+                        ZK.Algebra.Pure.Instances.AllFields
 
   Other-Modules:        ZK.Algebra.Pure.Field.Raw.Generic
                         ZK.Algebra.Pure.Field.Raw.Extension
 
   Default-Language:     Haskell2010
-  Default-Extensions:   CPP, BangPatterns
+  Default-Extensions:   BangPatterns
 
   Hs-Source-Dirs:       src
 
@@ -66,7 +68,53 @@ Library
                         -fno-warn-unused-matches 
                         -fno-warn-name-shadowing 
                         -fno-warn-unused-imports                        
---                        -fno-warn-star-is-type
+
+--------------------------------------------------------------------------------
+
+test-suite tests
+
+  type:                 exitcode-stdio-1.0
+
+  build-depends:        base >= 4 && < 5,
+                        zikkurat-algebra-pure
+
+  main-is:              TestMain.hs
+
+  Other-Modules:        Run
+                        Field.Properties
+
+  Hs-Source-Dirs:       test
+
+  Default-Language:     Haskell2010
+
+  ghc-options:          -fwarn-tabs 
+                        -fno-warn-unused-matches 
+                        -fno-warn-name-shadowing 
+                        -fno-warn-unused-imports                        
+
+--------------------------------------------------------------------------------
+
+-- cabal sucks, again...
+executable zikkurat-algebra-pure-tests
+
+  type:                 exitcode-stdio-1.0
+
+  build-depends:        base >= 4 && < 5,
+                        zikkurat-algebra-pure
+
+  main-is:              TestMain.hs
+
+  Other-Modules:        Run
+                        Field.Properties
+
+  Hs-Source-Dirs:       test
+
+  Default-Language:     Haskell2010
+
+  ghc-options:          -fwarn-tabs 
+                        -fno-warn-unused-matches 
+                        -fno-warn-name-shadowing 
+                        -fno-warn-unused-imports                        
 
 --------------------------------------------------------------------------------
 

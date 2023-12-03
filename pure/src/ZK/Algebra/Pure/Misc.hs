@@ -23,7 +23,7 @@ debug :: Show a => String -> a -> b -> b
 debug msg x y = trace (">>> " ++ msg ++ " = " ++ show x) y 
 
 --------------------------------------------------------------------------------
--- * type classes
+-- * type classes (TODO: move these somewhere else?)
 
 class Rnd a where
   rndIO :: IO a
@@ -31,11 +31,25 @@ class Rnd a where
 class Serialize a where
   sizeInWords :: Proxy a -> Int
   toWords     :: a -> [Word64]
-  fromWords   :: [Word64] -> a
+  parseWords  :: [Word64] -> Maybe (a,[Word64])
   mbFromWords :: [Word64] -> Maybe a
 
-  mbFromWords  = Just . fromWords
-  fromWords ws = case mbFromWords ws of { Just y -> y ; Nothing -> error "fromWords: invalid" }
+  mbFromWords ws = case parseWords ws of
+    Just (x,rest) -> if null rest then Just x else Nothing
+    Nothing       -> Nothing
+ 
+  parseWords  ws = mb where
+    pxy = proxyOfLeft1 mb
+    n   = sizeInWords pxy
+    (this,rest) = splitAt n ws
+    mb  = case mbFromWords this of
+      Just y  -> Just (y,rest) 
+      Nothing -> Nothing
+
+fromWords :: Serialize a => [Word64] -> a
+fromWords ws = case mbFromWords ws of { Just y -> y ; Nothing -> error "fromWords: invalid" }
+
+--------------------------------------------------------------------------------
 
 -- | Minimum number of 64-bit words which can store this (positive) integer
 integerRequiredNumberOfWords :: Integer -> Int
@@ -74,6 +88,10 @@ isEven n = (n .&. 1) == 0
 
 isOdd :: Integer -> Bool
 isOdd n = (n .&. 1) /= 0 
+
+-- div2, mod2 :: Integer -> Integer
+-- div2 n = shiftR n 1
+-- mod2 n = n .&. 1
 
 div2, div4, div8, div16 :: Integer -> Integer
 div2  n = shiftR n 1
@@ -158,5 +176,23 @@ condRandomIO cond = loop where
   loop = do
     x <- randomIO
     if cond x then return x else loop
+
+--------------------------------------------------------------------------------
+-- * Proxy
+
+proxyOf :: a -> Proxy a
+proxyOf _ = Proxy
+
+proxyOf1 :: f a -> Proxy a
+proxyOf1 _ = Proxy
+
+proxyOf2 :: g (f a) -> Proxy a
+proxyOf2 _ = Proxy
+
+proxyOfLeft :: (a,b) -> Proxy a
+proxyOfLeft _ = Proxy
+
+proxyOfLeft1 :: f (a,b) -> Proxy a
+proxyOfLeft1 _ = Proxy
 
 --------------------------------------------------------------------------------

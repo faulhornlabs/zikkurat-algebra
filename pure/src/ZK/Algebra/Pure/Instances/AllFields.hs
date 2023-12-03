@@ -2,7 +2,7 @@
 -- | Synonyms for the common field types
 
 {-# LANGUAGE DataKinds #-}
-module ZK.Algebra.Pure.Field.Synonyms.All where
+module ZK.Algebra.Pure.Instances.AllFields where
 
 --------------------------------------------------------------------------------
 
