@@ -154,7 +154,68 @@ void bls12_381_Fp6_mont_subtract_irred_generic( const uint64_t *scalar, uint64_t
   }
 }
 
+// we use Karatsuba trick to have only 6 multiplications
 void bls12_381_Fp6_mont_mul ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+  uint64_t prod[5*BASE_NWORDS];
+  uint64_t tmp [  BASE_NWORDS];
+  uint64_t tmp2[  BASE_NWORDS];
+  bls12_381_Fp2_mont_mul( SRC1(0) , SRC2(0) , PROD(0) );     // p = a0 * b0
+  bls12_381_Fp2_mont_mul( SRC1(1) , SRC2(1) , PROD(2) );     // q = a1 * b1
+  bls12_381_Fp2_mont_mul( SRC1(2) , SRC2(2) , PROD(4) );     // r = a2 * b2
+
+  bls12_381_Fp2_mont_add( SRC1(0) , SRC1(1) , PROD(1) );      // (a0+a1)
+  bls12_381_Fp2_mont_add( SRC2(0) , SRC2(1) , tmp );          // (b0+b1)
+  bls12_381_Fp2_mont_mul_inplace( PROD(1) , tmp );            // (a0+a1)*(b0+b1)
+  bls12_381_Fp2_mont_sub_inplace( PROD(1) , PROD(0) );
+  bls12_381_Fp2_mont_sub_inplace( PROD(1) , PROD(2) );        // a0*b1 + a1*b0
+
+  bls12_381_Fp2_mont_add( SRC1(1) , SRC1(2) , PROD(3) );      // (a1+a2)
+  bls12_381_Fp2_mont_add( SRC2(1) , SRC2(2) , tmp );          // (b1+b2)
+  bls12_381_Fp2_mont_mul_inplace( PROD(3) , tmp );            // (a1+a2)*(b1+b2)
+  bls12_381_Fp2_mont_sub_inplace( PROD(3) , PROD(2) );
+  bls12_381_Fp2_mont_sub_inplace( PROD(3) , PROD(4) );        // a0*b1 + a1*b0
+
+  bls12_381_Fp2_mont_add( SRC1(0) , SRC1(2) , tmp2 );         // (a0+a2)
+  bls12_381_Fp2_mont_add( SRC2(0) , SRC2(2) , tmp  );         // (b0+b2)
+  bls12_381_Fp2_mont_mul_inplace( tmp2 , tmp );               // (a0+a2)*(b0+b2)
+  bls12_381_Fp2_mont_sub_inplace( tmp2 , PROD(0) );
+  bls12_381_Fp2_mont_sub_inplace( tmp2 , PROD(4) );           // a0*b2 + a2*b0
+  bls12_381_Fp2_mont_add_inplace( PROD(2) , tmp2 );           // a0*b2 + a1*b1 + a2*b0
+  bls12_381_Fp6_mont_subtract_irred_generic( PROD(4) , PROD(1) );
+  bls12_381_Fp6_mont_subtract_irred_generic( PROD(3) , PROD(0) );
+  memcpy( tgt, prod, 8*EXT_NWORDS );
+}
+
+// we use Karatsuba trick to have only 6 squarings
+void bls12_381_Fp6_mont_sqr ( const uint64_t *src1, uint64_t *tgt ) {
+  uint64_t prod[5*BASE_NWORDS];
+  uint64_t tmp [  BASE_NWORDS];
+  bls12_381_Fp2_mont_sqr( SRC1(0) , PROD(0) );                // p = a0^2
+  bls12_381_Fp2_mont_sqr( SRC1(1) , PROD(2) );                // q = a1^2
+  bls12_381_Fp2_mont_sqr( SRC1(2) , PROD(4) );                // r = a2^2
+
+  bls12_381_Fp2_mont_add( SRC1(0) , SRC1(1) , PROD(1) );      // (a0+a1)
+  bls12_381_Fp2_mont_sqr_inplace( PROD(1) );                  // (a0+a1)^2
+  bls12_381_Fp2_mont_sub_inplace( PROD(1) , PROD(0) );
+  bls12_381_Fp2_mont_sub_inplace( PROD(1) , PROD(2) );        // a0*a1 + a1*a0
+
+  bls12_381_Fp2_mont_add( SRC1(1) , SRC1(2) , PROD(3) );      // (a1+a2)
+  bls12_381_Fp2_mont_sqr_inplace( PROD(3) );                  // (a1+a2)^2
+  bls12_381_Fp2_mont_sub_inplace( PROD(3) , PROD(2) );
+  bls12_381_Fp2_mont_sub_inplace( PROD(3) , PROD(4) );        // a1*a2 + a2*a1
+
+  bls12_381_Fp2_mont_add( SRC1(0) , SRC1(2) , tmp  );         // (a0+a2)
+  bls12_381_Fp2_mont_sqr_inplace( tmp   );                    // (a0+a2)^2
+  bls12_381_Fp2_mont_sub_inplace( tmp , PROD(0) );
+  bls12_381_Fp2_mont_sub_inplace( tmp , PROD(4) );            // a0*a2 + a2*a0
+  bls12_381_Fp2_mont_add_inplace( PROD(2) , tmp );            // a0*a2 + a1*a1 + a2*a0
+  bls12_381_Fp6_mont_subtract_irred_generic( PROD(4) , PROD(1) );
+  bls12_381_Fp6_mont_subtract_irred_generic( PROD(3) , PROD(0) );
+  memcpy( tgt, prod, 8*EXT_NWORDS );
+}
+
+
+void bls12_381_Fp6_mont_mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
   uint64_t prod[5*BASE_NWORDS];
   uint64_t tmp [  BASE_NWORDS];
   bls12_381_Fp2_mont_mul( SRC1(0) , SRC2(0) , PROD(0) );     // p = a0 * b0
@@ -182,7 +243,7 @@ void bls12_381_Fp6_mont_mul ( const uint64_t *src1, const uint64_t *src2, uint64
   // bls12_381_Fp2_mont_copy( PROD(2) , TGT(2) );
 }
 
-void bls12_381_Fp6_mont_sqr ( const uint64_t *src1, uint64_t *tgt ) {
+void bls12_381_Fp6_mont_sqr_naive ( const uint64_t *src1, uint64_t *tgt ) {
   uint64_t prod[5*BASE_NWORDS];
   uint64_t tmp [  BASE_NWORDS];
   bls12_381_Fp2_mont_sqr( SRC1(0) , PROD(0) );               // p = a0^2

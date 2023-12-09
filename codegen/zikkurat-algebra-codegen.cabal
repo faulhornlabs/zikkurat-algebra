@@ -45,7 +45,7 @@ Library
                         Zikkurat.CodeGen.BigInt
                         Zikkurat.CodeGen.Platform
                         Zikkurat.CodeGen.FFI
-                        Zikkurat.CodeGen.Expr
+--                        Zikkurat.CodeGen.Expr
                         Zikkurat.CodeGen.Misc
                         Zikkurat.Primes
 

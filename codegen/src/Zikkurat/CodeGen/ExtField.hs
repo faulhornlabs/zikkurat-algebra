@@ -348,7 +348,41 @@ c_mulExtInplace ExtParams{..} =
 
 c_mulExtQuadratic :: ExtParams -> Code
 c_mulExtQuadratic ExtParams{..} =  
-  [ "void " ++ prefix ++ "mul ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  [ "// we use Karatsuba trick to have only 3 multiplications"
+  , "void " ++ prefix ++ "mul ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  uint64_t p[BASE_NWORDS];"
+  , "  uint64_t q[BASE_NWORDS];"
+  , "  uint64_t r[BASE_NWORDS];"
+  , "  uint64_t tmp[BASE_NWORDS];"
+  , "  " ++ base_prefix ++ "mul( SRC1(0) , SRC2(0) , p );         // a0*b0"
+  , "  " ++ base_prefix ++ "mul( SRC1(1) , SRC2(1) , r );         // a1*b1"
+  , "  " ++ base_prefix ++ "add( SRC1(0) , SRC1(1) , q );         // (a0+a1)"
+  , "  " ++ base_prefix ++ "add( SRC2(0) , SRC2(1) , tmp );       // (b0+b1)"
+  , "  " ++ base_prefix ++ "mul_inplace( q , tmp );               // (a0+a1)*(b0+b1)"
+  , "  " ++ base_prefix ++ "sub_inplace( q , p );"
+  , "  " ++ base_prefix ++ "sub_inplace( q , r );"
+  ] ++
+  withIrredCoeffs irredPoly termDeg0 ++
+  withIrredCoeffs irredPoly termDeg1 ++ 
+  [ "}"
+  , ""
+  , "// we use Karatsuba trick to have only 3 squarings"
+  , "void " ++ prefix ++ "sqr ( const uint64_t *src1, uint64_t *tgt ) {"
+  , "  uint64_t p[BASE_NWORDS];"
+  , "  uint64_t q[BASE_NWORDS];"
+  , "  uint64_t r[BASE_NWORDS];"
+  , "  " ++ base_prefix ++ "sqr( SRC1(0) , p );              // a0^2"
+  , "  " ++ base_prefix ++ "sqr( SRC1(1) , r );              // a1^2"
+  , "  " ++ base_prefix ++ "add( SRC1(0) , SRC1(1) , q );    // (a0+a1)"
+  , "  " ++ base_prefix ++ "sqr_inplace( q );                // (a0+a1)^2"
+  , "  " ++ base_prefix ++ "sub_inplace( q , p );"
+  , "  " ++ base_prefix ++ "sub_inplace( q , r );"
+  ] ++
+  withIrredCoeffs irredPoly termDeg0 ++
+  withIrredCoeffs irredPoly termDeg1 ++ 
+  [ "}"
+  , ""
+  , "void " ++ prefix ++ "mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  uint64_t p[BASE_NWORDS];"
   , "  uint64_t q[BASE_NWORDS];"
   , "  uint64_t r[BASE_NWORDS];"
@@ -363,7 +397,7 @@ c_mulExtQuadratic ExtParams{..} =
   withIrredCoeffs irredPoly termDeg1 ++ 
   [ "}"
   , ""
-  , "void " ++ prefix ++ "sqr ( const uint64_t *src1, uint64_t *tgt ) {"
+  , "void " ++ prefix ++ "sqr_naive ( const uint64_t *src1, uint64_t *tgt ) {"
   , "  uint64_t p[BASE_NWORDS];"
   , "  uint64_t q[BASE_NWORDS];"
   , "  uint64_t r[BASE_NWORDS];"
@@ -400,7 +434,68 @@ c_mulExtQuadratic ExtParams{..} =
 
 c_mulExtCubic :: ExtParams -> Code
 c_mulExtCubic ExtParams{..} =  
-  [ "void " ++ prefix ++ "mul ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  [ "// we use Karatsuba trick to have only 6 multiplications"
+  , "void " ++ prefix ++ "mul ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  uint64_t prod[5*BASE_NWORDS];"
+  , "  uint64_t tmp [  BASE_NWORDS];"
+  , "  uint64_t tmp2[  BASE_NWORDS];"
+  , "  " ++ base_prefix ++ "mul( SRC1(0) , SRC2(0) , PROD(0) );     // p = a0 * b0"
+  , "  " ++ base_prefix ++ "mul( SRC1(1) , SRC2(1) , PROD(2) );     // q = a1 * b1"
+  , "  " ++ base_prefix ++ "mul( SRC1(2) , SRC2(2) , PROD(4) );     // r = a2 * b2"
+  , ""
+  , "  " ++ base_prefix ++ "add( SRC1(0) , SRC1(1) , PROD(1) );      // (a0+a1)"
+  , "  " ++ base_prefix ++ "add( SRC2(0) , SRC2(1) , tmp );          // (b0+b1)"
+  , "  " ++ base_prefix ++ "mul_inplace( PROD(1) , tmp );            // (a0+a1)*(b0+b1)"
+  , "  " ++ base_prefix ++ "sub_inplace( PROD(1) , PROD(0) );"
+  , "  " ++ base_prefix ++ "sub_inplace( PROD(1) , PROD(2) );        // a0*b1 + a1*b0"
+  , ""
+  , "  " ++ base_prefix ++ "add( SRC1(1) , SRC1(2) , PROD(3) );      // (a1+a2)"
+  , "  " ++ base_prefix ++ "add( SRC2(1) , SRC2(2) , tmp );          // (b1+b2)"
+  , "  " ++ base_prefix ++ "mul_inplace( PROD(3) , tmp );            // (a1+a2)*(b1+b2)"
+  , "  " ++ base_prefix ++ "sub_inplace( PROD(3) , PROD(2) );"
+  , "  " ++ base_prefix ++ "sub_inplace( PROD(3) , PROD(4) );        // a0*b1 + a1*b0"
+  , ""
+  , "  " ++ base_prefix ++ "add( SRC1(0) , SRC1(2) , tmp2 );         // (a0+a2)"
+  , "  " ++ base_prefix ++ "add( SRC2(0) , SRC2(2) , tmp  );         // (b0+b2)"
+  , "  " ++ base_prefix ++ "mul_inplace( tmp2 , tmp );               // (a0+a2)*(b0+b2)"
+  , "  " ++ base_prefix ++ "sub_inplace( tmp2 , PROD(0) );"
+  , "  " ++ base_prefix ++ "sub_inplace( tmp2 , PROD(4) );           // a0*b2 + a2*b0"
+  , "  " ++ base_prefix ++ "add_inplace( PROD(2) , tmp2 );           // a0*b2 + a1*b1 + a2*b0"  
+  ] ++
+  subtract_ts ++
+  [ "  memcpy( tgt, prod, 8*EXT_NWORDS );"
+  , "}"
+  , ""
+  , "// we use Karatsuba trick to have only 6 squarings"
+  , "void " ++ prefix ++ "sqr ( const uint64_t *src1, uint64_t *tgt ) {"
+  , "  uint64_t prod[5*BASE_NWORDS];"
+  , "  uint64_t tmp [  BASE_NWORDS];"
+  , "  " ++ base_prefix ++ "sqr( SRC1(0) , PROD(0) );                // p = a0^2"
+  , "  " ++ base_prefix ++ "sqr( SRC1(1) , PROD(2) );                // q = a1^2"
+  , "  " ++ base_prefix ++ "sqr( SRC1(2) , PROD(4) );                // r = a2^2"
+  , ""
+  , "  " ++ base_prefix ++ "add( SRC1(0) , SRC1(1) , PROD(1) );      // (a0+a1)"
+  , "  " ++ base_prefix ++ "sqr_inplace( PROD(1) );                  // (a0+a1)^2"
+  , "  " ++ base_prefix ++ "sub_inplace( PROD(1) , PROD(0) );"
+  , "  " ++ base_prefix ++ "sub_inplace( PROD(1) , PROD(2) );        // a0*a1 + a1*a0"
+  , ""
+  , "  " ++ base_prefix ++ "add( SRC1(1) , SRC1(2) , PROD(3) );      // (a1+a2)"
+  , "  " ++ base_prefix ++ "sqr_inplace( PROD(3) );                  // (a1+a2)^2"
+  , "  " ++ base_prefix ++ "sub_inplace( PROD(3) , PROD(2) );"
+  , "  " ++ base_prefix ++ "sub_inplace( PROD(3) , PROD(4) );        // a1*a2 + a2*a1"
+  , ""
+  , "  " ++ base_prefix ++ "add( SRC1(0) , SRC1(2) , tmp  );         // (a0+a2)"
+  , "  " ++ base_prefix ++ "sqr_inplace( tmp   );                    // (a0+a2)^2"
+  , "  " ++ base_prefix ++ "sub_inplace( tmp , PROD(0) );"
+  , "  " ++ base_prefix ++ "sub_inplace( tmp , PROD(4) );            // a0*a2 + a2*a0"
+  , "  " ++ base_prefix ++ "add_inplace( PROD(2) , tmp );            // a0*a2 + a1*a1 + a2*a0"  
+  ] ++
+  subtract_ts ++
+  [ "  memcpy( tgt, prod, 8*EXT_NWORDS );"
+  , "}"
+  , ""
+  , ""
+  , "void " ++ prefix ++ "mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  uint64_t prod[5*BASE_NWORDS];"
   , "  uint64_t tmp [  BASE_NWORDS];"
   , "  " ++ base_prefix ++ "mul( SRC1(0) , SRC2(0) , PROD(0) );     // p = a0 * b0"
@@ -428,14 +523,14 @@ c_mulExtCubic ExtParams{..} =
   , "  // " ++ base_prefix ++ "copy( PROD(2) , TGT(2) );" 
   , "}"
   , ""
-  , "void " ++ prefix ++ "sqr ( const uint64_t *src1, uint64_t *tgt ) {"
+  , "void " ++ prefix ++ "sqr_naive ( const uint64_t *src1, uint64_t *tgt ) {"
   , "  uint64_t prod[5*BASE_NWORDS];"
   , "  uint64_t tmp [  BASE_NWORDS];"
   , "  " ++ base_prefix ++ "sqr( SRC1(0) , PROD(0) );               // p = a0^2"
   , ""
   , "  " ++ base_prefix ++ "mul( SRC1(0) , SRC1(1) , PROD(1) );"   
   , "  " ++ base_prefix ++ "add_inplace( PROD(1) , PROD(1) );       // q = 2*a0*a1"
-   , ""
+  , ""
   , "  " ++ base_prefix ++ "mul( SRC1(0) , SRC1(2) , PROD(2) );"   
   , "  " ++ base_prefix ++ "add_inplace( PROD(2) , PROD(2) );"         
   , "  " ++ base_prefix ++ "sqr( SRC1(1)   , tmp );"
@@ -497,7 +592,7 @@ c_divExt extparams@(ExtParams{..})
 -- Remark: It seems the denominator being zero would mean that our
 -- defining polynomial is not irreducible.
 --
--- TODO: optimize for the common case p=0; and also for q=1! 
+-- Note: we can optimize for the common case p=0; and also for q=1.
 --
 c_invExtQuadratic ::  ExtParams -> Code
 c_invExtQuadratic ExtParams{..} =  

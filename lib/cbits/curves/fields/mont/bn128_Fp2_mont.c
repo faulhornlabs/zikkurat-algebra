@@ -139,7 +139,39 @@ void bn128_Fp2_mont_sub_inplace_reverse ( uint64_t *tgt , const uint64_t *src1 )
 }
 
 
+// we use Karatsuba trick to have only 3 multiplications
 void bn128_Fp2_mont_mul ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+  uint64_t p[BASE_NWORDS];
+  uint64_t q[BASE_NWORDS];
+  uint64_t r[BASE_NWORDS];
+  uint64_t tmp[BASE_NWORDS];
+  bn128_Fp_mont_mul( SRC1(0) , SRC2(0) , p );         // a0*b0
+  bn128_Fp_mont_mul( SRC1(1) , SRC2(1) , r );         // a1*b1
+  bn128_Fp_mont_add( SRC1(0) , SRC1(1) , q );         // (a0+a1)
+  bn128_Fp_mont_add( SRC2(0) , SRC2(1) , tmp );       // (b0+b1)
+  bn128_Fp_mont_mul_inplace( q , tmp );               // (a0+a1)*(b0+b1)
+  bn128_Fp_mont_sub_inplace( q , p );
+  bn128_Fp_mont_sub_inplace( q , r );
+  bn128_Fp_mont_sub(  p , r , TGT(0) );
+  bn128_Fp_mont_copy( q ,     TGT(1) );
+}
+
+// we use Karatsuba trick to have only 3 squarings
+void bn128_Fp2_mont_sqr ( const uint64_t *src1, uint64_t *tgt ) {
+  uint64_t p[BASE_NWORDS];
+  uint64_t q[BASE_NWORDS];
+  uint64_t r[BASE_NWORDS];
+  bn128_Fp_mont_sqr( SRC1(0) , p );              // a0^2
+  bn128_Fp_mont_sqr( SRC1(1) , r );              // a1^2
+  bn128_Fp_mont_add( SRC1(0) , SRC1(1) , q );    // (a0+a1)
+  bn128_Fp_mont_sqr_inplace( q );                // (a0+a1)^2
+  bn128_Fp_mont_sub_inplace( q , p );
+  bn128_Fp_mont_sub_inplace( q , r );
+  bn128_Fp_mont_sub(  p , r , TGT(0) );
+  bn128_Fp_mont_copy( q ,     TGT(1) );
+}
+
+void bn128_Fp2_mont_mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
   uint64_t p[BASE_NWORDS];
   uint64_t q[BASE_NWORDS];
   uint64_t r[BASE_NWORDS];
@@ -153,7 +185,7 @@ void bn128_Fp2_mont_mul ( const uint64_t *src1, const uint64_t *src2, uint64_t *
   bn128_Fp_mont_copy( q ,     TGT(1) );
 }
 
-void bn128_Fp2_mont_sqr ( const uint64_t *src1, uint64_t *tgt ) {
+void bn128_Fp2_mont_sqr_naive ( const uint64_t *src1, uint64_t *tgt ) {
   uint64_t p[BASE_NWORDS];
   uint64_t q[BASE_NWORDS];
   uint64_t r[BASE_NWORDS];
