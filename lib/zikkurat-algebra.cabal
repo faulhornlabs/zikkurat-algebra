@@ -72,6 +72,7 @@ Library
                         ZK.Algebra.Curves.BN128.G1.Proj
                         ZK.Algebra.Curves.BN128.G1.Jac
                         ZK.Algebra.Curves.BN128.Poly
+                        ZK.Algebra.Curves.BN128.Array
 
   if flag(BLS12_381)
     Exposed-Modules:    ZK.Algebra.Curves.BLS12_381.Fp.Std
@@ -85,6 +86,7 @@ Library
                         ZK.Algebra.Curves.BLS12_381.G1.Proj
                         ZK.Algebra.Curves.BLS12_381.G1.Jac
                         ZK.Algebra.Curves.BLS12_381.Poly
+                        ZK.Algebra.Curves.BLS12_381.Array
 
   c-sources:            cbits/platform.c
                         cbits/bigint/bigint128.c
@@ -108,6 +110,7 @@ Library
                         cbits/curves/g1/proj/bn128_G1_proj.c
                         cbits/curves/g1/jac/bn128_G1_jac.c
                         cbits/curves/poly/mont/bn128_poly_mont.c
+                        cbits/curves/array/mont/bn128_arr_mont.c
 
   if flag(BLS12_381)
 
@@ -122,6 +125,7 @@ Library
                         cbits/curves/g1/proj/bls12_381_G1_proj.c
                         cbits/curves/g1/jac/bls12_381_G1_jac.c
                         cbits/curves/poly/mont/bls12_381_poly_mont.c
+                        cbits/curves/array/mont/bls12_381_arr_mont.c
 
   Default-Language:     Haskell2010
   Default-Extensions:   CPP, BangPatterns

@@ -107,8 +107,8 @@ c_header (ExtParams{..}) =
   , "extern void " ++ prefix ++ "div ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "neg_inplace ( uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "sub_inplace ( uint64_t *tgt , const uint64_t *src2 );"
   , "extern void " ++ prefix ++ "add_inplace ( uint64_t *tgt , const uint64_t *src2 );"
+  , "extern void " ++ prefix ++ "sub_inplace ( uint64_t *tgt , const uint64_t *src2 );"
   , "extern void " ++ prefix ++ "sqr_inplace ( uint64_t *tgt );"
   , "extern void " ++ prefix ++ "mul_inplace ( uint64_t *tgt , const uint64_t *src2);"
   , "extern void " ++ prefix ++ "inv_inplace ( uint64_t *tgt );"
@@ -382,7 +382,9 @@ c_mulExtQuadratic ExtParams{..} =
   withIrredCoeffs irredPoly termDeg1 ++ 
   [ "}"
   , ""
-  , "void " ++ prefix ++ "mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  ] 
+{-
+  [ "void " ++ prefix ++ "mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  uint64_t p[BASE_NWORDS];"
   , "  uint64_t q[BASE_NWORDS];"
   , "  uint64_t r[BASE_NWORDS];"
@@ -412,6 +414,7 @@ c_mulExtQuadratic ExtParams{..} =
   [ "}"
   , ""
   ]
+-}
   where
     
     termDeg0 [c,d]  
@@ -494,8 +497,9 @@ c_mulExtCubic ExtParams{..} =
   [ "  memcpy( tgt, prod, 8*EXT_NWORDS );"
   , "}"
   , ""
-  , ""
-  , "void " ++ prefix ++ "mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  ] 
+{-
+  [ "void " ++ prefix ++ "mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  uint64_t prod[5*BASE_NWORDS];"
   , "  uint64_t tmp [  BASE_NWORDS];"
   , "  " ++ base_prefix ++ "mul( SRC1(0) , SRC2(0) , PROD(0) );     // p = a0 * b0"
@@ -549,6 +553,7 @@ c_mulExtCubic ExtParams{..} =
   , "}"
   , ""
   ]
+-}
   where
     subtract_ts =
       [ "  " ++ prefix ++ "subtract_irred_generic( PROD(4) , PROD(1) );"

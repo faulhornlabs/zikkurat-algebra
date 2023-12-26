@@ -71,9 +71,9 @@ Currently, we have the following ones.
     - BLS12-381
     - ...
 - General curves:
-    - Curve25519
     - ...
 - TODO:
+    - Curve25519
     - secp256k1 / secq256k1
     - Pasta (Pallas / Vesta)
     - BLS12-377
@@ -104,7 +104,7 @@ Our primary testing methods are:
 
 - property-based testing
 - unit tests, especially for possible corner cases - TODO
-- compare against a very straightforward, high-level (but slow) reference implementation - TODO
+- compare against a very straightforward, high-level (but slow) reference implementation - partially done
 
 In property-based testing we declare the expected properties of the functions,
 things like for example commutativity and associativity of ring operations. 
@@ -128,6 +128,7 @@ TODO
 - [x] implement NTT and iNTT
 - [x] property-based test framework
 - [ ] unit-test framework
+- [x] vectors of field elements
 - [ ] long division of bigints
 - [ ] square roots in prime fields 
 - [ ] hash-to-curve & better (faster) random curve points  

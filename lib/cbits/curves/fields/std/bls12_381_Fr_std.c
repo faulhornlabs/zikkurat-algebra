@@ -379,7 +379,6 @@ void bls12_381_Fr_std_pow_gen( const uint64_t *src, const uint64_t *expo, uint64
 
 // computes the inverse of many field elements at the same time, efficiently
 // uses the Montgomery batch inversion trick
-// inverse of a field element
 void bls12_381_Fr_std_batch_inv( int n, const uint64_t *src, uint64_t *tgt ) {
   assert( n >= 1 );
   uint64_t *prods  = malloc( 8*4*n );

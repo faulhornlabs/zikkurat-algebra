@@ -215,60 +215,6 @@ void bls12_381_Fp6_mont_sqr ( const uint64_t *src1, uint64_t *tgt ) {
 }
 
 
-void bls12_381_Fp6_mont_mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
-  uint64_t prod[5*BASE_NWORDS];
-  uint64_t tmp [  BASE_NWORDS];
-  bls12_381_Fp2_mont_mul( SRC1(0) , SRC2(0) , PROD(0) );     // p = a0 * b0
-
-  bls12_381_Fp2_mont_mul( SRC1(0) , SRC2(1) , PROD(1) );
-  bls12_381_Fp2_mont_mul( SRC1(1) , SRC2(0) , tmp );
-  bls12_381_Fp2_mont_add_inplace( PROD(1) , tmp );           // q = a0*b1 + a1*b0
-
-  bls12_381_Fp2_mont_mul( SRC1(0) , SRC2(2) , PROD(2) );
-  bls12_381_Fp2_mont_mul( SRC1(1) , SRC2(1) , tmp );
-  bls12_381_Fp2_mont_add_inplace( PROD(2) , tmp );
-  bls12_381_Fp2_mont_mul( SRC1(2) , SRC2(0) , tmp );
-  bls12_381_Fp2_mont_add_inplace( PROD(2) , tmp );           // r = a0*b2 + a1*b1 + a2*b0
-
-  bls12_381_Fp2_mont_mul( SRC1(1) , SRC2(2) , PROD(3) );
-  bls12_381_Fp2_mont_mul( SRC1(2) , SRC2(1) , tmp );
-  bls12_381_Fp2_mont_add_inplace( PROD(3) , tmp );           // s = a1*b2 + a2*b1
-
-  bls12_381_Fp2_mont_mul( SRC1(2) , SRC2(2) , PROD(4) );     // t = a2*b2
-  bls12_381_Fp6_mont_subtract_irred_generic( PROD(4) , PROD(1) );
-  bls12_381_Fp6_mont_subtract_irred_generic( PROD(3) , PROD(0) );
-  memcpy( tgt, prod, 8*EXT_NWORDS );
-  // bls12_381_Fp2_mont_copy( PROD(0) , TGT(0) );
-  // bls12_381_Fp2_mont_copy( PROD(1) , TGT(1) );
-  // bls12_381_Fp2_mont_copy( PROD(2) , TGT(2) );
-}
-
-void bls12_381_Fp6_mont_sqr_naive ( const uint64_t *src1, uint64_t *tgt ) {
-  uint64_t prod[5*BASE_NWORDS];
-  uint64_t tmp [  BASE_NWORDS];
-  bls12_381_Fp2_mont_sqr( SRC1(0) , PROD(0) );               // p = a0^2
-
-  bls12_381_Fp2_mont_mul( SRC1(0) , SRC1(1) , PROD(1) );
-  bls12_381_Fp2_mont_add_inplace( PROD(1) , PROD(1) );       // q = 2*a0*a1
-
-  bls12_381_Fp2_mont_mul( SRC1(0) , SRC1(2) , PROD(2) );
-  bls12_381_Fp2_mont_add_inplace( PROD(2) , PROD(2) );
-  bls12_381_Fp2_mont_sqr( SRC1(1)   , tmp );
-  bls12_381_Fp2_mont_add_inplace( PROD(2) , tmp );           // r = 2*a0*a2 + a1^2
-
-  bls12_381_Fp2_mont_mul( SRC1(1) , SRC1(2) , PROD(3) );
-  bls12_381_Fp2_mont_add_inplace( PROD(3) , PROD(3) );       // s = 2*a1*a2
-
-  bls12_381_Fp2_mont_sqr( SRC1(2) , PROD(4) );               // t = a2^2
-  bls12_381_Fp6_mont_subtract_irred_generic( PROD(4) , PROD(1) );
-  bls12_381_Fp6_mont_subtract_irred_generic( PROD(3) , PROD(0) );
-  memcpy( tgt, prod, 8*EXT_NWORDS );
-  // bls12_381_Fp2_mont_copy( PROD(0) , TGT(0) );
-  // bls12_381_Fp2_mont_copy( PROD(1) , TGT(1) );
-  // bls12_381_Fp2_mont_copy( PROD(2) , TGT(2) );
-}
-
-
 void bls12_381_Fp6_mont_mul_inplace ( uint64_t *tgt , const uint64_t *src2 ) {
   bls12_381_Fp6_mont_mul( tgt, src2, tgt );
 }
@@ -369,7 +315,6 @@ void bls12_381_Fp6_mont_pow_gen( const uint64_t *src, const uint64_t *expo, uint
 
 // computes the inverse of many field elements at the same time, efficiently
 // uses the Montgomery batch inversion trick
-// inverse of a field element
 void bls12_381_Fp6_mont_batch_inv( int n, const uint64_t *src, uint64_t *tgt ) {
   assert( n >= 1 );
   uint64_t *prods  = malloc( 8*36*n );

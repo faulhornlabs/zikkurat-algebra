@@ -172,33 +172,6 @@ void bls12_381_Fp2_mont_sqr ( const uint64_t *src1, uint64_t *tgt ) {
   bls12_381_Fp_mont_copy( q ,     TGT(1) );
 }
 
-void bls12_381_Fp2_mont_mul_naive ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
-  uint64_t p[BASE_NWORDS];
-  uint64_t q[BASE_NWORDS];
-  uint64_t r[BASE_NWORDS];
-  uint64_t tmp[BASE_NWORDS];
-  bls12_381_Fp_mont_mul( SRC1(0) , SRC2(0) , p );
-  bls12_381_Fp_mont_mul( SRC1(0) , SRC2(1) , q );
-  bls12_381_Fp_mont_mul( SRC1(1) , SRC2(0) , tmp );
-  bls12_381_Fp_mont_add_inplace( q , tmp );
-  bls12_381_Fp_mont_mul( SRC1(1) , SRC2(1) , r );
-  bls12_381_Fp_mont_sub(  p , r , TGT(0) );
-  bls12_381_Fp_mont_copy( q ,     TGT(1) );
-}
-
-void bls12_381_Fp2_mont_sqr_naive ( const uint64_t *src1, uint64_t *tgt ) {
-  uint64_t p[BASE_NWORDS];
-  uint64_t q[BASE_NWORDS];
-  uint64_t r[BASE_NWORDS];
-  uint64_t tmp[BASE_NWORDS];
-  bls12_381_Fp_mont_sqr( SRC1(0) , p );
-  bls12_381_Fp_mont_mul( SRC1(0) , SRC1(1) , q );
-  bls12_381_Fp_mont_add_inplace( q , q );
-  bls12_381_Fp_mont_sqr( SRC1(1) , r );
-  bls12_381_Fp_mont_sub(  p , r , TGT(0) );
-  bls12_381_Fp_mont_copy( q ,     TGT(1) );
-}
-
 
 void bls12_381_Fp2_mont_mul_inplace ( uint64_t *tgt , const uint64_t *src2 ) {
   bls12_381_Fp2_mont_mul( tgt, src2, tgt );
@@ -273,7 +246,6 @@ void bls12_381_Fp2_mont_pow_gen( const uint64_t *src, const uint64_t *expo, uint
 
 // computes the inverse of many field elements at the same time, efficiently
 // uses the Montgomery batch inversion trick
-// inverse of a field element
 void bls12_381_Fp2_mont_batch_inv( int n, const uint64_t *src, uint64_t *tgt ) {
   assert( n >= 1 );
   uint64_t *prods  = malloc( 8*12*n );

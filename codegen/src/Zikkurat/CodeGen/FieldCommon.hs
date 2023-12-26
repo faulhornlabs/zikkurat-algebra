@@ -61,7 +61,6 @@ batchInverse CommonParams{..} =
   , ""
   , "// computes the inverse of many field elements at the same time, efficiently"
   , "// uses the Montgomery batch inversion trick"
-  , "// inverse of a field element"
   , "void " ++ prefix ++ "batch_inv( int n, const uint64_t *src, uint64_t *tgt ) {"
   , "  assert( n >= 1 );"
   , "  uint64_t *prods  = malloc( 8*" ++ show nlimbs ++ "*n );"

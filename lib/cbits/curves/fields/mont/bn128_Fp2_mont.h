@@ -20,8 +20,8 @@ extern void bn128_Fp2_mont_inv ( const uint64_t *src ,       uint64_t *tgt );
 extern void bn128_Fp2_mont_div ( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 
 extern void bn128_Fp2_mont_neg_inplace ( uint64_t *tgt );
-extern void bn128_Fp2_mont_sub_inplace ( uint64_t *tgt , const uint64_t *src2 );
 extern void bn128_Fp2_mont_add_inplace ( uint64_t *tgt , const uint64_t *src2 );
+extern void bn128_Fp2_mont_sub_inplace ( uint64_t *tgt , const uint64_t *src2 );
 extern void bn128_Fp2_mont_sqr_inplace ( uint64_t *tgt );
 extern void bn128_Fp2_mont_mul_inplace ( uint64_t *tgt , const uint64_t *src2);
 extern void bn128_Fp2_mont_inv_inplace ( uint64_t *tgt );

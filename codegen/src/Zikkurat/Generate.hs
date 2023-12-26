@@ -10,6 +10,7 @@ module Zikkurat.Generate
   , generate_curves_proj
   , generate_curves_jac
   , generate_curves_poly
+  , generate_curves_array
   ) 
   where
 
@@ -32,10 +33,12 @@ import qualified Zikkurat.CodeGen.Curve.MontAffine      as Affine
 import qualified Zikkurat.CodeGen.Curve.MontProj        as Proj
 import qualified Zikkurat.CodeGen.Curve.MontJac         as Jac
 import qualified Zikkurat.CodeGen.Poly                  as Poly
+import qualified Zikkurat.CodeGen.Pointwise             as PW
 
 import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.Curve.Params
-import Zikkurat.CodeGen.Poly ( PolyParams )
+import Zikkurat.CodeGen.Poly      ( PolyParams )
+import Zikkurat.CodeGen.Pointwise ( PwParams )
 import Zikkurat.Primes
 
 --------------------------------------------------------------------------------
@@ -209,6 +212,7 @@ generate_primefields_montgomery hsOrC tgtdir = do
       Hs -> FpMont.primefield_Montgomery_hs_codegen tgtdir params
 
 --------------------------------------------------------------------------------
+-- * BN128 params
 
 bn128_cgParams :: CodeGenParams
 bn128_cgParams = CodeGenParams
@@ -238,6 +242,34 @@ bn128_cgParams = CodeGenParams
   , typeName       = "G1"                                                        -- the name of the haskell type for curve points
   }
 
+bn128_cgParams_G2 :: CodeGenParams
+bn128_cgParams_G2 = CodeGenParams
+  { prefix         = error "bn128 / prefix"                                      -- prefix for C names
+  , prefix_affine  = "bn128_G2_affine_"                                          -- prefix for C names
+  , prefix_proj    = "bn128_G2_proj_"                                            -- prefix for C names
+  , prefix_jac     = "bn128_G2_jac_"                                             -- prefix for C names
+  , prefix_p       = "bn128_Fp2_mont_"                                           -- prefix for C names for Fp
+  , prefix_r       = "bn128_Fr_mont_"                                            -- prefix for C names for Fq
+  , point_repr     = error "bn128 / point_repr"                                  -- one of "affine", "proj" or "jac"
+  , nlimbs_p       = 8                                                           -- number of 64-bit limbs in p
+  , nlimbs_r       = 4                                                           -- number of 64-bit limbs in r
+  , hs_path_p      = Path ["ZK","Algebra","Curves","BN128","Fp2","Mont"]         -- path of the Haskell module for Fp
+  , hs_path_r      = Path ["ZK","Algebra","Curves","BN128","Fr","Mont"]          -- path of the Haskell module for Fr
+  , hs_path_r_std  = Path ["ZK","Algebra","Curves","BN128","Fr","Std"]           -- path of the Haskell module for Fr (standard repr)
+  , hs_path_big_p  = Path ["ZK","Algebra","BigInt","BigInt256"]                  
+  , c_path         = error "bn128 / c_path"
+  , c_path_affine  = Path ["curves","g2","affine","bn128_G2_affine"]               -- path of the C file
+  , c_path_proj    = Path ["curves","g2","proj"  ,"bn128_G2_proj"]                 -- path of the C file
+  , c_path_jac     = Path ["curves","g2","jac"   ,"bn128_G2_jac"]                  -- path of the C file
+  , hs_path        = error "bn128 / hs_path"
+  , hs_path_affine = Path ["ZK","Algebra","Curves","BN128","G2","Affine"]        -- path of the Haskell module
+  , hs_path_proj   = Path ["ZK","Algebra","Curves","BN128","G2","Proj"]          -- path of the Haskell module
+  , hs_path_jac    = Path ["ZK","Algebra","Curves","BN128","G2","Jac"]           -- path of the Haskell module
+  , c_basename_p   = "bn128_Fp2_mont"                                            -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_r   = "bn128_Fr_mont"                                             -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , typeName       = "G2"                                                        -- the name of the haskell type for curve points
+  }
+
 bn128_polyParams :: PolyParams
 bn128_polyParams = Poly.PolyParams 
   { Poly.prefix     = "bn128_poly_mont_"   
@@ -251,6 +283,23 @@ bn128_polyParams = Poly.PolyParams
   , Poly.typeName_r = "Fr"
   , Poly.prime_r    = bn128_scalar_r   
   }
+
+bn128_pwParams :: PwParams 
+bn128_pwParams = PW.PwParams 
+  { PW.prefix           = "bn128_arr_mont_"
+  , PW.elem_prefix      = "bn128_Fr_mont_"
+  , PW.elemNWords       = 4
+  , PW.c_path           = Path ["curves","array" , "mont", "bn128_arr_mont" ]
+  , PW.c_path_base      = Path ["curves","fields", "mont", "bn128_Fr_mont" ]
+  , PW.hs_path          = Path ["ZK", "Algebra", "Curves", "BN128", "Array" ]
+  , PW.hs_path_base     = Path ["ZK", "Algebra", "Curves", "BN128", "Fr", "Mont"] 
+  , PW.hs_path_base_std = Path ["ZK", "Algebra", "Curves", "BN128", "Fr", "Std"] 
+  , PW.typeNameBase     = "Fr"
+  , PW.typeNameBaseStd  = "Std.Fr"
+  }
+
+--------------------------------------------------------------------------------
+-- * BLS12-381 params
 
 bls12_381_cgParams :: CodeGenParams
 bls12_381_cgParams = CodeGenParams
@@ -294,26 +343,47 @@ bls12_381_polyParams = Poly.PolyParams
   , Poly.prime_r    = bls12_381_scalar_r
   }
 
+bls12_381_pwParams :: PwParams 
+bls12_381_pwParams = PW.PwParams 
+  { PW.prefix           = "bls12_381_arr_mont_"
+  , PW.elem_prefix      = "bls12_381_Fr_mont_"
+  , PW.elemNWords       = 4
+  , PW.c_path           = Path ["curves","array" , "mont", "bls12_381_arr_mont" ]
+  , PW.c_path_base      = Path ["curves","fields", "mont", "bls12_381_Fr_mont" ]
+  , PW.hs_path          = Path ["ZK", "Algebra", "Curves", "BLS12_381", "Array" ]
+  , PW.hs_path_base     = Path ["ZK", "Algebra", "Curves", "BLS12_381", "Fr", "Mont"] 
+  , PW.hs_path_base_std = Path ["ZK", "Algebra", "Curves", "BLS12_381", "Fr", "Std"] 
+  , PW.typeNameBase     = "Fr"
+  , PW.typeNameBaseStd  = "Std.Fr"
+  }
+
 --------------------------------------------------------------------------------
 
 generate_curves_poly :: HsOrC -> FilePath -> IO ()
 generate_curves_poly hsOrC tgtdir = do
-  forM_ curveList $ \(curve,_,polyparams) -> do
+  forM_ curveList $ \(curve,_,polyparams,_) -> do
     case hsOrC of 
       C  -> Poly.poly_c_codegen  tgtdir polyparams
       Hs -> Poly.poly_hs_codegen tgtdir polyparams
 
+generate_curves_array :: HsOrC -> FilePath -> IO ()
+generate_curves_array hsOrC tgtdir = do
+  forM_ curveList $ \(curve,_,_,pwparams) -> do
+    case hsOrC of 
+      C  -> PW.pw_array_c_codegen  tgtdir pwparams
+      Hs -> PW.pw_array_hs_codegen tgtdir pwparams
+
 --------------------------------------------------------------------------------
 
-curveList :: [(Curve,CodeGenParams,PolyParams)]
+curveList :: [(Curve,CodeGenParams,PolyParams,PwParams)]
 curveList = 
-  [ ( bn128_curve     , bn128_cgParams     , bn128_polyParams     )
-  , ( bls12_381_curve , bls12_381_cgParams , bls12_381_polyParams )
+  [ ( bn128_curve     , bn128_cgParams     , bn128_polyParams     , bn128_pwParams     )
+  , ( bls12_381_curve , bls12_381_cgParams , bls12_381_polyParams , bls12_381_pwParams )
   ]
 
 generate_curves_proj :: HsOrC -> FilePath -> IO ()
 generate_curves_proj hsOrC tgtdir = do
-  forM_ curveList $ \(curve,cgparams0,_) -> do
+  forM_ curveList $ \(curve,cgparams0,_,_) -> do
     let cgparams = cgparams0 
           { prefix  = prefix_proj  cgparams0
           , c_path  = c_path_proj  cgparams0 
@@ -326,7 +396,7 @@ generate_curves_proj hsOrC tgtdir = do
 
 generate_curves_jac :: HsOrC -> FilePath -> IO ()
 generate_curves_jac hsOrC tgtdir = do
-  forM_ curveList $ \(curve,cgparams0,_) -> do
+  forM_ curveList $ \(curve,cgparams0,_,_) -> do
     let cgparams = cgparams0 
           { prefix  = prefix_jac  cgparams0
           , c_path  = c_path_jac  cgparams0 
@@ -339,7 +409,7 @@ generate_curves_jac hsOrC tgtdir = do
 
 generate_curves_affine :: HsOrC -> FilePath -> IO ()
 generate_curves_affine hsOrC tgtdir = do
-  forM_ curveList $ \(curve,cgparams0,_) -> do
+  forM_ curveList $ \(curve,cgparams0,_,_) -> do
     let cgparams = cgparams0 
           { prefix  = prefix_affine  cgparams0 
           , c_path  = c_path_affine  cgparams0 
