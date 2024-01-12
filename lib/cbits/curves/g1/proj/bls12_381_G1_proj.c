@@ -645,3 +645,124 @@ void bls12_381_G1_proj_MSM_mont_coeff_affine_out(int npoints, const uint64_t *ex
 }
 
 //------------------------------------------------------------------------------
+
+
+#define GRP_NLIMBS (3*NLIMBS_P)
+
+// -----------------------------------------------------------------------------
+
+void bls12_381_G1_proj_fft_forward_noalloc( int m, int src_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
+
+  if (m==0) {
+    bls12_381_G1_proj_copy( src, tgt );
+    return;
+  }
+
+  if (m==1) {
+    // N = 2
+    bls12_381_G1_proj_add( src , src + src_stride*GRP_NLIMBS , tgt              );    // x + y
+    bls12_381_G1_proj_sub( src , src + src_stride*GRP_NLIMBS , tgt + GRP_NLIMBS );    // x - y
+    return;
+  }
+
+  else {
+  
+    int N     = (1<< m   );
+    int halfN = (1<<(m-1));
+
+    uint64_t gpow[NLIMBS_R];
+    bls12_381_Fr_mont_sqr( gen, gpow );  // gen^2
+    
+    bls12_381_G1_proj_fft_forward_noalloc( m-1 , src_stride<<1 , gpow , src                         , buf + N*GRP_NLIMBS , buf                    );
+    bls12_381_G1_proj_fft_forward_noalloc( m-1 , src_stride<<1 , gpow , src + src_stride*GRP_NLIMBS , buf + N*GRP_NLIMBS , buf + halfN*GRP_NLIMBS );
+
+    bls12_381_Fr_mont_set_one(gpow);
+    for(int j=0; j<halfN; j++) {
+      bls12_381_G1_proj_scl_Fr_mont(gpow , buf + (j+halfN)*GRP_NLIMBS  , tgt +  j *GRP_NLIMBS );  //   g*v[k]
+      bls12_381_G1_proj_neg ( tgt +  j       *GRP_NLIMBS ,        tgt + (j+halfN)*GRP_NLIMBS );   // - g*v[k]
+      bls12_381_G1_proj_add_inplace( tgt +  j       *GRP_NLIMBS , buf + j*GRP_NLIMBS );           // u[k] + g*v[k]
+      bls12_381_G1_proj_add_inplace( tgt + (j+halfN)*GRP_NLIMBS , buf + j*GRP_NLIMBS );           // u[k] - g*v[k]
+      bls12_381_Fr_mont_mul_inplace( gpow , gen );      
+    }
+  }
+}
+
+// forward FFT of group elements (convert from [L_k(tau)] to [tau^i])
+// `src` and `tgt` should be `N = 2^m` sized arrays of group elements
+// `gen` should be the generator of the multiplicative subgroup (of the scalar field) sized `N` (in _Montgomery_ representation)
+// NOTE: we normalize the results
+void bls12_381_G1_proj_fft_forward (int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
+  int N = (1<<m);
+  uint64_t *buf = malloc( 8*GRP_NLIMBS * (2*N) );
+  assert( buf !=0 );
+  bls12_381_G1_proj_fft_forward_noalloc( m, 1, gen, src, buf, tgt);
+  free(buf);
+  for(int i=0; i<N; i++) { 
+    bls12_381_G1_proj_normalize_inplace( tgt + i*GRP_NLIMBS );
+  }
+}
+
+
+// -----------------------------------------------------------------------------
+
+// inverse of 2 (standard repr)
+const uint64_t bls12_381_G1_proj_oneHalf[4] = { 0x00000000ffffffff, 0xac425bfd0001a401, 0xccc627f7f65e27fa, 0x0c1258acd66282b7 };
+
+void bls12_381_G1_proj_fft_inverse_noalloc(int m, int tgt_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
+
+  if (m==0) {
+    bls12_381_G1_proj_copy( src, tgt );
+    return;
+  }
+
+  if (m==1) {
+    // N = 2
+    bls12_381_G1_proj_add( src , src + GRP_NLIMBS , tgt                         );   // x + y
+    bls12_381_G1_proj_sub( src , src + GRP_NLIMBS , tgt + tgt_stride*GRP_NLIMBS );   // x - y
+    bls12_381_G1_proj_scl_Fr_mont( bls12_381_G1_proj_oneHalf , tgt                         , tgt                         );      // (x + y)/2
+    bls12_381_G1_proj_scl_Fr_mont( bls12_381_G1_proj_oneHalf , tgt + tgt_stride*GRP_NLIMBS , tgt + tgt_stride*GRP_NLIMBS );      // (x - y)/2
+    return;
+  }
+
+  else {
+  
+    int N     = (1<< m   );
+    int halfN = (1<<(m-1));
+
+    uint64_t ginv[NLIMBS_R];
+    bls12_381_Fr_mont_inv( gen , ginv );  // gen^-1
+
+    uint64_t gpow[NLIMBS_R];    
+    bls12_381_Fr_mont_copy(bls12_381_G1_proj_oneHalf , gpow);  // 1/2
+    for(int j=0; j<halfN; j++) {
+      bls12_381_G1_proj_add( src +  j* GRP_NLIMBS , src + (j+halfN)*GRP_NLIMBS , buf + j        *GRP_NLIMBS  );    // x + y
+      bls12_381_G1_proj_sub( src +  j* GRP_NLIMBS , src + (j+halfN)*GRP_NLIMBS , buf + (j+halfN)*GRP_NLIMBS  );    // x - y
+      bls12_381_G1_proj_scl_Fr_mont( bls12_381_G1_proj_oneHalf , buf + j        *GRP_NLIMBS , buf + j        *GRP_NLIMBS );    // (x + y) /  2
+      bls12_381_G1_proj_scl_Fr_mont( gpow                    , buf + (j+halfN)*GRP_NLIMBS , buf + (j+halfN)*GRP_NLIMBS );    // (x - y) / (2*g^k)
+      bls12_381_Fr_mont_mul_inplace( gpow , ginv );      
+    }
+
+    bls12_381_Fr_mont_sqr( gen, gpow );  // gen^2
+    bls12_381_G1_proj_fft_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf                    , buf + N*GRP_NLIMBS , tgt                         );
+    bls12_381_G1_proj_fft_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf + halfN*GRP_NLIMBS , buf + N*GRP_NLIMBS , tgt + tgt_stride*GRP_NLIMBS );
+
+  }
+}
+ 
+// inverse FFT of group elements (convert from [tau^i] to [L_k(tau)]
+// `src` and `tgt` should be `N = 2^m` sized arrays of group elements
+// `gen` should be the generator of the multiplicative subgroup (of the scalar field) sized `N`, in _Montgomery_ representation
+// NOTE: we normalize the results
+void bls12_381_G1_proj_fft_inverse(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
+  int N = (1<<m);
+  uint64_t *buf = malloc( 8*GRP_NLIMBS * (2*N) );
+  assert( buf !=0 );
+  bls12_381_G1_proj_fft_inverse_noalloc( m, 1, gen, src, buf, tgt );
+  free(buf);
+  for(int i=0; i<N; i++) { 
+    bls12_381_G1_proj_normalize_inplace( tgt + i*GRP_NLIMBS );
+  }
+}
+
+// -----------------------------------------------------------------------------
+

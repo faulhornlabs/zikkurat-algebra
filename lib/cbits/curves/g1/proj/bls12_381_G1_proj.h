@@ -43,3 +43,5 @@ extern void bls12_381_G1_proj_MSM_mont_coeff_proj_out(int npoints, const uint64_
 extern void bls12_381_G1_proj_MSM_std_coeff_affine_out (int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
 extern void bls12_381_G1_proj_MSM_mont_coeff_affine_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
 extern void bls12_381_G1_proj_MSM_std_coeff_projc_out_slow_reference(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bls12_381_G1_proj_fft_forward( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt );
+extern void bls12_381_G1_proj_fft_inverse( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt );

@@ -19,6 +19,7 @@ import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.Curve.Params
 import Zikkurat.CodeGen.Curve.CurveFFI
 import Zikkurat.CodeGen.Curve.MSM
+import Zikkurat.CodeGen.Curve.FFT
 
 --------------------------------------------------------------------------------
 
@@ -65,7 +66,8 @@ c_header curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
   , "extern void " ++ prefix ++ "scl_windowed( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
   , ""
   ] ++
-  (msm_c_header curve cgparams)
+  (msm_c_header curve cgparams) ++ 
+  (fft_c_header curve cgparams)
   
 --------------------------------------------------------------------------------
 
@@ -145,6 +147,8 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  , rndG1 , rndG1_naive"
   , "    -- * Multi-scalar multiplication"
   , "  , msm , msmStd"
+  , "    -- * Fast-Fourier transform"
+  , "  , forwardFFT , inverseFFT"
   , "    -- * Sage"
   , "  , sageSetup , printSageSetup"
   , "  )"  
@@ -178,6 +182,7 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "import qualified ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Curve as C"
+  , "import           ZK.Algebra.Class.FFT"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -1133,7 +1138,8 @@ c_code curve params = concat $ map ("":)
   , scaleWindowed curve params
   , scaleFpFr     curve params
     --
-  , msmCurve      curve params
+  , msmCurve       curve params
+  , c_group_fft    curve params
   ]
 
 hs_code :: Curve -> CodeGenParams -> Code
@@ -1142,6 +1148,7 @@ hs_code curve params@(CodeGenParams{..}) = concat $ map ("":)
  -- , hsMiscTmp
  -- , hsConvert      curve params
   , msm_hs_binding curve params
+  , fft_hs_binding curve params
   , hsSage         curve params
   , hsFFI          curve params
   ]

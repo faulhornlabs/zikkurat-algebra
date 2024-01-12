@@ -63,6 +63,9 @@ class WrappedArray a where
   wrapArray   :: FlatArray (Element a) -> a
   unwrapArray :: a -> FlatArray (Element a)
 
+wrappedArrayLength :: WrappedArray arr => arr -> Int
+wrappedArrayLength = flatArrayLength . unwrapArray
+
 --------------------------------------------------------------------------------
 
 -- | A flat array of flat objects, represented as a continuous segment of 
@@ -72,13 +75,27 @@ class WrappedArray a where
 data FlatArray a 
   = MkFlatArray !Int !(ForeignPtr Word64)
   deriving Show
-  
+
+flatArrayLength :: FlatArray a -> Int
+flatArrayLength (MkFlatArray n _) = n
+
 withFlatArray :: FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO b
 withFlatArray (MkFlatArray n fptr) action = do
   withForeignPtr fptr $ \ptr -> action n ptr
 
 -- TODO:
 -- parallelWithFlatArray :: Int -> FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO [b]
+
+{-# NOINLINE peekFlatArray #-}
+peekFlatArray :: Flat a => FlatArray a -> Int -> a
+peekFlatArray arr j = unsafePerformIO $ peekFlatArrayIO arr j
+
+{-# NOINLINE peekFlatArrayIO #-}
+peekFlatArrayIO :: forall a. Flat a => FlatArray a -> Int -> IO a
+peekFlatArrayIO arr j = do
+  let s = sizeInBytes (Proxy @a)
+  withFlatArray arr $ \_ ptr -> do
+    makeFlat (plusPtr ptr (s*j))
 
 --------------------------------------------------------------------------------
 -- * Pack \/ unpack flat arrays

@@ -158,6 +158,7 @@ instance P.Univariate Poly where
   evalAt          = ZK.Algebra.Curves.BN128.Poly.evalAt
   scale           = ZK.Algebra.Curves.BN128.Poly.scale
   mkPoly          = ZK.Algebra.Curves.BN128.Poly.mkPoly
+  mkPolyFlat      = ZK.Algebra.Curves.BN128.Poly.mkPolyFlatArr
   coeffs          = ZK.Algebra.Curves.BN128.Poly.coeffs
   coeffsArr       = ZK.Algebra.Curves.BN128.Poly.coeffsArr
   coeffsFlatArr   = ZK.Algebra.Curves.BN128.Poly.coeffsFlatArr

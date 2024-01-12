@@ -43,3 +43,5 @@ extern void bls12_381_G1_jac_MSM_mont_coeff_jac_out(int npoints, const uint64_t 
 extern void bls12_381_G1_jac_MSM_std_coeff_affine_out (int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
 extern void bls12_381_G1_jac_MSM_mont_coeff_affine_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
 extern void bls12_381_G1_jac_MSM_std_coeff_jacc_out_slow_reference(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bls12_381_G1_jac_fft_forward( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt );
+extern void bls12_381_G1_jac_fft_inverse( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt );

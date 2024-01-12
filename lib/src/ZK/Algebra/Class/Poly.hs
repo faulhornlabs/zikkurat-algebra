@@ -32,6 +32,8 @@ class (Ring p, Field (Coeff p), WrappedArray p, Element p ~ Coeff p) => Univaria
   scale :: Coeff p -> p -> p
   -- | Create a polynomial from coefficiens
   mkPoly :: [Coeff p] -> p
+  -- | Create a polynomial from a flat array of coefficiens
+  mkPolyFlat :: FlatArray (Coeff p) -> p
   -- | Coefficients of the polynomial as a list
   coeffs :: p -> [Coeff p]
   -- | Coefficients as an Array

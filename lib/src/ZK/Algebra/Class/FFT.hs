@@ -7,8 +7,20 @@ module ZK.Algebra.Class.FFT where
 --------------------------------------------------------------------------------
 
 import ZK.Algebra.Class.Field
+  
+--------------------------------------------------------------------------------
+-- * Synonyms
+
+type FFTDomain a = FFTSubgroup a
+
+domainSize :: FFTDomain a -> Int
+domainSize = subgroupSize
+
+getFFTDomain :: forall a. FFTField a => Int -> FFTDomain a
+getFFTDomain = getFFTSubgroup
 
 --------------------------------------------------------------------------------
+-- * FFT-friendly cyclic subgroups
 
 -- | An FFT-friendly cyclic subgroup of the multiplicative group of a finite field
 data FFTSubgroup a = MkFFTSubgroup
@@ -16,7 +28,7 @@ data FFTSubgroup a = MkFFTSubgroup
   , subgroupLogSize :: !Int      -- ^ @log2@ of the size of the subgroup
   }
   deriving (Eq,Show)
-  
+
 -- | The size of the subgroup
 subgroupSize :: FFTSubgroup a -> Int
 subgroupSize sg = 2^(subgroupLogSize sg)
