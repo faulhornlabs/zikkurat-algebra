@@ -15,21 +15,21 @@ Project goals:
 
 - nice, clean Haskell API, hopefully with good documentation
 - portable among at least the commonly used 64-bit platforms
-- performance within a 4x (preferably 2x) slowdown compared to state-of-the-art implementations
-- multithreading support in Haskell (but not in C)
+- performance within a 2x slowdown compared to state-of-the-art implementations
+- multithreading support in Haskell (optionally in C too)
 - standalone C library for easy interop with other languages
 - no external dependencies
 - comprehensive testing
 - the code should stay simple enough (and documented enough) so that auditing 
   correctness wouldn't be a nightmarishly daunting task 
   (this one is very much not satisfied at the moment, as the current code generator 
-  is very hackish.)
+  is _very_ hackish.)
 
 
 Metadata
 --------
 
-copyright: (c) 2023 Faulhorn Labs  
+copyright: (c) 2023-2024 Faulhorn Labs  
 author: Balazs Komuves  
 license: MIT or Apache-2.0 (at your choice)  
 disclaimer: Extremely preliminary software
@@ -46,6 +46,7 @@ Sub-projects:
 - `codegen` - the code generator
 - `pure` - finite fields in pure Haskell (used in the codegen)
 - `lib` - the Haskell library
+- `lib/cbits` - the C library
 - `test` - testing
 - `examples` - examples of using the library
 - `bench` - benchmarks (TODO)
@@ -53,9 +54,9 @@ Sub-projects:
 The essential parts of the code are written in (generated) C, maybe with some assembly.
 This C code (under `lib/cbits`) is self-contained, and can be also used without the Haskell bindings.
 
-There is specialized code for each individual field and curve, and maybe there
-should be also a generic Haskell reference implementation for testing purposes,
-but that's not there at the moment.
+There is specialized code for each individual field and curve, and there is
+also a (slow) generic Haskell reference implementation for testing and codegen 
+purposes.
 
 
 Supported primitives
@@ -89,7 +90,7 @@ for pairing, plus:
     - Goldilocks: `p = 2^64 - 2^32 + 1`
     - Mersenne-31
     - Baby Bear
-    - binary fields; Wiedeman's binary tower
+    - binary fields; Wiedemann's binary tower
     - ...
 
 

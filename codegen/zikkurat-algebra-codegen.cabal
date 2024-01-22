@@ -39,6 +39,7 @@ Library
                         Zikkurat.CodeGen.Curve.FFT
                         Zikkurat.CodeGen.Curve.Params
                         Zikkurat.CodeGen.Curve.CurveFFI
+                        Zikkurat.CodeGen.Curve.Shared
                         Zikkurat.CodeGen.PrimeField.StdRep
                         Zikkurat.CodeGen.PrimeField.Montgomery
                         Zikkurat.CodeGen.ExtField

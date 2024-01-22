@@ -22,14 +22,14 @@ import Zikkurat.CodeGen.Curve.Params
 
 --------------------------------------------------------------------------------
 
-fft_c_header :: Curve -> CodeGenParams -> Code
-fft_c_header (Curve{..}) (CodeGenParams{..}) =
+fft_c_header :: CodeGenParams -> Code
+fft_c_header (CodeGenParams{..}) =
   [ "extern void " ++ prefix ++ "fft_forward( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "fft_inverse( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt );"
   ]
 
-fft_hs_binding :: Curve -> CodeGenParams -> Code
-fft_hs_binding (Curve{..}) (CodeGenParams{..}) =
+fft_hs_binding :: CodeGenParams -> Code
+fft_hs_binding (CodeGenParams{..}) =
   [ ""
   , "foreign import ccall unsafe \"" ++ prefix ++ "fft_inverse\" c_" ++ prefix ++ "fft_inverse :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
   , "foreign import ccall unsafe \"" ++ prefix ++ "fft_forward\" c_" ++ prefix ++ "fft_forward :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
@@ -62,13 +62,13 @@ fft_hs_binding (Curve{..}) (CodeGenParams{..}) =
   , ""
   ]
 
-c_group_fft :: Curve -> CodeGenParams -> Code
+c_group_fft :: XCurve -> CodeGenParams -> Code
 c_group_fft curve cgparams 
-  =  c_group_forward_fft curve cgparams
+  =  c_group_forward_fft       cgparams
   ++ c_group_inverse_fft curve cgparams
 
-c_group_inverse_fft :: Curve -> CodeGenParams -> Code
-c_group_inverse_fft (Curve{..}) (CodeGenParams{..}) = 
+c_group_inverse_fft :: XCurve -> CodeGenParams -> Code
+c_group_inverse_fft xcurve (CodeGenParams{..}) = 
   [ ""
   , "// -----------------------------------------------------------------------------"
   , ""
@@ -135,14 +135,14 @@ c_group_inverse_fft (Curve{..}) (CodeGenParams{..}) =
   , ""
   ]
   where
-    prime_r  = curveFr
+    prime_r  = curveFr (extractCurve1 xcurve) 
     half_std = div (prime_r + 1) 2                   -- (p+1)/2 = 1/2
     toMont x = mod (2^(64*nlimbs_r) * x) prime_r     -- but we need Montgomery repr!
 
 --------------------------------------------------------------------------------
 
-c_group_forward_fft :: Curve -> CodeGenParams -> Code
-c_group_forward_fft (Curve{..}) (CodeGenParams{..}) = 
+c_group_forward_fft :: CodeGenParams -> Code
+c_group_forward_fft (CodeGenParams{..}) = 
   [ ""
   , "#define GRP_NLIMBS (3*NLIMBS_P)"
   , ""

@@ -1,5 +1,5 @@
 
-// elliptic curve "BN128" in affine coordinates, Montgomery field representation
+// elliptic curve "BN128 ( Fp ) " in affine coordinates, Montgomery field representation
 //
 // NOTES:
 //  - generated code, do not edit!
@@ -36,6 +36,7 @@ const uint64_t bn128_G1_affine_cofactor[4] = { 0x0000000000000001, 0x00000000000
 // the constants A and B of the equation
 const uint64_t bn128_G1_affine_const_A[4] = { 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
 const uint64_t bn128_G1_affine_const_B[4] = { 0x7a17caa950ad28d7, 0x1f6ac17ae15521b9, 0x334bea4e696bd284, 0x2a1f6744ce179d8e };
+const uint64_t bn128_G1_affine_const_3B[4] = { 0xf60647ce410d7ff7, 0x2f3d6f4dd31bd011, 0x2943337e3940c6d1, 0x1d9598e8a7e39857 };
 
 //------------------------------------------------------------------------------
 

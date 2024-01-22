@@ -1,10 +1,10 @@
 
--- | BLS12-381 curve, affine coordinates, Montgomery field representation
+-- | BLS12-381 ( Fp )  curve, affine coordinates, Montgomery field representation
 
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
 
-{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
+{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, PatternSynonyms #-}
 module ZK.Algebra.Curves.BLS12_381.G1.Affine
   ( G1(..)
     -- * Parameters
@@ -46,6 +46,7 @@ import ZK.Algebra.Curves.BLS12_381.Fr.Mont ( Fr(..) )
 import qualified ZK.Algebra.Curves.BLS12_381.Fp.Mont as Fp
 import qualified ZK.Algebra.Curves.BLS12_381.Fr.Mont as Fr
 import qualified ZK.Algebra.BigInt.BigInt384 as BigP
+
 import qualified ZK.Algebra.Curves.BLS12_381.G1.Proj as Proj    -- note: be careful with cyclic imports!
 
 import qualified ZK.Algebra.Class.Flat  as L
@@ -58,6 +59,9 @@ primeP, primeR, cofactor :: Integer
 primeP = Fp.prime
 primeR = Fr.prime
 cofactor = 76329603384216526031706109802092473003
+
+type Base = Fp
+pattern MkBase fptr = MkFp fptr
 
 -- | parameters A and B of the curve equation @y^2 = x^3 + A*x + B@
 curveA, curveB :: Integer
@@ -76,18 +80,18 @@ genG1 = mkPoint (x, y) where
 newtype G1 = MkG1 (ForeignPtr Word64)
 
 -- | Note: this throws an exception if the point is not on the curve
-mkPoint :: (Fp, Fp) -> G1
+mkPoint :: (Base, Base) -> G1
 mkPoint xyz = case mkPointMaybe xyz of
   Just pt -> pt
   Nothing -> error "mkPoint: point is not on the curve"
 
-mkPointMaybe :: (Fp, Fp) -> Maybe G1
+mkPointMaybe :: (Base, Base) -> Maybe G1
 mkPointMaybe xyz = let pt = unsafeMkPoint xyz in
   case isOnCurve pt of { True -> Just pt ; False -> Nothing }
 
 {-# NOINLINE unsafeMkPoint #-}
-unsafeMkPoint :: (Fp, Fp) -> G1
-unsafeMkPoint (MkFp fptr1 , MkFp fptr2) = unsafePerformIO $ do
+unsafeMkPoint :: (Base, Base) -> G1
+unsafeMkPoint (MkBase fptr1 , MkBase fptr2) = unsafePerformIO $ do
   fptr3 <- mallocForeignPtrArray 12
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
@@ -109,7 +113,7 @@ infinity = unsafePerformIO $ do
 
 {-# NOINLINE coords #-}
 -- | Affine coordinates (TODO: handle the point at infinity)
-coords :: G1 -> (Fp, Fp)
+coords :: G1 -> (Base, Base)
 coords (MkG1 fptr3) = unsafePerformIO $ do
   fptr1 <- mallocForeignPtrArray 6
   fptr2 <- mallocForeignPtrArray 6
@@ -118,7 +122,7 @@ coords (MkG1 fptr3) = unsafePerformIO $ do
       withForeignPtr fptr3 $ \ptr3 -> do
         copyBytes ptr1 (        ptr3   ) 48
         copyBytes ptr2 (plusPtr ptr3 48) 48
-  return (MkFp fptr1, MkFp fptr2)
+  return (MkBase fptr1, MkBase fptr2)
 
 -- | Returns a uniformly random element /in the subgroup G1/
 rndG1 :: IO G1
@@ -148,7 +152,7 @@ instance F.Rnd G1 where
   rndIO = rndG1
 
 instance C.Group G1 where
-  grpName _    = "BLS12-381 / G1"
+  grpName _    = "BLS12-381 / G1 "
   grpIsUnit    = isInfinity
   grpUnit      = infinity
   grpNormalize = id
@@ -160,8 +164,8 @@ instance C.Group G1 where
   grpScale     = sclBig
 
 instance C.Curve G1 where
-  curveNamePxy _ = "BLS12-381 ( Fp )"
-  type BaseField   G1 = Fp
+  curveNamePxy _ = "BLS12-381 ( Fp ) "
+  type BaseField   G1 = Base
   type ScalarField G1 = Fr
   isOnCurve   = ZK.Algebra.Curves.BLS12_381.G1.Affine.isOnCurve
   isInifinity = ZK.Algebra.Curves.BLS12_381.G1.Affine.isInfinity

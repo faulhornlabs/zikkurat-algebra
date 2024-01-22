@@ -103,6 +103,21 @@ mkConstArr :: Int -> String -> [Integer] -> String
 mkConstArr n name values = "const uint64_t " ++ name ++ "[" ++ show (n*length values) ++ "] = { " ++ intercalate ", " (map showHex64 $ concat wss) ++ " };" where
   wss = map (toWord64sLE' n) values
 
+-- | Note: here @n@ must be the number of limbs in Fp2, not in Fp!
+mkConstFp2 :: Int -> String -> (Integer,Integer) -> String 
+mkConstFp2 n name (value1,value2) = "const uint64_t " ++ name ++ "[" ++ show n ++ "] = { " ++ intercalate ", " (map showHex64 ws) ++ " };" where
+  ws  = (ws1 ++ ws2)
+  ws1 = toWord64sLE' (div n 2) value1
+  ws2 = toWord64sLE' (div n 2) value2
+
+-- | Note: here @n@ must be the number of limbs in Fp2, not in Fp!
+mkConstArrFp2 :: Int -> String -> [(Integer,Integer)] -> String 
+mkConstArrFp2 n name values = "const uint64_t " ++ name ++ "[" ++ show (n*length values) ++ "] = { " ++ intercalate ", " (map showHex64 $ concat wss) ++ " };" where
+  wss = map f values
+  f (value1,value2) = ws1 ++ ws2 where
+    ws1 = toWord64sLE' (div n 2) value1
+    ws2 = toWord64sLE' (div n 2) value2
+
 --------------------------------------------------------------------------------
 
 type CName  = String

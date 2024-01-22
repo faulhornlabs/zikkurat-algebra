@@ -1,5 +1,5 @@
 
-// elliptic curve "BLS12-381" in affine coordinates, Montgomery field representation
+// elliptic curve "BLS12-381 ( Fp ) " in affine coordinates, Montgomery field representation
 //
 // NOTES:
 //  - generated code, do not edit!
@@ -36,6 +36,7 @@ const uint64_t bls12_381_G1_affine_cofactor[6] = { 0x8c00aaab0000aaab, 0x396c8c0
 // the constants A and B of the equation
 const uint64_t bls12_381_G1_affine_const_A[6] = { 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
 const uint64_t bls12_381_G1_affine_const_B[6] = { 0xaa270000000cfff3, 0x53cc0032fc34000a, 0x478fe97a6b0a807f, 0xb1d37ebee6ba24d7, 0x8ec9733bbf78ab2f, 0x09d645513d83de7e };
+const uint64_t bls12_381_G1_affine_const_3B[6] = { 0x447600000027552e, 0xdcb8009a43480020, 0x6f7ee9ce4a6e8b59, 0xb10330b7c0a95bc6, 0x6140b1fcfb1e54b7, 0x0381be097f0bb4e1 };
 
 //------------------------------------------------------------------------------
 

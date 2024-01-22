@@ -38,6 +38,8 @@ help = do
   putStrLn " - affine_curve"
   putStrLn " - proj_curve"
   putStrLn " - jac_curve"
+  putStrLn " - affine_curve_g2"
+  putStrLn " - proj_curve_g2"
   putStrLn " - poly"
   putStrLn ""
 
@@ -52,9 +54,11 @@ validNames =
   , "montfield" , "montgomery"
   , "towers" , "extfield"
   , "compare" , "againstref" , "reference"
-  , "projcurve" , "projective"
+  , "affcurve"   , "affinecurve"   , "affine"
+  , "affcurveg2" , "affinecurveg2" , "affineg2"
+  , "projcurve"   , "projective"   , "proj" 
+  , "projcurveg2" , "projectiveg2" , "projg2"
   , "jaccurve" , "jacobiancurve" , "jacobian"
-  , "affcurve" , "affinecurve" , "affine"
   , "poly" , "polynomial" , "univariate"
   ]
 
@@ -78,23 +82,30 @@ testMain what n = case canonicalizeName what of
   "againstref" -> runTestsCompare n 
   "reference"  -> runTestsCompare n
 
+  "affcurve"    -> runTestsAffineCurve n
+  "affinecurve" -> runTestsAffineCurve n
+  "affine"      -> runTestsAffineCurve n
+  "affcurveg2"    -> runTestsAffineCurveG2 n
+  "affinecurveg2" -> runTestsAffineCurveG2 n
+  "affineg2"      -> runTestsAffineCurveG2 n
+
   "projcurve"  -> runTestsProjCurve n
   "projective" -> runTestsProjCurve n
+  "proj"       -> runTestsProjCurve n
+  "projcurveg2"  -> runTestsProjCurveG2 n
+  "projectiveg2" -> runTestsProjCurveG2 n
+  "projg2"       -> runTestsProjCurveG2 n
 
   "jaccurve"      -> runTestsJacCurve n
   "jacobian"      -> runTestsJacCurve n
   "jacobiancurve" -> runTestsJacCurve n
-
-  "affcurve"    -> runTestsAffineCurve n
-  "affinecurve" -> runTestsAffineCurve n
-  "affine"      -> runTestsAffineCurve n
 
   "poly"        -> runTestsPolys n 
   "polynomial"  -> runTestsPolys n 
   "univariate"  -> runTestsPolys n
 
 canonicalizeName :: String -> String 
-canonicalizeName = map toLower . filter isLetter
+canonicalizeName = map toLower . filter isAlphaNum
 
 isValidName :: String -> Bool
 isValidName = (\s -> elem s validNames) . canonicalizeName

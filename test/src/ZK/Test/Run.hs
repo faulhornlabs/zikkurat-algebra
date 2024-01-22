@@ -43,10 +43,14 @@ import qualified ZK.Algebra.Curves.BLS12_381.Fp12.Mont as BLS12_381_Fp12_Mont
 import qualified ZK.Algebra.Curves.BN128.G1.Proj       as BN128_G1_Proj
 import qualified ZK.Algebra.Curves.BN128.G1.Jac        as BN128_G1_Jac
 import qualified ZK.Algebra.Curves.BN128.G1.Affine     as BN128_G1_Affine
+import qualified ZK.Algebra.Curves.BN128.G2.Proj       as BN128_G2_Proj
+import qualified ZK.Algebra.Curves.BN128.G2.Affine     as BN128_G2_Affine
 
 import qualified ZK.Algebra.Curves.BLS12_381.G1.Proj   as BLS12_381_G1_Proj
 import qualified ZK.Algebra.Curves.BLS12_381.G1.Jac    as BLS12_381_G1_Jac
 import qualified ZK.Algebra.Curves.BLS12_381.G1.Affine as BLS12_381_G1_Affine
+import qualified ZK.Algebra.Curves.BLS12_381.G2.Proj   as BLS12_381_G2_Proj
+import qualified ZK.Algebra.Curves.BLS12_381.G2.Affine as BLS12_381_G2_Affine
 
 import qualified ZK.Algebra.Curves.BN128.Poly          as BN128_Poly
 import qualified ZK.Algebra.Curves.BLS12_381.Poly      as BLS12_381_Poly
@@ -64,14 +68,16 @@ printHeader str = do
 runTestsAll :: Int -> IO ()
 runTestsAll n = do
   runTestsPlatform   
-  runTestsBigInt      n 
-  runTestsStdField    n
-  runTestsMontField   n
-  runTestsProjCurve   n
-  runTestsAffineCurve n
-  runTestsJacCurve    n
-  runTestsPolys       n
-  runTestsCompare     n
+  runTestsBigInt        n 
+  runTestsStdField      n
+  runTestsMontField     n
+  runTestsProjCurve     n
+  runTestsAffineCurve   n
+  runTestsJacCurve      n
+  runTestsProjCurveG2   n
+  runTestsAffineCurveG2 n
+  runTestsPolys         n
+  runTestsCompare       n
 
 ----------------------------------------
 
@@ -110,6 +116,15 @@ runTestsProjCurve n = do
   printHeader "running tests for BN128/G1/Proj"
   runProjCurveTests n (Proxy @BN128_G1_Proj.G1)
 
+runTestsProjCurveG2 :: Int -> IO ()
+runTestsProjCurveG2 n = do
+
+  printHeader "running tests for BLS12-381/G2/Proj"
+  runProjCurveTests n (Proxy @BLS12_381_G2_Proj.G2)
+
+  printHeader "running tests for BN128/G2/Proj"
+  runProjCurveTests n (Proxy @BN128_G2_Proj.G2)
+
 ----------------------------------------
 
 runTestsJacCurve :: Int -> IO ()
@@ -131,6 +146,15 @@ runTestsAffineCurve n = do
 
   printHeader "running tests for BN128/G1/Affine"
   runCurveTests n (Proxy @BN128_G1_Affine.G1)
+
+runTestsAffineCurveG2 :: Int -> IO ()
+runTestsAffineCurveG2 n = do
+
+  printHeader "running tests for BLS12-381/G2/Affine"
+  runCurveTests n (Proxy @BLS12_381_G2_Affine.G2)
+
+  printHeader "running tests for BN128/G2/Affine"
+  runCurveTests n (Proxy @BN128_G2_Affine.G2)
 
 ----------------------------------------
 

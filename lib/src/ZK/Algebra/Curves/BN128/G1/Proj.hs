@@ -1,15 +1,16 @@
 
--- | BN128 curve, projective coordinates, Montgomery field representation
+-- | BN128 ( Fp )  curve, projective coordinates, Montgomery field representation
 
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
 
-{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
+{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, PatternSynonyms #-}
 module ZK.Algebra.Curves.BN128.G1.Proj
   ( G1(..)
     -- * Parameters
   , primeP , primeR , cofactor , curveA , curveB
   , genG1 , infinity
+    -- * Curve points
     -- * Curve points
   , coords , mkPoint , mkPointMaybe , unsafeMkPoint
   , fromAffine , toAffine
@@ -50,6 +51,7 @@ import System.IO.Unsafe
 import ZK.Algebra.Curves.BN128.Fp.Mont ( Fp(..) )
 import ZK.Algebra.Curves.BN128.Fr.Mont ( Fr(..) )
 import qualified ZK.Algebra.Curves.BN128.Fp.Mont as Fp
+import qualified ZK.Algebra.Curves.BN128.Fp.Mont as Base
 import qualified ZK.Algebra.Curves.BN128.Fr.Mont as Fr
 import qualified ZK.Algebra.Curves.BN128.Fr.Std
 import qualified ZK.Algebra.BigInt.BigInt256 as BigP
@@ -64,11 +66,13 @@ import           ZK.Algebra.Class.FFT
 
 --------------------------------------------------------------------------------
 
--- | The sizes of the fields Fp, Fr, and the cofactor of the subgroup G1
 primeP, primeR, cofactor :: Integer
 primeP = Fp.prime
 primeR = Fr.prime
 cofactor = 1
+
+type Base = Fp
+pattern MkBase fptr = MkFp fptr
 
 -- | parameters A and B of the curve equation @y^2 = x^3 + A*x + B@
 curveA, curveB :: Integer
@@ -87,22 +91,22 @@ genG1 = mkPoint (x, y, Fp.one) where
 newtype G1 = MkG1 (ForeignPtr Word64)
 
 -- | Note: this throws an exception if the point is not on the curve
-mkPoint :: (Fp, Fp, Fp) -> G1
+mkPoint :: (Base, Base, Base) -> G1
 mkPoint xyz = case mkPointMaybe xyz of
   Just pt -> pt
   Nothing -> error "mkPoint: point is not on the curve"
 
-mkPointMaybe :: (Fp, Fp, Fp) -> Maybe G1
+mkPointMaybe :: (Base, Base, Base) -> Maybe G1
 mkPointMaybe xyz = let pt = unsafeMkPoint xyz in
   case isOnCurve pt of { True -> Just pt ; False -> Nothing }
 
 -- | The point at infinity
 infinity :: G1
-infinity = unsafeMkPoint (Fp.zero, Fp.one, Fp.zero)
+infinity = unsafeMkPoint (Base.zero, Base.one, Base.zero)
 
 {-# NOINLINE unsafeMkPoint #-}
-unsafeMkPoint :: (Fp, Fp, Fp) -> G1
-unsafeMkPoint (MkFp fptr1 , MkFp fptr2 , MkFp fptr3) = unsafePerformIO $ do
+unsafeMkPoint :: (Base, Base, Base) -> G1
+unsafeMkPoint (MkBase fptr1 , MkBase fptr2 , MkBase fptr3) = unsafePerformIO $ do
   fptr4 <- mallocForeignPtrArray 12
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
@@ -114,7 +118,7 @@ unsafeMkPoint (MkFp fptr1 , MkFp fptr2 , MkFp fptr3) = unsafePerformIO $ do
   return (MkG1 fptr4)
 
 {-# NOINLINE coords #-}
-coords :: G1 -> (Fp, Fp, Fp)
+coords :: G1 -> (Base, Base, Base)
 coords (MkG1 fptr4) = unsafePerformIO $ do
   fptr1 <- mallocForeignPtrArray 4
   fptr2 <- mallocForeignPtrArray 4
@@ -126,7 +130,7 @@ coords (MkG1 fptr4) = unsafePerformIO $ do
           copyBytes ptr1 (        ptr4   ) 32
           copyBytes ptr2 (plusPtr ptr4 32) 32
           copyBytes ptr3 (plusPtr ptr4 64) 32
-  return (MkFp fptr1, MkFp fptr2, MkFp fptr3)
+  return (MkBase fptr1, MkBase fptr2, MkBase fptr3)
 
 -- | Returns a uniformly random element /in the subgroup G1/.
 -- Note: this is slow, because it uses exponentiation.
@@ -135,7 +139,7 @@ rndG1_naive = do
   k <- Fr.rnd :: IO Fr
   return (sclFr k genG1)
 
--- | Returns a uniformly random element /in the subgroup G1/
+-- | Returns a uniformly random element /in the subgroup G1/.
 rndG1 :: IO G1
 rndG1 = rndG1_naive
 
@@ -162,7 +166,7 @@ instance F.Rnd G1 where
   rndIO = rndG1
 
 instance C.Group G1 where
-  grpName _    = "BN128 / G1"
+  grpName _    = "BN128 / G1 "
   grpIsUnit    = ZK.Algebra.Curves.BN128.G1.Proj.isInfinity
   grpUnit      = ZK.Algebra.Curves.BN128.G1.Proj.infinity
   grpNormalize = normalize
@@ -174,8 +178,8 @@ instance C.Group G1 where
   grpScale     = sclBig
 
 instance C.Curve G1 where
-  curveNamePxy _ = "BN128 ( Fp )"
-  type BaseField   G1 = Fp
+  curveNamePxy _ = "BN128 ( Fp ) "
+  type BaseField   G1 = Base
   type ScalarField G1 = Fr
   isOnCurve   = ZK.Algebra.Curves.BN128.G1.Proj.isOnCurve
   isInifinity = ZK.Algebra.Curves.BN128.G1.Proj.isInfinity
@@ -251,7 +255,7 @@ foreign import ccall unsafe "bn128_G1_proj_fft_inverse" c_bn128_G1_proj_fft_inve
 foreign import ccall unsafe "bn128_G1_proj_fft_forward" c_bn128_G1_proj_fft_forward :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE forwardFFT #-}
--- | Forward FFT for groups (converting [L_k(tau)] points to [tau^i] points)
+-- | Forward FFT for groups (converting @[L_k(tau)]@ points to @[tau^i]@ points)
 forwardFFT :: FFTSubgroup Fr -> FlatArray G1 -> FlatArray G1
 forwardFFT sg (MkFlatArray n fptr2)
   | subgroupSize sg /= n   = error "forwardNTT: subgroup size differs from the array size"
@@ -264,7 +268,7 @@ forwardFFT sg (MkFlatArray n fptr2)
       return (MkFlatArray n fptr3)
 
 {-# NOINLINE inverseFFT #-}
--- | Inverse FFT for groups (converting [tau^i] points to [L_k(tau)] points)
+-- | Inverse FFT for groups (converting @[tau^i]@ points to @[L_k(tau)]@ points)
 inverseFFT :: FFTSubgroup Fr -> FlatArray G1 -> FlatArray G1
 inverseFFT sg (MkFlatArray n fptr2)
   | subgroupSize sg /= n   = error "inverseNTT: subgroup size differs from the array size"

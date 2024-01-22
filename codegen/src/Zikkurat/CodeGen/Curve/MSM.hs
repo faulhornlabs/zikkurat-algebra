@@ -21,8 +21,8 @@ import Zikkurat.CodeGen.Curve.CurveFFI
 
 --------------------------------------------------------------------------------
 
-msm_c_header :: Curve -> CodeGenParams -> Code
-msm_c_header (Curve{..}) (CodeGenParams{..}) =
+msm_c_header :: CodeGenParams -> Code
+msm_c_header (CodeGenParams{..}) =
   [ "extern void " ++ prefix ++ "MSM_std_coeff_"  ++ point_repr ++ "_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);"
   , "extern void " ++ prefix ++ "MSM_mont_coeff_" ++ point_repr ++ "_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);"
   , "extern void " ++ prefix ++ "MSM_std_coeff_affine_out (int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);"
@@ -30,8 +30,8 @@ msm_c_header (Curve{..}) (CodeGenParams{..}) =
   , "extern void " ++ prefix ++ "MSM_std_coeff_" ++ point_repr ++ "c_out_slow_reference(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);"
   ]
 
-msm_hs_binding :: Curve -> CodeGenParams -> Code
-msm_hs_binding (Curve{..}) (CodeGenParams{..}) =
+msm_hs_binding :: CodeGenParams -> Code
+msm_hs_binding (CodeGenParams{..}) =
   [ ""
   , "foreign import ccall unsafe \"" ++ prefix ++ "MSM_std_coeff_"  ++ point_repr ++ "_out\" c_" ++ prefix ++ "MSM_std_coeff_"  ++ point_repr ++ "_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()"
   , "foreign import ccall unsafe \"" ++ prefix ++ "MSM_mont_coeff_" ++ point_repr ++ "_out\" c_" ++ prefix ++ "MSM_mont_coeff_" ++ point_repr ++ "_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()"
@@ -73,8 +73,8 @@ msm_hs_binding (Curve{..}) (CodeGenParams{..}) =
   ]
 
 
-msmCurve :: Curve -> CodeGenParams -> Code
-msmCurve (Curve{..}) (CodeGenParams{..}) =
+msmCurve :: CodeGenParams -> Code
+msmCurve (CodeGenParams{..}) =
   [ "//------------------------------------------------------------------------------"
   , ""
   , "#define SIDX(b) (SUMS + (b-1)*(3*NLIMBS_P))"

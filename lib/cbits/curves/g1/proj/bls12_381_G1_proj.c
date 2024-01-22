@@ -1,5 +1,5 @@
 
-// elliptic curve "BLS12-381" in projective coordinates, Montgomery field representation
+// elliptic curve "BLS12-381 ( Fp ) " in projective coordinates, Montgomery field representation
 //
 // NOTE: generated code, do not edit!
 
@@ -35,6 +35,11 @@ const uint64_t bls12_381_G1_proj_gen_G1[18] = { 0x5cb38790fd530c16, 0x7817fc6799
 // the cofactor of the curve subgroup = 76329603384216526031706109802092473003
 const uint64_t bls12_381_G1_proj_cofactor[6] = { 0x8c00aaab0000aaab, 0x396c8c005555e156, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
 
+// the constants A and B of the equation
+const uint64_t bls12_381_G1_proj_const_A[6] = { 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
+const uint64_t bls12_381_G1_proj_const_B[6] = { 0xaa270000000cfff3, 0x53cc0032fc34000a, 0x478fe97a6b0a807f, 0xb1d37ebee6ba24d7, 0x8ec9733bbf78ab2f, 0x09d645513d83de7e };
+const uint64_t bls12_381_G1_proj_const_3B[6] = { 0x447600000027552e, 0xdcb8009a43480020, 0x6f7ee9ce4a6e8b59, 0xb10330b7c0a95bc6, 0x6140b1fcfb1e54b7, 0x0381be097f0bb4e1 };
+
 //------------------------------------------------------------------------------
 
 // scale a field element by A = 0
@@ -45,7 +50,6 @@ void bls12_381_G1_proj_scale_by_A(const uint64_t *src, uint64_t *tgt ) {
 void bls12_381_G1_proj_scale_by_A_inplace( uint64_t *tgt ) {
   memset( tgt, 0, 48 );
 }
-
 // scale a field element by B = 4
 void bls12_381_G1_proj_scale_by_B(const uint64_t *src, uint64_t *tgt ) {
   uint64_t tmp[6];
@@ -58,7 +62,6 @@ void bls12_381_G1_proj_scale_by_B_inplace( uint64_t *tgt ) {
   bls12_381_Fp_mont_add( tgt, tgt, tmp );
   bls12_381_Fp_mont_add( tmp, tmp, tgt );
 }
-
 // scale a field element by (3*B) = 12
 void bls12_381_G1_proj_scale_by_3B(const uint64_t *src, uint64_t *tgt ) {
   uint64_t tmp [NLIMBS_P];
@@ -438,19 +441,19 @@ void bls12_381_G1_proj_scl_windowed(const uint64_t *expo, const uint64_t *grp, u
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
-// where `grp` is a group element in G1, and `expo` is in Fr
+// where `grp` is a group element in G, and `expo` is in Fr
 void bls12_381_G1_proj_scl_generic(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt, int nlimbs) {
   bls12_381_G1_proj_scl_windowed(expo, grp, tgt, nlimbs);
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
-// where `grp` is a group element in G1, and `expo` is in Fr *in standard repr*
+// where `grp` is a group element in G, and `expo` is in Fr *in standard repr*
 void bls12_381_G1_proj_scl_Fr_std(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
   bls12_381_G1_proj_scl_generic(expo, grp, tgt, NLIMBS_R);
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
-// where `grp` is a group element in G1, and `expo` is in Fr *in Montgomery repr*
+// where `grp` is a group element in G, and `expo` is in Fr *in Montgomery repr*
 void bls12_381_G1_proj_scl_Fr_mont(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
   uint64_t expo_std[NLIMBS_R];
   bls12_381_Fr_mont_to_std(expo, expo_std);
@@ -458,13 +461,13 @@ void bls12_381_G1_proj_scl_Fr_mont(const uint64_t *expo, const uint64_t *grp, ui
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
-// where `grp` is a group element in G1, and `expo` is the same size as Fp
+// where `grp` is a group element in G, and `expo` is the same size as Fp
 void bls12_381_G1_proj_scl_big(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt) {
   bls12_381_G1_proj_scl_generic(expo, grp, tgt, NLIMBS_P);
 }
 
 // computes `expo*grp` (or `grp^expo` in multiplicative notation)
-// where `grp` is a group element in G1, and `expo` is a 64 bit (unsigned!) word
+// where `grp` is a group element in G, and `expo` is a 64 bit (unsigned!) word
 void bls12_381_G1_proj_scl_small(uint64_t expo, const uint64_t *grp, uint64_t *tgt) {
   uint64_t expo_vec[1];
   expo_vec[0] = expo;

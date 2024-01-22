@@ -21,6 +21,29 @@ Build-Type:           Simple
 
 --------------------------------------------------------------------------------
 
+extra-source-files:     cbits/*.h,
+                        cbits/*.c,
+                        cbits/bigint/*.h,
+                        cbits/bigint/*.c,
+                        cbits/curves/fields/std/*.h,
+                        cbits/curves/fields/std/*.c,
+                        cbits/curves/fields/mont/*.h,
+                        cbits/curves/fields/mont/*.c,
+                        cbits/curves/g1/affine/*.h,
+                        cbits/curves/g1/affine/*.c,
+                        cbits/curves/g1/proj/*.h,
+                        cbits/curves/g1/proj/*.c,
+                        cbits/curves/g1/jac/*.h,
+                        cbits/curves/g1/jac/*.c,
+                        cbits/curves/g2/affine/*.h,
+                        cbits/curves/g2/affine/*.c,
+                        cbits/curves/g2/proj/*.h,
+                        cbits/curves/g2/proj/*.c,
+                        cbits/curves/poly/mont/*.h,
+                        cbits/curves/poly/mont/*.c
+
+--------------------------------------------------------------------------------
+
 source-repository head
   type:                git 
   location:            https://github.com/faulhornlabs/zikkurat-algebra
@@ -40,8 +63,8 @@ Flag BLS12_381
 Library
 
   Build-Depends:        base >= 4 && < 5, 
-                        array >= 0.5,
-                        random >= 1.1
+                        array >= 0.5 && <1.0,
+                        random >= 1.1 && <1.5
 
   Exposed-Modules:      ZK.Algebra.Class.Flat
                         ZK.Algebra.Class.Field
@@ -58,6 +81,10 @@ Library
                         ZK.Algebra.BigInt.BigInt384
                         ZK.Algebra.BigInt.BigInt448
                         ZK.Algebra.BigInt.BigInt512
+                        ZK.Algebra.BigInt.BigInt576
+                        ZK.Algebra.BigInt.BigInt640
+                        ZK.Algebra.BigInt.BigInt704
+                        ZK.Algebra.BigInt.BigInt768
                         ZK.Algebra.BigInt.Platform
 
   if flag(BN128)
@@ -71,6 +98,8 @@ Library
                         ZK.Algebra.Curves.BN128.G1.Affine
                         ZK.Algebra.Curves.BN128.G1.Proj
                         ZK.Algebra.Curves.BN128.G1.Jac
+                        ZK.Algebra.Curves.BN128.G2.Affine
+                        ZK.Algebra.Curves.BN128.G2.Proj
                         ZK.Algebra.Curves.BN128.Poly
                         ZK.Algebra.Curves.BN128.Array
 
@@ -85,6 +114,8 @@ Library
                         ZK.Algebra.Curves.BLS12_381.G1.Affine
                         ZK.Algebra.Curves.BLS12_381.G1.Proj
                         ZK.Algebra.Curves.BLS12_381.G1.Jac
+                        ZK.Algebra.Curves.BLS12_381.G2.Affine
+                        ZK.Algebra.Curves.BLS12_381.G2.Proj
                         ZK.Algebra.Curves.BLS12_381.Poly
                         ZK.Algebra.Curves.BLS12_381.Array
 
@@ -96,6 +127,10 @@ Library
                         cbits/bigint/bigint384.c
                         cbits/bigint/bigint448.c
                         cbits/bigint/bigint512.c
+                        cbits/bigint/bigint576.c
+                        cbits/bigint/bigint640.c
+                        cbits/bigint/bigint704.c
+                        cbits/bigint/bigint768.c
 
   if flag(BN128)
 
@@ -109,6 +144,8 @@ Library
                         cbits/curves/g1/affine/bn128_G1_affine.c
                         cbits/curves/g1/proj/bn128_G1_proj.c
                         cbits/curves/g1/jac/bn128_G1_jac.c
+                        cbits/curves/g2/affine/bn128_G2_affine.c
+                        cbits/curves/g2/proj/bn128_G2_proj.c
                         cbits/curves/poly/mont/bn128_poly_mont.c
                         cbits/curves/array/mont/bn128_arr_mont.c
 
@@ -124,6 +161,8 @@ Library
                         cbits/curves/g1/affine/bls12_381_G1_affine.c
                         cbits/curves/g1/proj/bls12_381_G1_proj.c
                         cbits/curves/g1/jac/bls12_381_G1_jac.c
+                        cbits/curves/g2/affine/bls12_381_G2_affine.c
+                        cbits/curves/g2/proj/bls12_381_G2_proj.c
                         cbits/curves/poly/mont/bls12_381_poly_mont.c
                         cbits/curves/array/mont/bls12_381_arr_mont.c
 
@@ -139,6 +178,8 @@ Library
                         cbits/curves/g1/affine
                         cbits/curves/g1/proj
                         cbits/curves/g1/jac
+                        cbits/curves/g2/affine
+                        cbits/curves/g2/proj
                         cbits/curves/poly/mont
 
   ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
@@ -150,24 +191,6 @@ Library
   else
     cpp-options:         -DARCH_UNKNOWN
 
---------------------------------------------------------------------------------
-
-extra-source-files:     cbits/*.h,
-                        cbits/*.c,
-                        cbits/bigints/*.h,
-                        cbits/bigints/*.c,
-                        cbits/curves/fields/std/*.h,
-                        cbits/curves/fields/std/*.c,
-                        cbits/curves/fields/mont/*.h,
-                        cbits/curves/fields/mont/*.c,
-                        cbits/curves/g1/affine/*.h,
-                        cbits/curves/g1/affine/*.c,
-                        cbits/curves/g1/proj/*.h,
-                        cbits/curves/g1/proj/*.c,
-                        cbits/curves/g1/jac/*.h,
-                        cbits/curves/g1/jac/*.c,
-                        cbits/curves/poly/mont/*.h,
-                        cbits/curves/poly/mont/*.c
 
 --------------------------------------------------------------------------------
 

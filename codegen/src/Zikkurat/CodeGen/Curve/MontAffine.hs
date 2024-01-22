@@ -17,11 +17,12 @@ import Zikkurat.CodeGen.Misc
 
 import Zikkurat.CodeGen.Curve.Params
 import Zikkurat.CodeGen.Curve.CurveFFI
+import Zikkurat.CodeGen.Curve.Shared
 
 --------------------------------------------------------------------------------
 
-c_header :: Curve -> CodeGenParams -> Code
-c_header (Curve{..}) (CodeGenParams{..}) =
+c_header :: CodeGenParams -> Code
+c_header (CodeGenParams{..}) =
   [ "#include <stdint.h>"
   , ""
   , "extern void " ++ prefix ++ "copy( const uint64_t *src , uint64_t *tgt );"
@@ -53,8 +54,8 @@ c_header (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
-hsFFI :: Curve -> CodeGenParams -> Code
-hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $ 
+hsFFI :: CodeGenParams -> Code
+hsFFI (CodeGenParams{..}) = catCode $ 
   [ mkffi "isOnCurve"    $ cfun "is_on_curve"     (CTyp [CArgInAffine] CRetBool)
   , mkffi "isInfinity"   $ cfun "is_infinity"     (CTyp [CArgInAffine] CRetBool)
   , mkffi "isInSubgroup" $ cfun "is_in_subgroup"  (CTyp [CArgInAffine] CRetBool)
@@ -88,8 +89,8 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
 --------------------------------------------------------------------------------
 
 -- | @.hs-boot@ file
-hsBoot  :: Curve -> CodeGenParams -> Code
-hsBoot (Curve{..}) (CodeGenParams{..}) =
+hsBoot  :: CodeGenParams -> Code
+hsBoot (CodeGenParams{..}) =
   [ "{-# OPTIONS_GHC -fno-warn-missing-methods #-}"
   , "module " ++ hsModule hs_path ++ " where"
   , ""
@@ -116,20 +117,19 @@ hsBoot (Curve{..}) (CodeGenParams{..}) =
   , ""
   ]
 
-hsBegin :: Curve -> CodeGenParams -> Code
-hsBegin (Curve{..}) (CodeGenParams{..}) =
-  [ "-- | " ++ curveName ++ " curve, affine coordinates, Montgomery field representation"
+hsBegin :: XCurve -> CodeGenParams -> Code
+hsBegin xcurve cgparams@(CodeGenParams{..}) =
+  [ "-- | " ++ full_curvename xcurve ++ " curve, affine coordinates, Montgomery field representation"
   , ""
   , "-- NOTE 1: This module is intented to be imported qualified"
   , "-- NOTE 2: Generated code, do not edit!"
   , ""
-  , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}"
+  , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, PatternSynonyms #-}"
   , "module " ++ hsModule hs_path
   , "  ( " ++ typeName ++ "(..)"
-  , "    -- * Parameters"
-  , "  , primeP , primeR , cofactor , curveA , curveB"
-  , "  , genG1 , infinity"
-  , "    -- * Curve points"
+  ] ++ 
+  hsExportParams xcurve ++
+  [ "    -- * Curve points"
   , "  , coords , mkPoint , mkPointMaybe , unsafeMkPoint"
   , "    -- * Predicates"
   , "  , isEqual , isSame"
@@ -139,7 +139,7 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "    -- * Scaling"
   , "  , sclFr , sclBig , sclSmall"
   , "    -- * Random"
-  , "  , rndG1"
+  , "  , rnd" ++ typeName
   , "    -- * Sage"
   , "  , sageSetup , printSageSetup"
   , "  )"  
@@ -160,11 +160,26 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "import System.IO.Unsafe"
   , ""
-  , "import " ++ hsModule hs_path_p ++ " ( Fp(..) )"
-  , "import " ++ hsModule hs_path_r ++ " ( Fr(..) )"
-  , "import qualified " ++ hsModule hs_path_p ++ " as Fp"
-  , "import qualified " ++ hsModule hs_path_r ++ " as Fr"
-  , "import qualified " ++ hsModule hs_path_big_p ++ " as BigP"
+  ] ++
+  (case xcurve of
+    Left _ ->
+      [ "import " ++ hsModule hs_path_p ++ " ( Fp(..) )"
+      , "import " ++ hsModule hs_path_r ++ " ( Fr(..) )"
+      , "import qualified " ++ hsModule hs_path_p ++ " as Fp"
+      , "import qualified " ++ hsModule hs_path_r ++ " as Fr"
+      , "import qualified " ++ hsModule hs_path_big_p ++ " as BigP"
+      ]
+    Right _ -> 
+      [ "import " ++ hsModule hs_path_p   ++ " ( Fp(..)  )"
+      , "import " ++ hsModule hs_path_fp2 ++ " ( Fp2(..) )"
+      , "import " ++ hsModule hs_path_r   ++ " ( Fr(..)  )"
+      , "import qualified " ++ hsModule hs_path_p   ++ " as Fp"
+      , "import qualified " ++ hsModule hs_path_fp2 ++ " as Fp2"
+      , "import qualified " ++ hsModule hs_path_r   ++ " as Fr"
+      , "import qualified " ++ hsModule hs_path_big_p ++ " as BigP"
+      ]
+  ) ++
+  [ ""
   , "import qualified " ++ hsModule hs_path_proj  ++ " as Proj    -- note: be careful with cyclic imports!"
   , ""
   , "import qualified ZK.Algebra.Class.Flat  as L"
@@ -173,40 +188,27 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
-  , "primeP, primeR, cofactor :: Integer"
-  , "primeP = Fp.prime"
-  , "primeR = Fr.prime"
-  , "cofactor = " ++ show cofactor
-  , ""
-  , "-- | parameters A and B of the curve equation @y^2 = x^3 + A*x + B@"
-  , "curveA, curveB :: Integer"
-  , "curveA = " ++ show curveA
-  , "curveB = " ++ show curveB
-  , ""
-  , "-- | generator of the r-sized subgroup G1"
-  , "genG1 :: " ++ typeName
-  , "genG1 = mkPoint (x, y) where"
-  , "  x = " ++ show (fst subgroupGen)
-  , "  y = " ++ show (snd subgroupGen)
-  , ""
+  ] ++ 
+  hsBegin_xcurve False xcurve cgparams ++
+  [ ""
   , "--------------------------------------------------------------------------------"
   , ""
   , "-- | An elliptic curve point, in affine coordinates"
   , "newtype " ++ typeName ++ " = Mk" ++ typeName ++ " (ForeignPtr Word64)"
   , ""
   , "-- | Note: this throws an exception if the point is not on the curve"
-  , "mkPoint :: (Fp, Fp) -> " ++ typeName
+  , "mkPoint :: (Base, Base) -> " ++ typeName
   , "mkPoint xyz = case mkPointMaybe xyz of"
   , "  Just pt -> pt"
   , "  Nothing -> error \"mkPoint: point is not on the curve\""
   , ""
-  , "mkPointMaybe :: (Fp, Fp) -> Maybe " ++ typeName
+  , "mkPointMaybe :: (Base, Base) -> Maybe " ++ typeName
   , "mkPointMaybe xyz = let pt = unsafeMkPoint xyz in"
   , "  case isOnCurve pt of { True -> Just pt ; False -> Nothing }"
   , ""
   , "{-# NOINLINE unsafeMkPoint #-}"
-  , "unsafeMkPoint :: (Fp, Fp) -> " ++ typeName
-  , "unsafeMkPoint (MkFp fptr1 , MkFp fptr2) = unsafePerformIO $ do"
+  , "unsafeMkPoint :: (Base, Base) -> " ++ typeName
+  , "unsafeMkPoint (MkBase fptr1 , MkBase fptr2) = unsafePerformIO $ do"
   , "  fptr3 <- mallocForeignPtrArray " ++ show (2*nlimbs_p)
   , "  withForeignPtr fptr1 $ \\ptr1 -> do"
   , "    withForeignPtr fptr2 $ \\ptr2 -> do"
@@ -228,7 +230,7 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "{-# NOINLINE coords #-}"
   , "-- | Affine coordinates (TODO: handle the point at infinity)"
-  , "coords :: " ++ typeName ++ " -> (Fp, Fp)"
+  , "coords :: " ++ typeName ++ " -> (Base, Base)"
   , "coords (Mk" ++ typeName ++ " fptr3) = unsafePerformIO $ do"
   , "  fptr1 <- mallocForeignPtrArray " ++ show (nlimbs_p)
   , "  fptr2 <- mallocForeignPtrArray " ++ show (nlimbs_p)
@@ -237,11 +239,11 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "      withForeignPtr fptr3 $ \\ptr3 -> do"
   , "        copyBytes ptr1 (        ptr3 " ++                      "  ) " ++ show (8*nlimbs_p)
   , "        copyBytes ptr2 (plusPtr ptr3 " ++ show (  8*nlimbs_p) ++ ") " ++ show (8*nlimbs_p)
-  , "  return (MkFp fptr1, MkFp fptr2)"
+  , "  return (MkBase fptr1, MkBase fptr2)"
   , ""
-  , "-- | Returns a uniformly random element /in the subgroup G1/"
-  , "rndG1 :: IO " ++ typeName
-  , "rndG1 = Proj.toAffine <$> Proj.rndG1"
+  , "-- | Returns a uniformly random element /in the subgroup " ++ typeName ++ "/"
+  , "rnd" ++ typeName ++ " :: IO " ++ typeName
+  , "rnd" ++ typeName ++ " = Proj.toAffine <$> Proj.rnd" ++ typeName
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -264,10 +266,10 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  makeFlat = L.makeFlatGeneric Mk" ++ typeName ++ " " ++ show (2*nlimbs_p)
   , ""
   , "instance F.Rnd " ++ typeName ++ " where"
-  , "  rndIO = rndG1"
+  , "  rndIO = rnd" ++ typeName
   , ""
   , "instance C.Group " ++ typeName ++ " where"
-  , "  grpName _    = \"" ++ curveName ++ " / G1\""
+  , "  grpName _    = \"" ++ x_groupname xcurve ++ "\""
   , "  grpIsUnit    = isInfinity"
   , "  grpUnit      = infinity"
   , "  grpNormalize = id"
@@ -279,13 +281,13 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "  grpScale     = sclBig"
   , ""
   , "instance C.Curve " ++ typeName ++ " where"
-  , "  curveNamePxy _ = \"" ++ curveName ++ " ( Fp )\""
-  , "  type BaseField   " ++ typeName ++ " = Fp"
+  , "  curveNamePxy _ = \"" ++ full_curvename xcurve ++ "\""
+  , "  type BaseField   " ++ typeName ++ " = Base"
   , "  type ScalarField " ++ typeName ++ " = Fr"
   , "  isOnCurve   = " ++ hsModule hs_path_affine ++ ".isOnCurve"
   , "  isInifinity = " ++ hsModule hs_path_affine ++ ".isInfinity"
   , "  infinity    = " ++ hsModule hs_path_affine ++ ".infinity"
-  , "  subgroupGen = " ++ hsModule hs_path_affine ++ ".genG1"
+  , "  subgroupGen = " ++ hsModule hs_path_affine ++ ".gen" ++ typeName
   , "  scalarMul   = " ++ hsModule hs_path_affine ++ ".sclFr"
   , ""
   , "instance C.AffineCurve " ++ typeName ++ " where"
@@ -294,13 +296,13 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
-  , "sclSmall :: Int -> G1 -> G1"
+  , "sclSmall :: Int -> " ++ typeName ++ " -> " ++ typeName
   , "sclSmall k pt"
   , "  | k == 0    = infinity"
   , "  | k < 0     = neg $ sclSmallNonNeg (negate k) pt"
   , "  | otherwise =       sclSmallNonNeg (       k) pt"
   , ""
-  , "sclBig :: Integer -> G1 -> G1"
+  , "sclBig :: Integer -> " ++ typeName ++ " -> " ++ typeName
   , "sclBig k pt"
   , "  | k == 0    = infinity"
   , "  | k < 0     = neg $ sclBigNonNeg (fromInteger $ negate k) pt"
@@ -310,12 +312,12 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   ]
   where
     hs_path_proj = pathReplaceBaseName "Proj" hs_path
-
+ 
 --------------------------------------------------------------------------------
 
-c_begin :: Curve -> CodeGenParams -> Code
-c_begin curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
-  [ "// elliptic curve " ++ show curveName ++ " in affine coordinates, Montgomery field representation"
+c_begin :: XCurve -> CodeGenParams -> Code
+c_begin xcurve cgparams@(CodeGenParams{..}) =
+  [ "// elliptic curve " ++ show (full_curvename xcurve) ++ " in affine coordinates, Montgomery field representation"
   , "//"
   , "// NOTES:"
   , "//  - generated code, do not edit!"
@@ -343,16 +345,12 @@ c_begin curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
   , "#define X3 (tgt)"
   , "#define Y3 (tgt + " ++ show (  nlimbs_p) ++ ")"
   , ""
-  , "// the generator of the subgroup G1"
-  , mkConstArr nlimbs_p (prefix ++ "gen_G1") (map toMontgomery [ fst subgroupGen, snd subgroupGen ])
-  , ""
-  , "// the cofactor of the curve subgroup = " ++ show cofactor
-  , mkConst nlimbs_p (prefix ++ "cofactor") cofactor
-  , ""
-  , "// the constants A and B of the equation"
-  , mkConst nlimbs_p (prefix ++ "const_A") (toMontgomery curveA)
-  , mkConst nlimbs_p (prefix ++ "const_B") (toMontgomery curveB)
-  , ""
+  ] ++
+  (case xcurve of 
+    Left  curve1  -> c_begin_curve1 False curve1  cgparams
+    Right curve12 -> c_begin_curve2 False curve12 cgparams
+  ) ++
+  [ ""
   , "//------------------------------------------------------------------------------"
   , ""
   , "void " ++ prefix ++ "set_ffff( uint64_t *tgt ) {"
@@ -364,13 +362,11 @@ c_begin curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
          [ "(src[" ++ show i ++ "] + 1 == 0)" | i <-[0..nlimbs_p-1] ] ++ " );"
   , "}"
   ] 
-  where
-    toMontgomery x = mod ( 2^(64*nlimbs_p) * x ) curveFp
 
 --------------------------------------------------------------------------------
 
-isOnCurve :: Curve -> CodeGenParams -> Code
-isOnCurve (Curve{..}) (CodeGenParams{..}) = 
+isOnCurve :: XCurve -> CodeGenParams -> Code
+isOnCurve xcurve (CodeGenParams{..}) = 
   [ "// checks whether two curve points are equal"
   , "uint8_t " ++ prefix ++ "is_equal( const uint64_t *src1, const uint64_t *src2 ) {"
   , "  return ( " ++ prefix_p ++ "is_equal( X1, X2 ) &&"
@@ -407,12 +403,12 @@ isOnCurve (Curve{..}) (CodeGenParams{..}) =
   , "    " ++ prefix_p ++ "mul_inplace( tmp, X1 );     // X^3"
   , "    " ++ prefix_p ++ "add_inplace( acc, tmp );    // - Y^2 + X^3"
   ] ++ 
-  (if curveA == 0 then [] else 
+  (if isCurveAZero xcurve then [] else 
     [ "    " ++ prefix   ++ "scale_by_A( X1, tmp );       // A*X"
     , "    " ++ prefix_p ++ "add_inplace( acc, tmp );     // - Y^2*Z + X^3 + A*X*Z^2"
     ]
   ) ++ 
-  (if curveB == 0 then [] else 
+  (if isCurveBZero xcurve then [] else 
     [ "    " ++ prefix_p ++ "add_inplace( acc, " ++ prefix ++ "const_B );     // - Y^2*Z + X^3 + A*X + B"
     ]
   ) ++
@@ -446,8 +442,8 @@ isOnCurve (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
-negCurve :: Curve -> CodeGenParams -> Code
-negCurve (Curve{..}) (CodeGenParams{..}) =
+negCurve :: CodeGenParams -> Code
+negCurve (CodeGenParams{..}) =
   [ "// negates an elliptic curve point in affine coordinates" 
   , "void " ++ prefix ++ "neg( const uint64_t *src1, uint64_t *tgt ) {"
   , "  if (" ++ prefix ++ "is_infinity(src1)) {"
@@ -478,8 +474,8 @@ negCurve (Curve{..}) (CodeGenParams{..}) =
   Y3 = - Y1 - t*(X3-X1)
 -}
 
-dblCurve :: Curve -> CodeGenParams -> Code
-dblCurve (Curve{..}) (CodeGenParams{..}) =
+dblCurve :: XCurve -> CodeGenParams -> Code
+dblCurve xcurve (CodeGenParams{..}) =
   [ "// doubles an affine elliptic curve point" 
   , "void " ++ prefix ++ "dbl( const uint64_t *src1, uint64_t *tgt ) {"
   , "  if (" ++ prefix ++ "is_infinity(src1)) {"
@@ -493,7 +489,7 @@ dblCurve (Curve{..}) (CodeGenParams{..}) =
   , "    " ++ prefix_p ++ "sqr( X1 , xx );            // xx = X1^2"
   , "    " ++ prefix_p ++ "add( xx , xx, t );         // t  = 2*X1^2"
   , "    " ++ prefix_p ++ "add_inplace( t, xx );      // t  = 3*X1^2"
-  ] ++ (if curveA == 0 then [] else 
+  ] ++ (if isCurveAZero xcurve then [] else 
     [ "    " ++ prefix_p ++ "add_inplace( t, " ++ prefix ++ "const_A );     // t = (3*X1^2 + A)"
     ]) ++
   [ "    " ++ prefix_p ++ "add( Y1, Y1, tmp );             // tmp = 2*Y1"
@@ -523,8 +519,8 @@ dblCurve (Curve{..}) (CodeGenParams{..}) =
   Y3 = - Y1 - s*(X3 - X1)
 -}
 
-addCurve :: Curve -> CodeGenParams -> Code
-addCurve (Curve{..}) (CodeGenParams{..}) =
+addCurve :: CodeGenParams -> Code
+addCurve (CodeGenParams{..}) =
   [ "// adds two affine elliptic curve points" 
   , "void " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  if (" ++ prefix ++ "is_infinity(src1)) {"
@@ -575,8 +571,8 @@ addCurve (Curve{..}) (CodeGenParams{..}) =
   , "}"
   ]
 
-subCurve :: Curve -> CodeGenParams -> Code
-subCurve (Curve{..}) (CodeGenParams{..}) =
+subCurve :: CodeGenParams -> Code
+subCurve (CodeGenParams{..}) =
   [ "void " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  uint64_t tmp[" ++ show (2*nlimbs_p) ++ "];"
   , "  " ++ prefix ++ "neg( src2, tmp );"
@@ -592,8 +588,8 @@ subCurve (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
-scaleCurve :: Curve -> CodeGenParams -> Code
-scaleCurve (Curve{..}) (CodeGenParams{..}) =
+scaleCurve :: CodeGenParams -> Code
+scaleCurve (CodeGenParams{..}) =
   [ "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
   , "// where `grp` is a group element in G1, and `expo` is in Fr"
   , "void " ++ prefix ++ "scl_generic(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt, int nlimbs) {"
@@ -645,49 +641,34 @@ scaleCurve (Curve{..}) (CodeGenParams{..}) =
   , "}"
   ]
 
+
+
 --------------------------------------------------------------------------------
 
-hsSage :: Curve -> CodeGenParams -> Code
-hsSage curve params = 
-  [ "-- | Sage setup code to experiment with this curve"
-  , "sageSetup :: [String]"
-  , "sageSetup = "
-  ] ++ 
-  (hsQuoteListOfStrings (curveSageSetup curve)) ++
-  [ ""
-  , "-- | Prints the Sage code"
-  , "printSageSetup :: IO ()"
-  , "printSageSetup = mapM_ putStrLn sageSetup"
+c_code :: XCurve -> CodeGenParams -> Code
+c_code xcurve params = concat $ map ("":)
+  [ c_begin   xcurve params
+    --
+  , isOnCurve xcurve params
+    --
+  , negCurve         params
+  , dblCurve  xcurve params
+  , addCurve         params
+  , subCurve         params
+    -- 
+  , scaleCurve       params
+  ]
+
+hs_code :: XCurve -> CodeGenParams -> Code
+hs_code xcurve params@(CodeGenParams{..}) = concat $ map ("":)
+  [ hsBegin  xcurve params
+  , hsSage   xcurve params
+  , hsFFI           params
   ]
 
 --------------------------------------------------------------------------------
 
-c_code :: Curve -> CodeGenParams -> Code
-c_code curve params = concat $ map ("":)
-  [ c_begin     curve params
-    --
-  , isOnCurve     curve params
-    --
-  , negCurve curve params
-  , dblCurve curve params
-  , addCurve curve params
-  , subCurve curve params
-    --
-  , scaleCurve   curve params
-  ]
-
-hs_code :: Curve -> CodeGenParams -> Code
-hs_code curve params@(CodeGenParams{..}) = concat $ map ("":)
-  [ hsBegin      curve params
- -- , hsMiscTmp
- -- , hsConvert    curve params
-  , hsSage       curve params
-  , hsFFI        curve params
-  ]
-
---------------------------------------------------------------------------------
-
-curve_MontAffine_c_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
+curve_MontAffine_c_codegen :: FilePath -> XCurve -> CodeGenParams -> IO ()
 curve_MontAffine_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
 
   let fn_h = tgtdir </> (cFilePath "h" c_path)
@@ -697,12 +678,12 @@ curve_MontAffine_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
   createTgtDirectory fn_c
 
   putStrLn $ "writing `" ++ fn_h ++ "`" 
-  writeFile fn_h $ unlines $ c_header curve params
+  writeFile fn_h $ unlines $ c_header  params
 
   putStrLn $ "writing `" ++ fn_c ++ "`" 
   writeFile fn_c $ unlines $ c_code curve params
 
-curve_MontAffine_hs_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
+curve_MontAffine_hs_codegen :: FilePath -> XCurve -> CodeGenParams -> IO ()
 curve_MontAffine_hs_codegen tgtdir curve params@(CodeGenParams{..}) = do
 
   let fn_hs   = tgtdir </> (hsFilePath hs_path)
@@ -714,30 +695,8 @@ curve_MontAffine_hs_codegen tgtdir curve params@(CodeGenParams{..}) = do
   writeFile fn_hs $ unlines $ hs_code curve params
 
   putStrLn $ "writing `" ++ fn_boot ++ "`" 
-  writeFile fn_boot $ unlines $ hsBoot curve params
+  writeFile fn_boot $ unlines $ hsBoot params
 
 --------------------------------------------------------------------------------
 
-{-
-testCurve :: Curve
-testCurve = bls12_381_curve
-
-testCodeGenParams :: CodeGenParams
-testCodeGenParams = CodeGenParams
-  { prefix        = "bls12_381_G1_"                                             -- prefix for C names
-  , prefix_p      = "bls12_381_p_mont_"                                         -- prefix for C names for Fp
-  , prefix_r      = "bls12_381_q_mont_"                                         -- prefix for C names for Fq
-  , nlimbs_p      = 6                                                           -- number of 64-bit limbs in p
-  , nlimbs_r      = 4                                                           -- number of 64-bit limbs in r
-  , c_path        = Path ["curves","g1","proj","bls12_381_G1_proj"]             -- path of the C file
-  , hs_path       = Path ["ZK","Algebra","Curves","BLS12_381","G1","Proj"]      -- path of the Haskell module
-  , hs_path_p     = Path ["ZK","Algebra","Curves","BLS12_381","Mont","Fp"]      -- path of the Haskell module for Fp
-  , hs_path_r     = Path ["ZK","Algebra","Curves","BLS12_381","Mont","Fr"]      -- path of the Haskell module for Fr
-  , c_basename_p  = "bls12_381_p_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
-  , c_basename_r  = "bls12_381_r_mont"                                          -- name of the @.c@ / @.h@ file for Fr (without extension)
-  , typeName      = "G1"                                                        -- the name of the haskell type for curve points
-  }
--}
-
---------------------------------------------------------------------------------
 

@@ -23,8 +23,8 @@ import Zikkurat.CodeGen.Curve.FFT
 
 --------------------------------------------------------------------------------
 
-c_header :: Curve -> CodeGenParams -> Code
-c_header curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
+c_header :: CodeGenParams -> Code
+c_header cgparams@(CodeGenParams{..}) =
   [ "#include <stdint.h>"
   , ""
   , "extern void " ++ prefix ++ "normalize         ( const uint64_t *src , uint64_t *tgt );"
@@ -66,13 +66,13 @@ c_header curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
   , "extern void " ++ prefix ++ "scl_windowed( const uint64_t *kst , const uint64_t *src , uint64_t *tgt , int kst_len );"
   , ""
   ] ++
-  (msm_c_header curve cgparams) ++
-  (fft_c_header curve cgparams)
+  (msm_c_header cgparams) ++
+  (fft_c_header cgparams)
 
 --------------------------------------------------------------------------------
 
-hsFFI :: Curve -> CodeGenParams -> Code
-hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $ 
+hsFFI :: CodeGenParams -> Code
+hsFFI (CodeGenParams{..}) = catCode $ 
   [ mkffi "isOnCurve"    $ cfun "is_on_curve"     (CTyp [CArgInProj] CRetBool)
   , mkffi "isInfinity"   $ cfun "is_infinity"     (CTyp [CArgInProj] CRetBool)
   , mkffi "isInSubgroup" $ cfun "is_in_subgroup"  (CTyp [CArgInProj] CRetBool)
@@ -119,8 +119,8 @@ hsFFI (Curve{..}) (CodeGenParams{..}) = catCode $
 
 --------------------------------------------------------------------------------
 
-hsBegin :: Curve -> CodeGenParams -> Code
-hsBegin (Curve{..}) (CodeGenParams{..}) =
+hsBegin :: Curve1 -> CodeGenParams -> Code
+hsBegin (Curve1{..}) (CodeGenParams{..}) =
   [ "-- | " ++ curveName ++ " curve, Jacobian (or weighted) projective coordinates, Montgomery field representation"
   , "--"
   , "-- * NOTE 1: This module is intented to be imported qualified"
@@ -193,7 +193,7 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
   , "cofactor = " ++ show cofactor
   , ""
   , "-- | parameters A and B of the curve equation @y^2 = x^3 + A*x + B@"
-  , "curveA, curveB :: Integer"
+  , "curveA, curveB :: Fp"  -- Integer
   , "curveA = " ++ show curveA
   , "curveB = " ++ show curveB
   , ""
@@ -332,8 +332,8 @@ hsBegin (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
-c_begin :: Curve -> CodeGenParams -> Code
-c_begin curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
+c_begin :: Curve1 -> CodeGenParams -> Code
+c_begin curve@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   [ "// elliptic curve " ++ show curveName ++ " in projective coordinates, Montgomery field representation"
   , "//"
   , "// NOTE: generated code, do not edit!"
@@ -377,8 +377,8 @@ c_begin curve@(Curve{..}) cgparams@(CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
-scale_by_A ::  Curve -> CodeGenParams -> Code
-scale_by_A (Curve{..}) (CodeGenParams{..}) = case curveA of
+scale_by_A ::  Curve1 -> CodeGenParams -> Code
+scale_by_A (Curve1{..}) (CodeGenParams{..}) = case curveA of
 
   0 -> [ "// scale a field element by A = " ++ show curveA
        , "void " ++ prefix ++ "scale_by_A(const uint64_t *src, uint64_t *tgt ) {"
@@ -422,8 +422,8 @@ scale_by_A (Curve{..}) (CodeGenParams{..}) = case curveA of
 
 ----------------------------------------
 
-scale_by_B ::  Curve -> CodeGenParams -> Code
-scale_by_B (Curve{..}) (CodeGenParams{..}) = case curveB of
+scale_by_B ::  Curve1 -> CodeGenParams -> Code
+scale_by_B (Curve1{..}) (CodeGenParams{..}) = case curveB of
 
   0 -> [ "// scale a field element by B = " ++ show curveB
        , "void " ++ prefix ++ "scale_by_B(const uint64_t *src, uint64_t *tgt ) {"
@@ -495,8 +495,8 @@ scale_by_B (Curve{..}) (CodeGenParams{..}) = case curveB of
 
 --------------------------------------------------------------------------------
 
-normalize :: Curve -> CodeGenParams -> Code
-normalize (Curve{..}) (CodeGenParams{..}) =
+normalize :: CodeGenParams -> Code
+normalize (CodeGenParams{..}) =
   [ "void " ++ prefix ++ "normalize( const uint64_t *src1, uint64_t *tgt ) {"
   , "  if (" ++ prefix_p ++ "is_zero( Z1 ) ) {"
   , "    // Z == 0, it must be the point at infinity"
@@ -543,8 +543,8 @@ normalize (Curve{..}) (CodeGenParams{..}) =
   , "}"
   ]
 
-convertAffine :: Curve -> CodeGenParams -> Code
-convertAffine (Curve{..}) (CodeGenParams{..}) = 
+convertAffine :: CodeGenParams -> Code
+convertAffine (CodeGenParams{..}) = 
   [ "// converts from affine coordinates"
   , "void " ++ prefix ++ "from_affine( const uint64_t *src1 , uint64_t *tgt ) {"
   , "  memcpy( tgt, src1, " ++ show (8*2*nlimbs_p) ++ " );"
@@ -581,8 +581,8 @@ convertAffine (Curve{..}) (CodeGenParams{..}) =
   , "}"  
   ]
 
-isOnCurve :: Curve -> CodeGenParams -> Code
-isOnCurve (Curve{..}) (CodeGenParams{..}) = 
+isOnCurve :: Curve1 -> CodeGenParams -> Code
+isOnCurve (Curve1{..}) (CodeGenParams{..}) = 
   [ "uint8_t " ++ prefix ++ "is_infinity ( const uint64_t *src1 ) {"
   , "  if ( ( " ++ prefix_p ++ "is_zero( Z1 )) &&"
   , "       (!" ++ prefix_p ++ "is_zero( X1 )) &&"
@@ -655,8 +655,8 @@ isOnCurve (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
-negCurve :: Curve -> CodeGenParams -> Code
-negCurve (Curve{..}) (CodeGenParams{..}) =
+negCurve :: CodeGenParams -> Code
+negCurve (CodeGenParams{..}) =
   [ "// negates an elliptic curve point" 
   , "void " ++ prefix ++ "neg( const uint64_t *src, uint64_t *tgt ) {"
   , "  if (tgt != src) { memcpy( tgt, src, " ++ show (8*3*nlimbs_p) ++ " ); }"
@@ -704,8 +704,8 @@ dblCurveA0  = dblCurve
       Y3 = M*(S-T)-8*YYYY
       Z3 = (Y1+Z1)^2-YY-ZZ
 -}
-dblCurve :: Curve -> CodeGenParams -> Code
-dblCurve (Curve{..}) (CodeGenParams{..}) =
+dblCurve :: Curve1 -> CodeGenParams -> Code
+dblCurve (Curve1{..}) (CodeGenParams{..}) =
   [ "// doubles an elliptic curve point" 
   , "// <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#doubling-dbl-2007-bl>"
   , "void " ++ prefix ++ "dbl( const uint64_t *src1, uint64_t *tgt ) {"
@@ -781,8 +781,8 @@ neither for doubling, it seems
 -- TODO: implement A=0 special case
 addCurveA0 = addCurve 
 
-addCurve :: Curve -> CodeGenParams -> Code
-addCurve (Curve{..}) (CodeGenParams{..}) =
+addCurve :: CodeGenParams -> Code
+addCurve (CodeGenParams{..}) =
   [ "// adds two elliptic curve points" 
   , "// <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-add-2007-bl>"
   , "void " ++ prefix ++ "add( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
@@ -856,8 +856,8 @@ addCurve (Curve{..}) (CodeGenParams{..}) =
   , "}"
   ]
 
-subCurve :: Curve -> CodeGenParams -> Code
-subCurve (Curve{..}) (CodeGenParams{..}) =
+subCurve :: CodeGenParams -> Code
+subCurve (CodeGenParams{..}) =
   [ "void " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  uint64_t tmp[" ++ show (3*nlimbs_p) ++ "];"
   , "  " ++ prefix ++ "neg( src2, tmp );"
@@ -896,8 +896,8 @@ assumption: Z2 == 1
 
 -}
 
-mixedAddCurve :: Curve -> CodeGenParams -> Code
-mixedAddCurve (Curve{..}) (CodeGenParams{..}) =
+mixedAddCurve :: CodeGenParams -> Code
+mixedAddCurve (CodeGenParams{..}) =
   [ "// adds a Jacobian projective point (src1) to an affine point (src2)"
   , "// <https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-madd-2007-bl>"
   , "void " ++ prefix ++ "madd_jac_aff( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
@@ -976,8 +976,8 @@ mixedAddCurve (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
-scaleNaive :: Curve -> CodeGenParams -> Code
-scaleNaive (Curve{..}) (CodeGenParams{..}) =
+scaleNaive :: CodeGenParams -> Code
+scaleNaive (CodeGenParams{..}) =
   [ "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
   , "// where `grp` is a group element in G1, and `expo` is a (non-negative) bigint"
   , "// naive algorithm"
@@ -1003,8 +1003,8 @@ scaleNaive (Curve{..}) (CodeGenParams{..}) =
   , "}"
   ]
 
-scaleWindowed :: Curve -> CodeGenParams -> Code
-scaleWindowed (Curve{..}) (CodeGenParams{..}) =
+scaleWindowed :: CodeGenParams -> Code
+scaleWindowed (CodeGenParams{..}) =
   [ "#define TBL(k) (table + (k-1)*3*NLIMBS_P)"
   , ""
   , "// precalculate [ k*g | k <- [1..15] ]"
@@ -1060,8 +1060,8 @@ scaleWindowed (Curve{..}) (CodeGenParams{..}) =
   , "}"
   ]
 
-scaleFpFr :: Curve -> CodeGenParams -> Code
-scaleFpFr (Curve{..}) (CodeGenParams{..}) =
+scaleFpFr :: CodeGenParams -> Code
+scaleFpFr (CodeGenParams{..}) =
   [ "// computes `expo*grp` (or `grp^expo` in multiplicative notation)"
   , "// where `grp` is a group element in G1, and `expo` is in Fr"
   , "void " ++ prefix ++ "scl_generic(const uint64_t *expo, const uint64_t *grp, uint64_t *tgt, int nlimbs) {"
@@ -1099,46 +1099,44 @@ scaleFpFr (Curve{..}) (CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
-c_code :: Curve -> CodeGenParams -> Code
+c_code :: Curve1 -> CodeGenParams -> Code
 c_code curve params = concat $ map ("":)
   [ c_begin     curve params
     --
   , scale_by_A  curve params
   , scale_by_B  curve params
     --
-  , normalize     curve params
-  , convertAffine curve params
-  , isOnCurve     curve params
+  , normalize       params
+  , convertAffine   params
+  , isOnCurve   curve    params
     --
-  , negCurve curve params
+  , negCurve        params
   , dblCurve  curve params
   , if curveA curve == 0
-      then addCurveA0 curve params
-      else addCurve   curve params
-  , subCurve curve params
-  , mixedAddCurve curve params
+      then addCurveA0     params
+      else addCurve       params
+  , subCurve            params
+  , mixedAddCurve       params
     --
-  , scaleNaive    curve params
-  , scaleWindowed curve params
-  , scaleFpFr     curve params
+  , scaleNaive          params
+  , scaleWindowed       params
+  , scaleFpFr           params
     --
-  , msmCurve      curve params
-  , c_group_fft   curve params
+  , msmCurve            params
+  , c_group_fft (Left curve) params
   ]
 
-hs_code :: Curve -> CodeGenParams -> Code
+hs_code :: Curve1 -> CodeGenParams -> Code
 hs_code curve params@(CodeGenParams{..}) = concat $ map ("":)
-  [ hsBegin        curve params
- -- , hsMiscTmp
- -- , hsConvert      curve params
-  , msm_hs_binding curve params
-  , fft_hs_binding curve params
-  , hsFFI          curve params
+  [ hsBegin          curve params
+  , msm_hs_binding   params
+  , fft_hs_binding   params
+  , hsFFI            params
   ]
 
 --------------------------------------------------------------------------------
 
-curve_MontJac_c_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
+curve_MontJac_c_codegen :: FilePath -> Curve1 -> CodeGenParams -> IO ()
 curve_MontJac_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
 
   let fn_h = tgtdir </> (cFilePath "h" c_path_jac)
@@ -1148,12 +1146,12 @@ curve_MontJac_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
   createTgtDirectory fn_c
 
   putStrLn $ "writing `" ++ fn_h ++ "`" 
-  writeFile fn_h $ unlines $ c_header curve params
+  writeFile fn_h $ unlines $ c_header params
 
   putStrLn $ "writing `" ++ fn_c ++ "`" 
   writeFile fn_c $ unlines $ c_code curve params
 
-curve_MontJac_hs_codegen :: FilePath -> Curve -> CodeGenParams -> IO ()
+curve_MontJac_hs_codegen :: FilePath -> Curve1 -> CodeGenParams -> IO ()
 curve_MontJac_hs_codegen tgtdir curve params@(CodeGenParams{..}) = do
 
   let fn_hs = tgtdir </> (hsFilePath hs_path_jac)

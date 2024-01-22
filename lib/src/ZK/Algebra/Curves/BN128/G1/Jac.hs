@@ -71,7 +71,7 @@ primeR = Fr.prime
 cofactor = 1
 
 -- | parameters A and B of the curve equation @y^2 = x^3 + A*x + B@
-curveA, curveB :: Integer
+curveA, curveB :: Fp
 curveA = 0
 curveB = 3
 
@@ -251,7 +251,7 @@ foreign import ccall unsafe "bn128_G1_jac_fft_inverse" c_bn128_G1_jac_fft_invers
 foreign import ccall unsafe "bn128_G1_jac_fft_forward" c_bn128_G1_jac_fft_forward :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE forwardFFT #-}
--- | Forward FFT for groups (converting [L_k(tau)] points to [tau^i] points)
+-- | Forward FFT for groups (converting @[L_k(tau)]@ points to @[tau^i]@ points)
 forwardFFT :: FFTSubgroup Fr -> FlatArray G1 -> FlatArray G1
 forwardFFT sg (MkFlatArray n fptr2)
   | subgroupSize sg /= n   = error "forwardNTT: subgroup size differs from the array size"
@@ -264,7 +264,7 @@ forwardFFT sg (MkFlatArray n fptr2)
       return (MkFlatArray n fptr3)
 
 {-# NOINLINE inverseFFT #-}
--- | Inverse FFT for groups (converting [tau^i] points to [L_k(tau)] points)
+-- | Inverse FFT for groups (converting @[tau^i]@ points to @[L_k(tau)]@ points)
 inverseFFT :: FFTSubgroup Fr -> FlatArray G1 -> FlatArray G1
 inverseFFT sg (MkFlatArray n fptr2)
   | subgroupSize sg /= n   = error "inverseNTT: subgroup size differs from the array size"

@@ -291,6 +291,11 @@ hsTypesModule =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
+  ] ++
+  [ "newtype BigInt" ++ show k ++ " = MkBigInt" ++ show k ++ " (ForeignPtr Word64)"
+  | i<-[2..24] , let k = 64*i
+  ] ++
+{-
   , "newtype BigInt128  = MkBigInt128  (ForeignPtr Word64)"
   , "newtype BigInt192  = MkBigInt192  (ForeignPtr Word64)"
   , "newtype BigInt256  = MkBigInt256  (ForeignPtr Word64)"
@@ -306,7 +311,8 @@ hsTypesModule =
   , "newtype BigInt896  = MkBigInt896  (ForeignPtr Word64)"
   , "newtype BigInt960  = MkBigInt960  (ForeignPtr Word64)"
   , "newtype BigInt1024 = MkBigInt1024 (ForeignPtr Word64)"
-  , ""
+-}
+  [ ""
   , "--------------------------------------------------------------------------------"
   ]
   
