@@ -54,15 +54,21 @@ withIrredCoeffs any fun = case any of
 
 data ExtParams = ExtParams 
   { prefix         :: String         -- ^ prefix for C names
-  , base_prefix    :: String         -- ^ perfix for the C names of base field
-  , extDegree      :: Int            -- ^ degree of the extension
+  , prime_prefix   :: String         -- ^ perfix for the C names of the prime field
+  , base_prefix    :: String         -- ^ perfix for the C names of the base field
+  , primeDegree    :: Int            -- ^ degree of the extension over the prime field
+  , extDegree      :: Int            -- ^ degree of the extension over the base field
+  , primeNWords    :: Int            -- ^ size of the primefield elements, in number of 64-bit words 
   , baseNWords     :: Int            -- ^ size of the base-field elements, in number of 64-bit words 
   , c_path         :: Path           -- ^ path of the C module (without extension)
-  , hs_path        :: Path           -- ^ path of the Hs module
   , c_path_base    :: Path           -- ^ C path of the base field
+  , c_path_prime   :: Path           -- ^ C path of the base prime
+  , hs_path        :: Path           -- ^ path of the Hs module
   , hs_path_base   :: Path           -- ^ the module path of the base field
+  , hs_path_prime  :: Path           -- ^ the module path of the prime field
   , typeName       :: String         -- ^ the name of the haskell type
   , typeNameBase   :: String         -- ^ the name of the haskell type of the base field
+  , typeNamePrime  :: String         -- ^ the name of the haskell type of the prime field
   , extFieldName   :: String         -- ^ name of the field
   , irredPoly      :: AnyIrredPoly   -- ^ the defining polynomial
   , expoBigintType :: String         -- ^ bigint type used for the exponent in @pow@
@@ -87,7 +93,11 @@ c_header :: ExtParams -> Code
 c_header (ExtParams{..}) =
   [ "#include <stdint.h>"
   , ""
-  , "extern void " ++ prefix ++ "from_base_field( const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "from_base_field ( const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "from_prime_field( const uint64_t *src , uint64_t *tgt );"
+  , ""
+  , "extern void " ++ prefix ++ "scale_by_base_field ( const uint64_t *coeff , const uint64_t *src, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "scale_by_prime_field( const uint64_t *coeff , const uint64_t *src, uint64_t *tgt );"
   , ""
   , "extern uint8_t " ++ prefix ++ "is_valid ( const uint64_t *src );"
   , "extern uint8_t " ++ prefix ++ "is_zero  ( const uint64_t *src );"
@@ -137,10 +147,15 @@ c_begin params@(ExtParams{..}) =
   , ""
   , "#include \"" ++ pathBaseName c_path      ++ ".h\""
   , "#include \"" ++ pathBaseName c_path_base ++ ".h\""
+  , (if pathBaseName c_path_prime == pathBaseName c_path_base then "" else 
+     "#include \"" ++ pathBaseName c_path_prime ++ ".h\"")
   , ""
-  , "#define BASE_NWORDS " ++ show baseNWords
-  , "#define EXT_NWORDS  " ++ show (baseNWords * extDegree)
-  , "#define EXT_DEGREE  " ++ show extDegree
+  , "#define PRIME_NWORDS " ++ show primeNWords
+  , "#define BASE_NWORDS  " ++ show baseNWords
+  , "#define EXT_NWORDS   " ++ show (baseNWords * extDegree)
+  , ""
+  , "#define EXT_DEGREE   " ++ show extDegree
+  , "#define PRIME_DEGREE " ++ show primeDegree
   , ""
   , "#define SRC1(i) ((src1) + (i)*BASE_NWORDS)"
   , "#define SRC2(i) ((src2) + (i)*BASE_NWORDS)"
@@ -154,6 +169,35 @@ c_begin params@(ExtParams{..}) =
   , anyIrredPolyToCString prefix irredPoly
   , ""
   , "//------------------------------------------------------------------------------"
+  ]
+
+--------------------------------------------------------------------------------
+
+c_basefield :: ExtParams -> Code
+c_basefield ExtParams{..} = 
+  [ ""
+  , "void " ++ prefix ++ "from_base_field ( const uint64_t *src , uint64_t *tgt ) {"
+  , "  " ++ prefix      ++ "set_zero( tgt );"
+  , "  " ++ base_prefix ++ "copy( src, tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "from_prime_field( const uint64_t *src , uint64_t *tgt ) {"
+  , "  " ++ prefix       ++ "set_zero( tgt );"
+  , "  " ++ prime_prefix ++ "copy( src, tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "scale_by_base_field ( const uint64_t *coeff , const uint64_t *src1, uint64_t *tgt ) {"
+  , "  for(int i=0; i<EXT_DEGREE; i++) {"
+  , "    " ++ base_prefix ++ "mul( coeff, SRC1(i), TGT(i) );"
+  , "  }"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "scale_by_prime_field( const uint64_t *coeff , const uint64_t *src1, uint64_t *tgt ) {"
+  , "  for(int i=0; i<PRIME_DEGREE; i++) {"
+  , "    " ++ prime_prefix ++ "mul( coeff , src1 + i*PRIME_NWORDS , tgt + i*PRIME_NWORDS );"
+  , "  }"
+  , "}"
+  , ""
   ]
 
 --------------------------------------------------------------------------------
@@ -442,9 +486,9 @@ c_mulExtCubic ExtParams{..} =
   , "  uint64_t prod[5*BASE_NWORDS];"
   , "  uint64_t tmp [  BASE_NWORDS];"
   , "  uint64_t tmp2[  BASE_NWORDS];"
-  , "  " ++ base_prefix ++ "mul( SRC1(0) , SRC2(0) , PROD(0) );     // p = a0 * b0"
-  , "  " ++ base_prefix ++ "mul( SRC1(1) , SRC2(1) , PROD(2) );     // q = a1 * b1"
-  , "  " ++ base_prefix ++ "mul( SRC1(2) , SRC2(2) , PROD(4) );     // r = a2 * b2"
+  , "  " ++ base_prefix ++ "mul( SRC1(0) , SRC2(0) , PROD(0) );      // p = a0 * b0"
+  , "  " ++ base_prefix ++ "mul( SRC1(1) , SRC2(1) , PROD(2) );      // q = a1 * b1"
+  , "  " ++ base_prefix ++ "mul( SRC1(2) , SRC2(2) , PROD(4) );      // r = a2 * b2"
   , ""
   , "  " ++ base_prefix ++ "add( SRC1(0) , SRC1(1) , PROD(1) );      // (a0+a1)"
   , "  " ++ base_prefix ++ "add( SRC2(0) , SRC2(1) , tmp );          // (b0+b1)"
@@ -746,8 +790,9 @@ hsBegin extparams@(ExtParams{..}) =
   , "  ( " ++ typeName ++ "(..)"
   , "    -- * Conversion"
   , "  , pack" ++ postfix ++ " , unpack" ++ postfix 
+  , "  , packList" ++ postfix ++ " , unpackList" ++ postfix 
+  , "  , packListPrime" ++ postfix ++ " , unpackListPrime" ++ postfix 
   , "    -- * Field elements"
-  , "  , embedBase" ++ postfix 
   , "  , zero , one , two     -- , primGen"
   , "    -- * Predicates"
   , "  , isValid , isZero , isOne , isEqual"
@@ -757,6 +802,9 @@ hsBegin extparams@(ExtParams{..}) =
   , "  , inv , div , batchInv"
   , "    -- * Exponentiation"
   , "  , pow , pow_"
+  , "    -- * Relation to the base and prime fields"
+  , "  , embedBase" ++ postfix ++ " , embedPrime" ++ postfix 
+  , "  , scaleBase" ++ postfix ++ " , scalePrime" ++ postfix 
   , "    -- * Random"
   , "  , rnd"
   , "    -- * Export to C"
@@ -783,8 +831,10 @@ hsBegin extparams@(ExtParams{..}) =
   , ""
   , "import ZK.Algebra.BigInt." ++ expoBigintType ++ " (" ++ expoBigintType ++ "(..) )"
   , ""
-  , "import " ++ hsModule  hs_path_base ++ "( " ++ typeNameBase ++ "(..) )"
+  , "import " ++ hsModule  hs_path_base  ++ "( " ++ typeNameBase ++ "(..) )"
+  , "import " ++ hsModule  hs_path_prime ++ "( " ++ typeNamePrime ++ "(..) )"
   , "import qualified " ++ hsModule  hs_path_base ++ " as Base"
+  , "import qualified " ++ hsModule  hs_path_prime ++ " as Prime"
   , ""
   , "import           ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as C"
@@ -804,9 +854,9 @@ hsBegin extparams@(ExtParams{..}) =
   , "newtype " ++ typeName ++ " = Mk" ++ typeName ++ " (ForeignPtr Word64)"
   , ""
   , "zero, one, two :: " ++ typeName
-  , "zero = embedBase" ++ postfix ++ " 0"
-  , "one  = embedBase" ++ postfix ++ " 1"
-  , "two  = embedBase" ++ postfix ++ " 2"
+  , "zero = embedPrime" ++ postfix ++ " 0"
+  , "one  = embedPrime" ++ postfix ++ " 1"
+  , "two  = embedPrime" ++ postfix ++ " 2"
   , ""
   , "primGen :: " ++ typeName
   , "primGen = error \"primGen/" ++ extFieldName ++ ": not implemented\""
@@ -815,7 +865,7 @@ hsBegin extparams@(ExtParams{..}) =
   , "  (==) = isEqual"
   , ""
   , "instance Num " ++ typeName ++ " where"
-  , "  fromInteger = embedBase . fromInteger"
+  , "  fromInteger = embedPrime . fromInteger"
   , "  negate = neg"
   , "  (+) = add"
   , "  (-) = sub"
@@ -866,10 +916,21 @@ hsBegin extparams@(ExtParams{..}) =
   , ""
   , "instance C.ExtField " ++ typeName ++ " where"
   , "  type ExtBase " ++ typeName ++ " = " ++ typeNameBase
-  , "  extDeg _     = " ++ show extDegree
-  , "  embedExtBase = embedBase"
+  , "  extDeg _ = " ++ show extDegree
   , "  definingPolyCoeffs = error \"definingPolyCoeffs: not yet implemented\""
-  , "  projectToExtBase   = error \"projectToExtBase: not yet implemented\""
+  , "  embedExtBase     = embedBase"
+  , "  projectToExtBase = error \"projectToExtBase: not yet implemented\""
+  , "  scaleExtBase     = scaleBase"
+  , "  extPack          = packList"
+  , "  extUnpack        = unpackList"
+  , ""
+  , "instance C.ExtField' " ++ typeName ++ " where"
+  , "  type PrimeBase " ++ typeName ++ " = " ++ typeNamePrime
+  , "  embedPrimeField     = embedPrime"
+  , "  projectToPrimeField = error \"projectToPrimeField: not yet implemented\""
+  , "  scalePrimeField     = scalePrime"
+  , "  primePack           = packListPrime"
+  , "  primeUnpack         = unpackListPrime"
   , ""
   ] ++
   (case extDegree of
@@ -886,8 +947,17 @@ hsBegin extparams@(ExtParams{..}) =
   [ ""
   , "----------------------------------------"
   , ""
-  , "foreign import ccall unsafe \"" ++ prefix      ++ "set_const\" c_" ++ prefix      ++ "set_const :: Ptr Word64 -> Ptr Word64 -> IO ()"
-  , "foreign import ccall unsafe \"" ++ base_prefix ++ "copy\" c_"      ++ base_prefix ++ "copy      :: Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix       ++ "set_const\" c_" ++ prefix      ++ "set_const :: Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "foreign import ccall unsafe \"" ++ base_prefix  ++ "copy\"      c_" ++ base_prefix  ++ "copy      :: Ptr Word64 -> Ptr Word64 -> IO ()"
+  , (if base_prefix == prime_prefix then "" else 
+      "foreign import ccall unsafe \"" ++ prime_prefix ++ "copy\"      c_" ++ prime_prefix ++ "copy      :: Ptr Word64 -> Ptr Word64 -> IO ()")
+  , ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "from_base_field\"  c_" ++ prefix ++ "from_base_field  :: Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "from_prime_field\" c_" ++ prefix ++ "from_prime_field :: Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "scale_by_base_field\"  c_" ++ prefix ++ "scale_by_base_field  :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "scale_by_prime_field\" c_" ++ prefix ++ "scale_by_prime_field :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
   , ""
   , "----------------------------------------"
   , ""
@@ -907,6 +977,42 @@ hsBegin extparams@(ExtParams{..}) =
   ] ++ 
   [ "  action " ++ tuple' [ "ptr" ++ show i | i <- [1..extDegree] ] 
   , ""
+  , "----------------"
+  , ""
+  , "mallocForeignList :: IO " ++ list "ForeignPtr Word64"
+  , "mallocForeignList = do"
+  ] ++ 
+  [ "  fptr" ++ show i ++ " <- mallocForeignPtrArray " ++ show (baseNWords)
+  | i <- [1..extDegree]
+  ] ++ 
+  [ "  return " ++ list' [ "fptr" ++ show i | i <- [1..extDegree] ]
+  , ""
+  , "withForeignList :: " ++ list "ForeignPtr Word64" ++ " -> (" ++ list "Ptr Word64" ++ " -> IO a) -> IO a"
+  , "withForeignList " ++ list' [ "fptr" ++ show i | i <- [1..extDegree] ] ++ " action = do"
+  ] ++
+  [ "  withForeignPtr fptr" ++ show i ++ " $ \\ptr" ++ show i ++ " -> do"
+  | i <- [1..extDegree]
+  ] ++ 
+  [ "  action " ++ list' [ "ptr" ++ show i | i <- [1..extDegree] ] 
+  , ""
+  , "----------------"
+  , ""
+  , "mallocForeignListPrime :: IO " ++ list "ForeignPtr Word64"
+  , "mallocForeignListPrime = do"
+  ] ++ 
+  [ "  fptr" ++ show i ++ " <- mallocForeignPtrArray " ++ show (primeNWords)
+  | i <- [1..primeDegree]
+  ] ++ 
+  [ "  return " ++ list' [ "fptr" ++ show i | i <- [1..primeDegree] ]
+  , ""
+  , "withForeignListPrime :: " ++ list "ForeignPtr Word64" ++ " -> (" ++ list "Ptr Word64" ++ " -> IO a) -> IO a"
+  , "withForeignListPrime " ++ list' [ "fptr" ++ show i | i <- [1..primeDegree] ] ++ " action = do"
+  ] ++
+  [ "  withForeignPtr fptr" ++ show i ++ " $ \\ptr" ++ show i ++ " -> do"
+  | i <- [1..primeDegree]
+  ] ++ 
+  [ "  action " ++ list' [ "ptr" ++ show i | i <- [1..primeDegree] ] 
+  , ""
   , "----------------------------------------"
   , ""
   , "{-# NOINLINE embedBase" ++ postfix ++ "#-}"
@@ -915,8 +1021,41 @@ hsBegin extparams@(ExtParams{..}) =
   , "  fptr2 <- mallocForeignPtrArray " ++ show (extNWords extparams)
   , "  withForeignPtr fptr1 $ \\ptr1 -> do"
   , "    withForeignPtr fptr2 $ \\ptr2 -> do"
-  , "      c_" ++ prefix ++ "set_const ptr1 ptr2"
+  , "      c_" ++ prefix ++ "from_base_field ptr1 ptr2"
   , "  return (Mk" ++ typeName ++ " fptr2)"
+  , ""
+  , "{-# NOINLINE embedPrime" ++ postfix ++ "#-}"
+  , "embedPrime" ++ postfix ++ " :: " ++ typeNamePrime ++ " -> " ++ typeName 
+  , "embedPrime" ++ postfix ++ " (Mk" ++ typeNamePrime ++ " fptr1) = unsafePerformIO $ do"
+  , "  fptr2 <- mallocForeignPtrArray " ++ show (extNWords extparams)
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      c_" ++ prefix ++ "from_prime_field ptr1 ptr2"
+  , "  return (Mk" ++ typeName ++ " fptr2)"
+  , ""
+  , "----------------------------------------"
+  , ""
+  , "{-# NOINLINE scaleBase" ++ postfix ++ "#-}"
+  , "scaleBase" ++ postfix ++ " :: " ++ typeNameBase ++ " -> " ++ typeName  ++ " -> " ++ typeName 
+  , "scaleBase" ++ postfix ++ " (Mk" ++ typeNameBase ++ " fptr1) (Mk" ++ typeName ++ " fptr2) = unsafePerformIO $ do"
+  , "  fptr3 <- mallocForeignPtrArray " ++ show (extNWords extparams)
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "scale_by_base_field ptr1 ptr2 ptr3"
+  , "  return (Mk" ++ typeName ++ " fptr3)"
+  , ""
+  , "{-# NOINLINE scalePrime" ++ postfix ++ "#-}"
+  , "scalePrime" ++ postfix ++ " :: " ++ typeNamePrime ++ " -> " ++ typeName  ++ " -> " ++ typeName 
+  , "scalePrime" ++ postfix ++ " (Mk" ++ typeNamePrime ++ " fptr1) (Mk" ++ typeName ++ " fptr2) = unsafePerformIO $ do"
+  , "  fptr3 <- mallocForeignPtrArray " ++ show (extNWords extparams)
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "scale_by_prime_field ptr1 ptr2 ptr3"
+  , "  return (Mk" ++ typeName ++ " fptr3)"
+  , ""
+  , "----------------------------------------"
   , ""
   , "{-# NOINLINE unpack" ++ postfix ++ " #-}"
   , "unpack" ++ postfix ++ " :: " ++ typeName ++ " -> " ++ tuple typeNameBase
@@ -942,10 +1081,66 @@ hsBegin extparams@(ExtParams{..}) =
   ] ++ 
   [ "  return (Mk" ++ typeName ++ " ftgt)"
   , ""
+  , "----------------------------------------"
+  , ""
+  , "{-# NOINLINE unpackList" ++ postfix ++ " #-}"
+  , "unpackList" ++ postfix ++ " :: " ++ typeName ++ " -> " ++ list typeNameBase
+  , "unpackList" ++ postfix ++ " (Mk" ++ typeName ++ " fsrc) = unsafePerformIO $ do"
+  , "  fptrs@" ++ list' [ "ftgt" ++ show i | i <- [1..extDegree] ] ++ " <- mallocForeignList"
+  , "  withForeignPtr fsrc $ \\src -> do"
+  , "    withForeignList fptrs $ \\" ++ list' [ "tgt" ++ show i | i <- [1..extDegree] ] ++ " -> do"
+  ] ++ 
+  [ "      c_" ++ base_prefix ++ "copy (plusPtr src " ++ show (8*(i-1)*baseNWords) ++ ") tgt" ++ show i
+  | i <- [1..extDegree]
+  ] ++ 
+  [ "  return " ++ list' [ "Mk" ++ typeNameBase ++ " ftgt" ++ show i | i <- [1..extDegree] ] 
+  , ""
+  , "{-# NOINLINE packList" ++ postfix ++ " #-}"
+  , "packList" ++ postfix ++ " :: " ++ list typeNameBase ++ " -> " ++ typeName
+  , "packList" ++ postfix ++ " " ++ list' [ "Mk" ++ typeNameBase ++ " fsrc" ++ show i | i <- [1..extDegree] ] ++ " = unsafePerformIO $ do"
+  , "  ftgt <- mallocForeignPtrArray " ++ show (extNWords extparams)
+  , "  withForeignList " ++ list' [ "fsrc" ++ show i | i <- [1..extDegree] ] ++ " $ \\" ++ list' [ "src" ++ show i | i <- [1..extDegree] ] ++ " -> do"
+  , "    withForeignPtr ftgt $ \\tgt -> do"
+  ] ++ 
+  [ "      c_" ++ base_prefix ++ "copy src" ++ show i ++ " (plusPtr tgt " ++ show (8*(i-1)*baseNWords) ++ ")"
+  | i <- [1..extDegree]
+  ] ++ 
+  [ "  return (Mk" ++ typeName ++ " ftgt)"
+  , "packList _ = error \"expecting a list of " ++ show extDegree ++ " " ++ typeNameBase ++ " elements\""
+  , ""
+  , "----------------------------------------"
+  , ""
+  , "{-# NOINLINE unpackListPrime" ++ postfix ++ " #-}"
+  , "unpackListPrime" ++ postfix ++ " :: " ++ typeName ++ " -> " ++ list typeNamePrime
+  , "unpackListPrime" ++ postfix ++ " (Mk" ++ typeName ++ " fsrc) = unsafePerformIO $ do"
+  , "  fptrs@" ++ list' [ "ftgt" ++ show i | i <- [1..primeDegree] ] ++ " <- mallocForeignListPrime"
+  , "  withForeignPtr fsrc $ \\src -> do"
+  , "    withForeignListPrime fptrs $ \\" ++ list' [ "tgt" ++ show i | i <- [1..primeDegree] ] ++ " -> do"
+  ] ++ 
+  [ "      c_" ++ prime_prefix ++ "copy (plusPtr src " ++ show (8*(i-1)*primeNWords) ++ ") tgt" ++ show i
+  | i <- [1..primeDegree]
+  ] ++ 
+  [ "  return " ++ list' [ "Mk" ++ typeNamePrime ++ " ftgt" ++ show i | i <- [1..primeDegree] ] 
+  , ""
+  , "{-# NOINLINE packListPrime" ++ postfix ++ " #-}"
+  , "packListPrime" ++ postfix ++ " :: " ++ list typeNamePrime ++ " -> " ++ typeName
+  , "packListPrime" ++ postfix ++ " " ++ list' [ "Mk" ++ typeNamePrime ++ " fsrc" ++ show i | i <- [1..primeDegree] ] ++ " = unsafePerformIO $ do"
+  , "  ftgt <- mallocForeignPtrArray " ++ show (extNWords extparams)
+  , "  withForeignListPrime " ++ list' [ "fsrc" ++ show i | i <- [1..primeDegree] ] ++ " $ \\" ++ list' [ "src" ++ show i | i <- [1..primeDegree] ] ++ " -> do"
+  , "    withForeignPtr ftgt $ \\tgt -> do"
+  ] ++ 
+  [ "      c_" ++ prime_prefix ++ "copy src" ++ show i ++ " (plusPtr tgt " ++ show (8*(i-1)*primeNWords) ++ ")"
+  | i <- [1..primeDegree]
+  ] ++ 
+  [ "  return (Mk" ++ typeName ++ " ftgt)"
+  , "packListPrime _ = error \"expecting a list of " ++ show primeDegree ++ " " ++ typeNamePrime ++ " elements\""
+  , ""
+  , "----------------------------------------"
   ] ++
   exportFieldToC     (toCommonParams extparams) ++
   ffi_exponentiation (toCommonParams extparams) ++
   ffi_batch_inverse  (toCommonParams extparams) 
+
   where 
     postfix = ""  
 
@@ -954,6 +1149,12 @@ hsBegin extparams@(ExtParams{..}) =
 
     tuple' :: [String] -> String
     tuple' ts = "(" ++ intercalate ", " ts ++ ")"
+
+    list :: String -> String
+    list t = "[" ++ t ++ "]"
+
+    list' :: [String] -> String
+    list' ts = "[" ++ intercalate ", " ts ++ "]"
 
 --------------------------------------------------------------------------------
 
@@ -989,6 +1190,7 @@ c_code :: ExtParams -> Code
 c_code extparams = concat $ map ("":)
   [ c_begin         extparams
     --
+  , c_basefield     extparams
   , c_zeroOneEtcExt extparams
   , c_addSubExt     extparams
   , c_mulExt        extparams

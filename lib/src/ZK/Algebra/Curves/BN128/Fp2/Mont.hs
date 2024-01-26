@@ -10,8 +10,9 @@ module ZK.Algebra.Curves.BN128.Fp2.Mont
   ( Fp2(..)
     -- * Conversion
   , pack , unpack
+  , packList , unpackList
+  , packListPrime , unpackListPrime
     -- * Field elements
-  , embedBase
   , zero , one , two     -- , primGen
     -- * Predicates
   , isValid , isZero , isOne , isEqual
@@ -21,6 +22,9 @@ module ZK.Algebra.Curves.BN128.Fp2.Mont
   , inv , div , batchInv
     -- * Exponentiation
   , pow , pow_
+    -- * Relation to the base and prime fields
+  , embedBase , embedPrime
+  , scaleBase , scalePrime
     -- * Random
   , rnd
     -- * Export to C
@@ -48,7 +52,9 @@ import System.IO.Unsafe
 import ZK.Algebra.BigInt.BigInt256 (BigInt256(..) )
 
 import ZK.Algebra.Curves.BN128.Fp.Mont( Fp(..) )
+import ZK.Algebra.Curves.BN128.Fp.Mont( Fp(..) )
 import qualified ZK.Algebra.Curves.BN128.Fp.Mont as Base
+import qualified ZK.Algebra.Curves.BN128.Fp.Mont as Prime
 
 import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
@@ -60,9 +66,9 @@ import ZK.Algebra.Helpers
 newtype Fp2 = MkFp2 (ForeignPtr Word64)
 
 zero, one, two :: Fp2
-zero = embedBase 0
-one  = embedBase 1
-two  = embedBase 2
+zero = embedPrime 0
+one  = embedPrime 1
+two  = embedPrime 2
 
 primGen :: Fp2
 primGen = error "primGen/BN128/Fp2: not implemented"
@@ -71,7 +77,7 @@ instance Eq Fp2 where
   (==) = isEqual
 
 instance Num Fp2 where
-  fromInteger = embedBase . fromInteger
+  fromInteger = embedPrime . fromInteger
   negate = neg
   (+) = add
   (-) = sub
@@ -120,10 +126,21 @@ instance C.Field Fp2 where
 
 instance C.ExtField Fp2 where
   type ExtBase Fp2 = Fp
-  extDeg _     = 2
-  embedExtBase = embedBase
+  extDeg _ = 2
   definingPolyCoeffs = error "definingPolyCoeffs: not yet implemented"
-  projectToExtBase   = error "projectToExtBase: not yet implemented"
+  embedExtBase     = embedBase
+  projectToExtBase = error "projectToExtBase: not yet implemented"
+  scaleExtBase     = scaleBase
+  extPack          = packList
+  extUnpack        = unpackList
+
+instance C.ExtField' Fp2 where
+  type PrimeBase Fp2 = Fp
+  embedPrimeField     = embedPrime
+  projectToPrimeField = error "projectToPrimeField: not yet implemented"
+  scalePrimeField     = scalePrime
+  primePack           = packListPrime
+  primeUnpack         = unpackListPrime
 
 instance C.QuadraticExt Fp2 where
   quadraticUnpack = unpack
@@ -132,7 +149,15 @@ instance C.QuadraticExt Fp2 where
 ----------------------------------------
 
 foreign import ccall unsafe "bn128_Fp2_mont_set_const" c_bn128_Fp2_mont_set_const :: Ptr Word64 -> Ptr Word64 -> IO ()
-foreign import ccall unsafe "bn128_Fp_mont_copy" c_bn128_Fp_mont_copy      :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+foreign import ccall unsafe "bn128_Fp_mont_copy"      c_bn128_Fp_mont_copy      :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+
+foreign import ccall unsafe "bn128_Fp2_mont_from_base_field"  c_bn128_Fp2_mont_from_base_field  :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_Fp2_mont_from_prime_field" c_bn128_Fp2_mont_from_prime_field :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+foreign import ccall unsafe "bn128_Fp2_mont_scale_by_base_field"  c_bn128_Fp2_mont_scale_by_base_field  :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_Fp2_mont_scale_by_prime_field" c_bn128_Fp2_mont_scale_by_prime_field :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 ----------------------------------------
 
@@ -148,6 +173,34 @@ withForeignTuple (fptr1, fptr2) action = do
   withForeignPtr fptr2 $ \ptr2 -> do
   action (ptr1, ptr2)
 
+----------------
+
+mallocForeignList :: IO [ForeignPtr Word64]
+mallocForeignList = do
+  fptr1 <- mallocForeignPtrArray 4
+  fptr2 <- mallocForeignPtrArray 4
+  return [fptr1, fptr2]
+
+withForeignList :: [ForeignPtr Word64] -> ([Ptr Word64] -> IO a) -> IO a
+withForeignList [fptr1, fptr2] action = do
+  withForeignPtr fptr1 $ \ptr1 -> do
+  withForeignPtr fptr2 $ \ptr2 -> do
+  action [ptr1, ptr2]
+
+----------------
+
+mallocForeignListPrime :: IO [ForeignPtr Word64]
+mallocForeignListPrime = do
+  fptr1 <- mallocForeignPtrArray 4
+  fptr2 <- mallocForeignPtrArray 4
+  return [fptr1, fptr2]
+
+withForeignListPrime :: [ForeignPtr Word64] -> ([Ptr Word64] -> IO a) -> IO a
+withForeignListPrime [fptr1, fptr2] action = do
+  withForeignPtr fptr1 $ \ptr1 -> do
+  withForeignPtr fptr2 $ \ptr2 -> do
+  action [ptr1, ptr2]
+
 ----------------------------------------
 
 {-# NOINLINE embedBase#-}
@@ -156,8 +209,41 @@ embedBase (MkFp fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 8
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bn128_Fp2_mont_set_const ptr1 ptr2
+      c_bn128_Fp2_mont_from_base_field ptr1 ptr2
   return (MkFp2 fptr2)
+
+{-# NOINLINE embedPrime#-}
+embedPrime :: Fp -> Fp2
+embedPrime (MkFp fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 8
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bn128_Fp2_mont_from_prime_field ptr1 ptr2
+  return (MkFp2 fptr2)
+
+----------------------------------------
+
+{-# NOINLINE scaleBase#-}
+scaleBase :: Fp -> Fp2 -> Fp2
+scaleBase (MkFp fptr1) (MkFp2 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 8
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bn128_Fp2_mont_scale_by_base_field ptr1 ptr2 ptr3
+  return (MkFp2 fptr3)
+
+{-# NOINLINE scalePrime#-}
+scalePrime :: Fp -> Fp2 -> Fp2
+scalePrime (MkFp fptr1) (MkFp2 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 8
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bn128_Fp2_mont_scale_by_prime_field ptr1 ptr2 ptr3
+  return (MkFp2 fptr3)
+
+----------------------------------------
 
 {-# NOINLINE unpack #-}
 unpack :: Fp2 -> (Fp, Fp)
@@ -179,6 +265,53 @@ pack (MkFp fsrc1, MkFp fsrc2) = unsafePerformIO $ do
       c_bn128_Fp_mont_copy src2 (plusPtr tgt 32)
   return (MkFp2 ftgt)
 
+----------------------------------------
+
+{-# NOINLINE unpackList #-}
+unpackList :: Fp2 -> [Fp]
+unpackList (MkFp2 fsrc) = unsafePerformIO $ do
+  fptrs@[ftgt1, ftgt2] <- mallocForeignList
+  withForeignPtr fsrc $ \src -> do
+    withForeignList fptrs $ \[tgt1, tgt2] -> do
+      c_bn128_Fp_mont_copy (plusPtr src 0) tgt1
+      c_bn128_Fp_mont_copy (plusPtr src 32) tgt2
+  return [MkFp ftgt1, MkFp ftgt2]
+
+{-# NOINLINE packList #-}
+packList :: [Fp] -> Fp2
+packList [MkFp fsrc1, MkFp fsrc2] = unsafePerformIO $ do
+  ftgt <- mallocForeignPtrArray 8
+  withForeignList [fsrc1, fsrc2] $ \[src1, src2] -> do
+    withForeignPtr ftgt $ \tgt -> do
+      c_bn128_Fp_mont_copy src1 (plusPtr tgt 0)
+      c_bn128_Fp_mont_copy src2 (plusPtr tgt 32)
+  return (MkFp2 ftgt)
+packList _ = error "expecting a list of 2 Fp elements"
+
+----------------------------------------
+
+{-# NOINLINE unpackListPrime #-}
+unpackListPrime :: Fp2 -> [Fp]
+unpackListPrime (MkFp2 fsrc) = unsafePerformIO $ do
+  fptrs@[ftgt1, ftgt2] <- mallocForeignListPrime
+  withForeignPtr fsrc $ \src -> do
+    withForeignListPrime fptrs $ \[tgt1, tgt2] -> do
+      c_bn128_Fp_mont_copy (plusPtr src 0) tgt1
+      c_bn128_Fp_mont_copy (plusPtr src 32) tgt2
+  return [MkFp ftgt1, MkFp ftgt2]
+
+{-# NOINLINE packListPrime #-}
+packListPrime :: [Fp] -> Fp2
+packListPrime [MkFp fsrc1, MkFp fsrc2] = unsafePerformIO $ do
+  ftgt <- mallocForeignPtrArray 8
+  withForeignListPrime [fsrc1, fsrc2] $ \[src1, src2] -> do
+    withForeignPtr ftgt $ \tgt -> do
+      c_bn128_Fp_mont_copy src1 (plusPtr tgt 0)
+      c_bn128_Fp_mont_copy src2 (plusPtr tgt 32)
+  return (MkFp2 ftgt)
+packListPrime _ = error "expecting a list of 2 Fp elements"
+
+----------------------------------------
 
 {-# NOINLINE exportToCDef #-}
 exportToCDef :: String -> Fp2 -> String

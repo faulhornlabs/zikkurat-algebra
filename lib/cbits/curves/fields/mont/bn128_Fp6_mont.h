@@ -1,6 +1,10 @@
 #include <stdint.h>
 
-extern void bn128_Fp6_mont_from_base_field( const uint64_t *src , uint64_t *tgt );
+extern void bn128_Fp6_mont_from_base_field ( const uint64_t *src , uint64_t *tgt );
+extern void bn128_Fp6_mont_from_prime_field( const uint64_t *src , uint64_t *tgt );
+
+extern void bn128_Fp6_mont_scale_by_base_field ( const uint64_t *coeff , const uint64_t *src, uint64_t *tgt );
+extern void bn128_Fp6_mont_scale_by_prime_field( const uint64_t *coeff , const uint64_t *src, uint64_t *tgt );
 
 extern uint8_t bn128_Fp6_mont_is_valid ( const uint64_t *src );
 extern uint8_t bn128_Fp6_mont_is_zero  ( const uint64_t *src );

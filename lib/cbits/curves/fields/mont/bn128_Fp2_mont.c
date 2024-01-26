@@ -11,9 +11,13 @@
 #include "bn128_Fp2_mont.h"
 #include "bn128_Fp_mont.h"
 
-#define BASE_NWORDS 4
-#define EXT_NWORDS  8
-#define EXT_DEGREE  2
+
+#define PRIME_NWORDS 4
+#define BASE_NWORDS  4
+#define EXT_NWORDS   8
+
+#define EXT_DEGREE   2
+#define PRIME_DEGREE 2
 
 #define SRC1(i) ((src1) + (i)*BASE_NWORDS)
 #define SRC2(i) ((src2) + (i)*BASE_NWORDS)
@@ -31,6 +35,30 @@ uint64_t bn128_Fp2_mont_irred_coeffs[8] =
 
 
 //------------------------------------------------------------------------------
+
+
+void bn128_Fp2_mont_from_base_field ( const uint64_t *src , uint64_t *tgt ) {
+  bn128_Fp2_mont_set_zero( tgt );
+  bn128_Fp_mont_copy( src, tgt );
+}
+
+void bn128_Fp2_mont_from_prime_field( const uint64_t *src , uint64_t *tgt ) {
+  bn128_Fp2_mont_set_zero( tgt );
+  bn128_Fp_mont_copy( src, tgt );
+}
+
+void bn128_Fp2_mont_scale_by_base_field ( const uint64_t *coeff , const uint64_t *src1, uint64_t *tgt ) {
+  for(int i=0; i<EXT_DEGREE; i++) {
+    bn128_Fp_mont_mul( coeff, SRC1(i), TGT(i) );
+  }
+}
+
+void bn128_Fp2_mont_scale_by_prime_field( const uint64_t *coeff , const uint64_t *src1, uint64_t *tgt ) {
+  for(int i=0; i<PRIME_DEGREE; i++) {
+    bn128_Fp_mont_mul( coeff , src1 + i*PRIME_NWORDS , tgt + i*PRIME_NWORDS );
+  }
+}
+
 
 uint8_t bn128_Fp2_mont_is_valid ( const uint64_t *src1 ) {
   uint8_t ok = 1;

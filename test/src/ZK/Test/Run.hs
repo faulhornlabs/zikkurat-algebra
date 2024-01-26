@@ -10,7 +10,7 @@ import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Curve
 
 import ZK.Test.Platform.Properties  ( runPlatformTests )
-import ZK.Test.Field.Properties ( runRingTests  , runFieldTests )
+import ZK.Test.Field.Properties ( runRingTests  , runFieldTests , runExtFieldTests )
 import ZK.Test.Curve.Properties ( runGroupTests , runCurveTests , runProjCurveTests )
 import ZK.Test.Poly.Properties  ( runPolyTests )
 import ZK.Test.Field.Ref_BN254     ( runTests_compare_BN254     )
@@ -67,6 +67,7 @@ printHeader str = do
 
 runTestsAll :: Int -> IO ()
 runTestsAll n = do
+  runTestsExtField      n
   runTestsPlatform   
   runTestsBigInt        n 
   runTestsStdField      n
@@ -212,6 +213,7 @@ runTestsMontField n = do
 
 --------------------------------------------------------------------------------
 
+-- | normal field tests for extension towers
 runTestsFieldTowers :: Int -> IO ()
 runTestsFieldTowers n = do
 
@@ -234,5 +236,31 @@ runTestsFieldTowers n = do
 
   printHeader "running tests for BLS12_381/Fp12/Montgomery"
   runFieldTests n (Proxy @BLS12_381_Fp12_Mont.Fp12)
+
+--------------------------------------------------------------------------------
+
+-- | extension specific tests 
+runTestsExtField :: Int -> IO ()
+runTestsExtField n = do
+
+  printHeader "running ext tests for BN128/Fp2/Montgomery"
+  runExtFieldTests n (Proxy @BN128_Fp2_Mont.Fp2)
+
+  printHeader "running ext tests for BN128/Fp6/Montgomery"
+  runExtFieldTests n (Proxy @BN128_Fp6_Mont.Fp6)
+
+  printHeader "running ext tests for BN128/Fp12/Montgomery"
+  runExtFieldTests n (Proxy @BN128_Fp12_Mont.Fp12)
+
+  --
+
+  printHeader "running ext tests for BLS12_381/Fp2/Montgomery"
+  runExtFieldTests n (Proxy @BLS12_381_Fp2_Mont.Fp2)
+
+  printHeader "running ext tests for BLS12_381/Fp6/Montgomery"
+  runExtFieldTests n (Proxy @BLS12_381_Fp6_Mont.Fp6)
+
+  printHeader "running ext tests for BLS12_381/Fp12/Montgomery"
+  runExtFieldTests n (Proxy @BLS12_381_Fp12_Mont.Fp12)
 
 --------------------------------------------------------------------------------

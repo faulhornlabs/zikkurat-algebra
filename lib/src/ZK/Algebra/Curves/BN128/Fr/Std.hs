@@ -129,6 +129,7 @@ instance C.Field Fr where
   dimPxy       _ = 1
   primGenPxy   _ = primGen
   batchInverse   = batchInv
+  frobenius      = id
 
 fftDomain :: FFTSubgroup Fr
 fftDomain = MkFFTSubgroup gen 28 where

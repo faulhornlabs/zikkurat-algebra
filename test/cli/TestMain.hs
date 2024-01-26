@@ -34,6 +34,7 @@ help = do
   putStrLn " - std_field"
   putStrLn " - montgomery"
   putStrLn " - towers"
+  putStrLn " - extfield"
   putStrLn " - againstref"
   putStrLn " - affine_curve"
   putStrLn " - proj_curve"
@@ -75,8 +76,12 @@ testMain what n = case canonicalizeName what of
   "montfield"  -> runTestsMontField n
   "montgomery" -> runTestsMontField n
 
-  "towers"     -> runTestsFieldTowers n     
-  "extfield"   -> runTestsFieldTowers n     
+  "towers"     -> do 
+                    runTestsExtField    n     
+                    runTestsFieldTowers n
+  "extfield"   -> do 
+                    runTestsExtField    n     
+                    runTestsFieldTowers n    
 
   "compare"    -> runTestsCompare n
   "againstref" -> runTestsCompare n 

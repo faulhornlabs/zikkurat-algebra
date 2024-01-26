@@ -11,9 +11,13 @@
 #include "bls12_381_Fp2_mont.h"
 #include "bls12_381_Fp_mont.h"
 
-#define BASE_NWORDS 6
-#define EXT_NWORDS  12
-#define EXT_DEGREE  2
+
+#define PRIME_NWORDS 6
+#define BASE_NWORDS  6
+#define EXT_NWORDS   12
+
+#define EXT_DEGREE   2
+#define PRIME_DEGREE 2
 
 #define SRC1(i) ((src1) + (i)*BASE_NWORDS)
 #define SRC2(i) ((src2) + (i)*BASE_NWORDS)
@@ -32,6 +36,30 @@ uint64_t bls12_381_Fp2_mont_irred_coeffs[12] =
 
 
 //------------------------------------------------------------------------------
+
+
+void bls12_381_Fp2_mont_from_base_field ( const uint64_t *src , uint64_t *tgt ) {
+  bls12_381_Fp2_mont_set_zero( tgt );
+  bls12_381_Fp_mont_copy( src, tgt );
+}
+
+void bls12_381_Fp2_mont_from_prime_field( const uint64_t *src , uint64_t *tgt ) {
+  bls12_381_Fp2_mont_set_zero( tgt );
+  bls12_381_Fp_mont_copy( src, tgt );
+}
+
+void bls12_381_Fp2_mont_scale_by_base_field ( const uint64_t *coeff , const uint64_t *src1, uint64_t *tgt ) {
+  for(int i=0; i<EXT_DEGREE; i++) {
+    bls12_381_Fp_mont_mul( coeff, SRC1(i), TGT(i) );
+  }
+}
+
+void bls12_381_Fp2_mont_scale_by_prime_field( const uint64_t *coeff , const uint64_t *src1, uint64_t *tgt ) {
+  for(int i=0; i<PRIME_DEGREE; i++) {
+    bls12_381_Fp_mont_mul( coeff , src1 + i*PRIME_NWORDS , tgt + i*PRIME_NWORDS );
+  }
+}
+
 
 uint8_t bls12_381_Fp2_mont_is_valid ( const uint64_t *src1 ) {
   uint8_t ok = 1;

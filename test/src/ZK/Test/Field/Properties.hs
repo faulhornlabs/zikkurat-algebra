@@ -21,6 +21,13 @@ runFieldTests n pxy = do
   runRingTests      n pxy
   runFieldOnlyTests n pxy 
 
+runExtFieldTests :: forall a. (ExtField a, ExtField' a) => Int -> Proxy a -> IO ()
+runExtFieldTests n pxy = do
+  runExtField_OnlyTests n pxy
+  runExtField'OnlyTests n pxy 
+
+--------------------------------------------------------------------------------
+
 runRingTests :: forall a. Ring a => Int -> Proxy a -> IO ()
 runRingTests n pxy = do
 
@@ -61,6 +68,47 @@ runFieldOnlyTests n pxy = do
       z <- rndIO @a
       return (test x y z) 
 
+--------------------
+
+
+runExtField_OnlyTests :: forall a. ExtField a => Int -> Proxy a -> IO ()
+runExtField_OnlyTests n pxy = do
+
+  forM_ extFieldProps $ \prop -> case prop of
+  
+    ExtFieldProp1 test name -> doTests n name $ do
+      x <- rndIO @a
+      return (test x) 
+
+    ExtFieldProp2 test name -> doTests n name $ do
+      x <- rndIO @a
+      y <- rndIO @a
+      return (test x y) 
+
+    ExtFieldPropB1 test name -> doTests n name $ do
+      x <- rndIO @(ExtBase a)
+      y <- rndIO @a
+      return (test x y) 
+
+runExtField'OnlyTests :: forall a. ExtField' a => Int -> Proxy a -> IO ()
+runExtField'OnlyTests n pxy = do
+
+  forM_ extField'Props $ \prop -> case prop of
+  
+    ExtField'Prop1 test name -> doTests n name $ do
+      x <- rndIO @a
+      return (test x) 
+
+    ExtField'Prop2 test name -> doTests n name $ do
+      x <- rndIO @a
+      y <- rndIO @a
+      return (test x y) 
+
+    ExtField'PropB1 test name -> doTests n name $ do
+      x <- rndIO @(PrimeBase a)
+      y <- rndIO @a
+      return (test x y) 
+
 --------------------------------------------------------------------------------
 
 doTests :: Int -> String -> IO Bool -> IO Bool
@@ -90,6 +138,30 @@ data FieldProp
   = FieldProp1 (forall a. Field a => a -> Bool          ) String
   | FieldProp2 (forall a. Field a => a -> a -> Bool     ) String
   | FieldProp3 (forall a. Field a => a -> a -> a -> Bool) String
+
+data ExtFieldProp
+  = ExtFieldProp1  (forall a. ExtField a => a -> Bool               ) String
+  | ExtFieldProp2  (forall a. ExtField a => a -> a -> Bool          ) String
+  | ExtFieldPropB1 (forall a. ExtField a => ExtBase a -> a -> Bool  ) String
+
+data ExtField'Prop
+  = ExtField'Prop1  (forall a. ExtField' a => a -> Bool                ) String
+  | ExtField'Prop2  (forall a. ExtField' a => a -> a -> Bool           ) String
+  | ExtField'PropB1 (forall a. ExtField' a => PrimeBase a -> a -> Bool ) String
+
+--------------------------------------------------------------------------------
+
+extFieldProps :: [ExtFieldProp]
+extFieldProps =
+  [ ExtFieldProp1  prop_pack_unpack_base  "unpack . pack == id"
+  , ExtFieldPropB1 prop_scale_base        "scale by base field"
+  ]
+
+extField'Props :: [ExtField'Prop]
+extField'Props =
+  [ ExtField'Prop1  prop_pack_unpack_prime  "unpack . pack == id"
+  , ExtField'PropB1 prop_scale_prime        "scale by prime field"
+  ]
 
 --------------------------------------------------------------------------------
 
@@ -293,5 +365,20 @@ prop_batch_inverse :: Field a => a -> a -> a -> Bool
 prop_batch_inverse x y z = any (==0) as || (map recip as == bs) where
   as = [ x,y,z, x+y, y+z, z+x, x+y+z ]
   bs = (unpackFlatArrayToList . batchInverse . packFlatArrayFromList) as
+
+--------------------------------------------------------------------------------
+-- * Extension field properties
+
+prop_pack_unpack_base :: ExtField a => a -> Bool
+prop_pack_unpack_base x = extPack (extUnpack x) == x
+
+prop_pack_unpack_prime :: ExtField' a => a -> Bool
+prop_pack_unpack_prime x = primePack (primeUnpack x) == x
+
+prop_scale_base  :: ExtField a => ExtBase a -> a -> Bool
+prop_scale_base c x = scaleExtBase c x == embedExtBase c * x
+
+prop_scale_prime  :: ExtField' a => PrimeBase a -> a -> Bool
+prop_scale_prime c x = scalePrimeField c x == embedPrimeField c * x
 
 --------------------------------------------------------------------------------

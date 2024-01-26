@@ -1,7 +1,7 @@
 
 -- | Polymorphic interface for finite fields
 
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, TypeFamilies, FlexibleContexts #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables, TypeFamilies, FlexibleContexts, TypeApplications #-}
 module ZK.Algebra.Class.Field where
 
 --------------------------------------------------------------------------------
@@ -50,6 +50,8 @@ class (Flat a, Ring a, Fractional a) => Field a where
   primGenPxy   :: Proxy a -> a           
   -- | efficient batch inverse
   batchInverse :: FlatArray a -> FlatArray a
+  -- | the Frobenius endomorphism @\x -> x^p@ where $p$ is the characteristic of the field
+  frobenius    :: a -> a
 
 -- | multiplicative inverse
 inverse :: Field a => a -> a      
@@ -81,6 +83,27 @@ class (Field f, Field (ExtBase f)) => ExtField f where
   embedExtBase     :: ExtBase f -> f                
   -- | projection to the base field 
   projectToExtBase :: f -> Maybe (ExtBase f)        
+  -- | scale by an element of the base field
+  scaleExtBase     :: ExtBase f -> f ->f
+  -- | convert from a vector over the base field
+  extPack :: [ExtBase f] -> f
+  -- | convert to a vector over the base field
+  extUnpack :: f -> [ExtBase f]
+
+-- | Extension fields, interpreted as vector spaces over the /prime field/
+class (Field f, Field (PrimeBase f)) => ExtField' f where
+  -- | the underlying prime field
+  type PrimeBase f :: Type                               
+  -- | embedding of the prime field
+  embedPrimeField     :: PrimeBase f -> f                
+  -- | projection to the prime field 
+  projectToPrimeField :: f -> Maybe (PrimeBase f)        
+  -- | scale by an element of the base field
+  scalePrimeField     :: PrimeBase f -> f ->f
+  -- | convert from a vector over the prime field
+  primePack :: [PrimeBase f] -> f
+  -- | convert to a vector over the prime field
+  primeUnpack :: f -> [PrimeBase f]
 
 --------------------------------------------------------------------------------
 
@@ -111,7 +134,6 @@ ringPowerDefault !z !e
         0 -> go  acc    (y*y) (shiftR e 1)
         _ -> go (acc*y) (y*y) (shiftR e 1)
 
-
 -- | Generic exponentiation for fields
 fieldPowerDefault :: forall f. (Field f) => f -> Integer -> f
 fieldPowerDefault !z !e 
@@ -128,5 +150,9 @@ fieldPowerDefault !z !e
       else case (e .&. 1) of
         0 -> go  acc    (y*y) (shiftR e 1)
         _ -> go (acc*y) (y*y) (shiftR e 1)
+
+-- | Naive generic Frobenius automorphism (for testing purposes)
+frobeniusNaive :: forall f. (Field f) => f -> f
+frobeniusNaive x = power x (charPxy (Proxy @f))
 
 --------------------------------------------------------------------------------

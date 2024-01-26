@@ -222,6 +222,7 @@ hsBegin params@(Params{..}) =
   , "  dimPxy     _ = 1"  
   , "  primGenPxy _ = primGen"
   , "  batchInverse = batchInv"
+  , "  frobenius    = id"
   , ""
   ] ++ (case fftDomain of
          Just (siz,gen) ->

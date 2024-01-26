@@ -10,8 +10,9 @@ module ZK.Algebra.Curves.BLS12_381.Fp12.Mont
   ( Fp12(..)
     -- * Conversion
   , pack , unpack
+  , packList , unpackList
+  , packListPrime , unpackListPrime
     -- * Field elements
-  , embedBase
   , zero , one , two     -- , primGen
     -- * Predicates
   , isValid , isZero , isOne , isEqual
@@ -21,6 +22,9 @@ module ZK.Algebra.Curves.BLS12_381.Fp12.Mont
   , inv , div , batchInv
     -- * Exponentiation
   , pow , pow_
+    -- * Relation to the base and prime fields
+  , embedBase , embedPrime
+  , scaleBase , scalePrime
     -- * Random
   , rnd
     -- * Export to C
@@ -48,7 +52,9 @@ import System.IO.Unsafe
 import ZK.Algebra.BigInt.BigInt384 (BigInt384(..) )
 
 import ZK.Algebra.Curves.BLS12_381.Fp6.Mont( Fp6(..) )
+import ZK.Algebra.Curves.BLS12_381.Fp.Mont( Fp(..) )
 import qualified ZK.Algebra.Curves.BLS12_381.Fp6.Mont as Base
+import qualified ZK.Algebra.Curves.BLS12_381.Fp.Mont as Prime
 
 import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
@@ -60,9 +66,9 @@ import ZK.Algebra.Helpers
 newtype Fp12 = MkFp12 (ForeignPtr Word64)
 
 zero, one, two :: Fp12
-zero = embedBase 0
-one  = embedBase 1
-two  = embedBase 2
+zero = embedPrime 0
+one  = embedPrime 1
+two  = embedPrime 2
 
 primGen :: Fp12
 primGen = error "primGen/BLS12_381/Fp12: not implemented"
@@ -71,7 +77,7 @@ instance Eq Fp12 where
   (==) = isEqual
 
 instance Num Fp12 where
-  fromInteger = embedBase . fromInteger
+  fromInteger = embedPrime . fromInteger
   negate = neg
   (+) = add
   (-) = sub
@@ -120,10 +126,21 @@ instance C.Field Fp12 where
 
 instance C.ExtField Fp12 where
   type ExtBase Fp12 = Fp6
-  extDeg _     = 2
-  embedExtBase = embedBase
+  extDeg _ = 2
   definingPolyCoeffs = error "definingPolyCoeffs: not yet implemented"
-  projectToExtBase   = error "projectToExtBase: not yet implemented"
+  embedExtBase     = embedBase
+  projectToExtBase = error "projectToExtBase: not yet implemented"
+  scaleExtBase     = scaleBase
+  extPack          = packList
+  extUnpack        = unpackList
+
+instance C.ExtField' Fp12 where
+  type PrimeBase Fp12 = Fp
+  embedPrimeField     = embedPrime
+  projectToPrimeField = error "projectToPrimeField: not yet implemented"
+  scalePrimeField     = scalePrime
+  primePack           = packListPrime
+  primeUnpack         = unpackListPrime
 
 instance C.QuadraticExt Fp12 where
   quadraticUnpack = unpack
@@ -132,7 +149,15 @@ instance C.QuadraticExt Fp12 where
 ----------------------------------------
 
 foreign import ccall unsafe "bls12_381_Fp12_mont_set_const" c_bls12_381_Fp12_mont_set_const :: Ptr Word64 -> Ptr Word64 -> IO ()
-foreign import ccall unsafe "bls12_381_Fp6_mont_copy" c_bls12_381_Fp6_mont_copy      :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+foreign import ccall unsafe "bls12_381_Fp6_mont_copy"      c_bls12_381_Fp6_mont_copy      :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp_mont_copy"      c_bls12_381_Fp_mont_copy      :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+foreign import ccall unsafe "bls12_381_Fp12_mont_from_base_field"  c_bls12_381_Fp12_mont_from_base_field  :: Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp12_mont_from_prime_field" c_bls12_381_Fp12_mont_from_prime_field :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+foreign import ccall unsafe "bls12_381_Fp12_mont_scale_by_base_field"  c_bls12_381_Fp12_mont_scale_by_base_field  :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_Fp12_mont_scale_by_prime_field" c_bls12_381_Fp12_mont_scale_by_prime_field :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 ----------------------------------------
 
@@ -148,6 +173,54 @@ withForeignTuple (fptr1, fptr2) action = do
   withForeignPtr fptr2 $ \ptr2 -> do
   action (ptr1, ptr2)
 
+----------------
+
+mallocForeignList :: IO [ForeignPtr Word64]
+mallocForeignList = do
+  fptr1 <- mallocForeignPtrArray 36
+  fptr2 <- mallocForeignPtrArray 36
+  return [fptr1, fptr2]
+
+withForeignList :: [ForeignPtr Word64] -> ([Ptr Word64] -> IO a) -> IO a
+withForeignList [fptr1, fptr2] action = do
+  withForeignPtr fptr1 $ \ptr1 -> do
+  withForeignPtr fptr2 $ \ptr2 -> do
+  action [ptr1, ptr2]
+
+----------------
+
+mallocForeignListPrime :: IO [ForeignPtr Word64]
+mallocForeignListPrime = do
+  fptr1 <- mallocForeignPtrArray 6
+  fptr2 <- mallocForeignPtrArray 6
+  fptr3 <- mallocForeignPtrArray 6
+  fptr4 <- mallocForeignPtrArray 6
+  fptr5 <- mallocForeignPtrArray 6
+  fptr6 <- mallocForeignPtrArray 6
+  fptr7 <- mallocForeignPtrArray 6
+  fptr8 <- mallocForeignPtrArray 6
+  fptr9 <- mallocForeignPtrArray 6
+  fptr10 <- mallocForeignPtrArray 6
+  fptr11 <- mallocForeignPtrArray 6
+  fptr12 <- mallocForeignPtrArray 6
+  return [fptr1, fptr2, fptr3, fptr4, fptr5, fptr6, fptr7, fptr8, fptr9, fptr10, fptr11, fptr12]
+
+withForeignListPrime :: [ForeignPtr Word64] -> ([Ptr Word64] -> IO a) -> IO a
+withForeignListPrime [fptr1, fptr2, fptr3, fptr4, fptr5, fptr6, fptr7, fptr8, fptr9, fptr10, fptr11, fptr12] action = do
+  withForeignPtr fptr1 $ \ptr1 -> do
+  withForeignPtr fptr2 $ \ptr2 -> do
+  withForeignPtr fptr3 $ \ptr3 -> do
+  withForeignPtr fptr4 $ \ptr4 -> do
+  withForeignPtr fptr5 $ \ptr5 -> do
+  withForeignPtr fptr6 $ \ptr6 -> do
+  withForeignPtr fptr7 $ \ptr7 -> do
+  withForeignPtr fptr8 $ \ptr8 -> do
+  withForeignPtr fptr9 $ \ptr9 -> do
+  withForeignPtr fptr10 $ \ptr10 -> do
+  withForeignPtr fptr11 $ \ptr11 -> do
+  withForeignPtr fptr12 $ \ptr12 -> do
+  action [ptr1, ptr2, ptr3, ptr4, ptr5, ptr6, ptr7, ptr8, ptr9, ptr10, ptr11, ptr12]
+
 ----------------------------------------
 
 {-# NOINLINE embedBase#-}
@@ -156,8 +229,41 @@ embedBase (MkFp6 fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 72
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
-      c_bls12_381_Fp12_mont_set_const ptr1 ptr2
+      c_bls12_381_Fp12_mont_from_base_field ptr1 ptr2
   return (MkFp12 fptr2)
+
+{-# NOINLINE embedPrime#-}
+embedPrime :: Fp -> Fp12
+embedPrime (MkFp fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 72
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bls12_381_Fp12_mont_from_prime_field ptr1 ptr2
+  return (MkFp12 fptr2)
+
+----------------------------------------
+
+{-# NOINLINE scaleBase#-}
+scaleBase :: Fp6 -> Fp12 -> Fp12
+scaleBase (MkFp6 fptr1) (MkFp12 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 72
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bls12_381_Fp12_mont_scale_by_base_field ptr1 ptr2 ptr3
+  return (MkFp12 fptr3)
+
+{-# NOINLINE scalePrime#-}
+scalePrime :: Fp -> Fp12 -> Fp12
+scalePrime (MkFp fptr1) (MkFp12 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 72
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bls12_381_Fp12_mont_scale_by_prime_field ptr1 ptr2 ptr3
+  return (MkFp12 fptr3)
+
+----------------------------------------
 
 {-# NOINLINE unpack #-}
 unpack :: Fp12 -> (Fp6, Fp6)
@@ -179,6 +285,73 @@ pack (MkFp6 fsrc1, MkFp6 fsrc2) = unsafePerformIO $ do
       c_bls12_381_Fp6_mont_copy src2 (plusPtr tgt 288)
   return (MkFp12 ftgt)
 
+----------------------------------------
+
+{-# NOINLINE unpackList #-}
+unpackList :: Fp12 -> [Fp6]
+unpackList (MkFp12 fsrc) = unsafePerformIO $ do
+  fptrs@[ftgt1, ftgt2] <- mallocForeignList
+  withForeignPtr fsrc $ \src -> do
+    withForeignList fptrs $ \[tgt1, tgt2] -> do
+      c_bls12_381_Fp6_mont_copy (plusPtr src 0) tgt1
+      c_bls12_381_Fp6_mont_copy (plusPtr src 288) tgt2
+  return [MkFp6 ftgt1, MkFp6 ftgt2]
+
+{-# NOINLINE packList #-}
+packList :: [Fp6] -> Fp12
+packList [MkFp6 fsrc1, MkFp6 fsrc2] = unsafePerformIO $ do
+  ftgt <- mallocForeignPtrArray 72
+  withForeignList [fsrc1, fsrc2] $ \[src1, src2] -> do
+    withForeignPtr ftgt $ \tgt -> do
+      c_bls12_381_Fp6_mont_copy src1 (plusPtr tgt 0)
+      c_bls12_381_Fp6_mont_copy src2 (plusPtr tgt 288)
+  return (MkFp12 ftgt)
+packList _ = error "expecting a list of 2 Fp6 elements"
+
+----------------------------------------
+
+{-# NOINLINE unpackListPrime #-}
+unpackListPrime :: Fp12 -> [Fp]
+unpackListPrime (MkFp12 fsrc) = unsafePerformIO $ do
+  fptrs@[ftgt1, ftgt2, ftgt3, ftgt4, ftgt5, ftgt6, ftgt7, ftgt8, ftgt9, ftgt10, ftgt11, ftgt12] <- mallocForeignListPrime
+  withForeignPtr fsrc $ \src -> do
+    withForeignListPrime fptrs $ \[tgt1, tgt2, tgt3, tgt4, tgt5, tgt6, tgt7, tgt8, tgt9, tgt10, tgt11, tgt12] -> do
+      c_bls12_381_Fp_mont_copy (plusPtr src 0) tgt1
+      c_bls12_381_Fp_mont_copy (plusPtr src 48) tgt2
+      c_bls12_381_Fp_mont_copy (plusPtr src 96) tgt3
+      c_bls12_381_Fp_mont_copy (plusPtr src 144) tgt4
+      c_bls12_381_Fp_mont_copy (plusPtr src 192) tgt5
+      c_bls12_381_Fp_mont_copy (plusPtr src 240) tgt6
+      c_bls12_381_Fp_mont_copy (plusPtr src 288) tgt7
+      c_bls12_381_Fp_mont_copy (plusPtr src 336) tgt8
+      c_bls12_381_Fp_mont_copy (plusPtr src 384) tgt9
+      c_bls12_381_Fp_mont_copy (plusPtr src 432) tgt10
+      c_bls12_381_Fp_mont_copy (plusPtr src 480) tgt11
+      c_bls12_381_Fp_mont_copy (plusPtr src 528) tgt12
+  return [MkFp ftgt1, MkFp ftgt2, MkFp ftgt3, MkFp ftgt4, MkFp ftgt5, MkFp ftgt6, MkFp ftgt7, MkFp ftgt8, MkFp ftgt9, MkFp ftgt10, MkFp ftgt11, MkFp ftgt12]
+
+{-# NOINLINE packListPrime #-}
+packListPrime :: [Fp] -> Fp12
+packListPrime [MkFp fsrc1, MkFp fsrc2, MkFp fsrc3, MkFp fsrc4, MkFp fsrc5, MkFp fsrc6, MkFp fsrc7, MkFp fsrc8, MkFp fsrc9, MkFp fsrc10, MkFp fsrc11, MkFp fsrc12] = unsafePerformIO $ do
+  ftgt <- mallocForeignPtrArray 72
+  withForeignListPrime [fsrc1, fsrc2, fsrc3, fsrc4, fsrc5, fsrc6, fsrc7, fsrc8, fsrc9, fsrc10, fsrc11, fsrc12] $ \[src1, src2, src3, src4, src5, src6, src7, src8, src9, src10, src11, src12] -> do
+    withForeignPtr ftgt $ \tgt -> do
+      c_bls12_381_Fp_mont_copy src1 (plusPtr tgt 0)
+      c_bls12_381_Fp_mont_copy src2 (plusPtr tgt 48)
+      c_bls12_381_Fp_mont_copy src3 (plusPtr tgt 96)
+      c_bls12_381_Fp_mont_copy src4 (plusPtr tgt 144)
+      c_bls12_381_Fp_mont_copy src5 (plusPtr tgt 192)
+      c_bls12_381_Fp_mont_copy src6 (plusPtr tgt 240)
+      c_bls12_381_Fp_mont_copy src7 (plusPtr tgt 288)
+      c_bls12_381_Fp_mont_copy src8 (plusPtr tgt 336)
+      c_bls12_381_Fp_mont_copy src9 (plusPtr tgt 384)
+      c_bls12_381_Fp_mont_copy src10 (plusPtr tgt 432)
+      c_bls12_381_Fp_mont_copy src11 (plusPtr tgt 480)
+      c_bls12_381_Fp_mont_copy src12 (plusPtr tgt 528)
+  return (MkFp12 ftgt)
+packListPrime _ = error "expecting a list of 12 Fp elements"
+
+----------------------------------------
 
 {-# NOINLINE exportToCDef #-}
 exportToCDef :: String -> Fp12 -> String

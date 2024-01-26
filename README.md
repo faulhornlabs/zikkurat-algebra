@@ -131,11 +131,12 @@ TODO
 - [ ] unit-test framework
 - [x] vectors of field elements
 - [ ] long division of bigints
+- [ ] faster Frobenius
 - [ ] square roots in prime fields 
 - [ ] hash-to-curve & better (faster) random curve points  
 - [ ] add benchmarking
 - [x] implement field extensions
-- [ ] implement "G2" twisted curves
+- [x] implement "G2" twisted curves (WIP)
 - [ ] figure out a better meta-programming story
 - [x] add pure Haskell reference implementations (not really necessary, but would make codegen nicer)
 - [ ] try to optimize a bit more

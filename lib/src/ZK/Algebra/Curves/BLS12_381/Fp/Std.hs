@@ -125,6 +125,7 @@ instance C.Field Fp where
   dimPxy       _ = 1
   primGenPxy   _ = primGen
   batchInverse   = batchInv
+  frobenius      = id
 
 
 
