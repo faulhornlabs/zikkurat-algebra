@@ -167,7 +167,7 @@ instance (Field base, Ext var deg base) => Field (GF var deg base) where
   primGenPxy     pxy = error "GF/primGen: not implemented yet"
   isZero (GF as)     = all isZero as
   isOne  (GF as)     = case as of { [] -> False ; (x:xs) -> isOne x && all isZero xs }
-  frobenius          = error "GF/frobenius"
+  frobenius          = frobeniusNaive -- error "GF/frobenius"
   pow                = gfPower
   projectToPrimeSubfield = projectToPrimeSubfield . constantCoeff
 
@@ -180,6 +180,22 @@ instance (Field base, Ext var deg base) => ExtField (GF var deg base) where
     [x] -> Just x
     _   -> Nothing
   definingPolyCoeffs pxy = extractIrredPoly1 pxy
+  unpackBase gf = case pad gf of { GF xs -> xs }
+  packBase xs = pad (GF xs)
+
+instance (Field base, Ext var deg base, ExtField base, ExtField' base) => ExtField' (GF var deg base) where
+  type PrimeBase (GF var deg base) = PrimeBase base
+  primeDeg pxy       = extractDegree1 pxy * primeDeg (Proxy @base)
+  embedPrimeBase x   = GF [embedPrimeBase x]
+  projectToPrimeBase x = projectToPrimeBase =<< projectToExtBase x
+  unpackPrimeBase gf = case pad gf of { GF xs -> concatMap unpackPrimeBase xs }
+
+  packPrimeBase xs = packBase ys where
+    -- n = primeDeg (Proxy @(GF var deg base))
+    m = primeDeg (Proxy @base)            :: Int
+    chunks = partitionIntoChunks m xs     :: [[PrimeBase (GF var deg base)]]
+    ys = map (packPrimeBase @base) chunks :: [base]
+    
 
 --------------------------------------------------------------------------------
 -- * Type level hackery

@@ -67,11 +67,11 @@ printHeader str = do
 
 runTestsAll :: Int -> IO ()
 runTestsAll n = do
-  runTestsExtField      n
   runTestsPlatform   
   runTestsBigInt        n 
   runTestsStdField      n
   runTestsMontField     n
+  runTestsExtField      n
   runTestsProjCurve     n
   runTestsAffineCurve   n
   runTestsJacCurve      n

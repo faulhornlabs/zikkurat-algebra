@@ -168,14 +168,16 @@ comparisons =
   , op_sub
   , op_mul
   , op_div
+  , op_frob
   ]
 
-op_neg = FieldCmp1 ( negate      , negate      ) "neg"
-op_inv = FieldCmp1 ( recip       , recip       ) "inv"
-op_sqr = FieldCmp1 ( Pure.square , Fast.square ) "sqr"
-op_add = FieldCmp2 ( (+)         , (+)         ) "add"
-op_sub = FieldCmp2 ( (-)         , (-)         ) "sub"
-op_mul = FieldCmp2 ( (*)         , (*)         ) "mul"
-op_div = FieldCmp2 ( (*)         , (*)         ) "div"
+op_neg  = FieldCmp1 ( negate         , negate         ) "neg"
+op_inv  = FieldCmp1 ( recip          , recip          ) "inv"
+op_sqr  = FieldCmp1 ( Pure.square    , Fast.square    ) "sqr"
+op_add  = FieldCmp2 ( (+)            , (+)            ) "add"
+op_sub  = FieldCmp2 ( (-)            , (-)            ) "sub"
+op_mul  = FieldCmp2 ( (*)            , (*)            ) "mul"
+op_div  = FieldCmp2 ( (*)            , (*)            ) "div"
+op_frob = FieldCmp1 ( Pure.frobenius , Fast.frobenius ) "frob"
 
 --------------------------------------------------------------------------------

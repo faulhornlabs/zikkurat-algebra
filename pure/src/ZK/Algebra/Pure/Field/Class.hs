@@ -45,6 +45,8 @@ class (Eq f, Show f, Fractional f, SerializeMontgomery f, Rnd f) => Field f wher
   frobenius      :: f -> f                       
   -- | project to the prime subfield
   projectToPrimeSubfield :: f -> Maybe Integer   
+  
+  frobenius = frobeniusNaive
 
 square :: Num a => a -> a
 square x = x * x
@@ -60,6 +62,9 @@ unsafeProjectToPrimeSubfield :: Field a => a -> Integer
 unsafeProjectToPrimeSubfield x = case projectToPrimeSubfield x of
   Just y  -> y
   Nothing -> error "unsafeProjectToPrimeSubfield: element not in the prime subfield"
+
+frobeniusNaive :: forall f. Field f => f -> f                       
+frobeniusNaive x = pow x (characteristic (Proxy @f))
 
 --------------------------------------------------------------------------------
 
@@ -85,9 +90,29 @@ class (Field f, Field (ExtBase f)) => ExtField f where
   embedExtBase     :: ExtBase f -> f                
   -- | projection to the base field 
   projectToExtBase :: f -> Maybe (ExtBase f)        
+  -- | convert to a vector over the base field
+  unpackBase :: f -> [ExtBase f]       
+  -- | convert from a vector over the base field
+  packBase :: [ExtBase f] -> f
 
+  -- /// defaults ///
   definingPoly pxy   = Poly $ listArray (0,extDeg pxy) (definingPolyCoeffs pxy)
   definingPolyCoeffs = polyCoeffList . definingPoly
+
+-- | Extension fields, interpreted as vector spaces over the prime field
+class (Field f, Field (PrimeBase f)) => ExtField' f where
+  -- | the prime field
+  type PrimeBase f :: Type                               
+  -- | the degree of the extension over the prime field
+  primeDeg :: Proxy f -> Int                          
+  -- | embedding of the prime field
+  embedPrimeBase     :: PrimeBase f -> f                
+  -- | projection to the prime field 
+  projectToPrimeBase :: f -> Maybe (PrimeBase f)        
+  -- | convert to a vector over the base field
+  unpackPrimeBase :: f -> [PrimeBase f]       
+  -- | convert from a vector over the base field
+  packPrimeBase :: [PrimeBase f] -> f
 
 -- | Quadratic extensions
 class ExtField f => QuadraticExt f where

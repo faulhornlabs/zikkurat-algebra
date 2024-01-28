@@ -8,6 +8,7 @@ module Zikkurat.CodeGen.ExtField where
 
 import Data.Word
 import Data.List
+import Data.Proxy
 import Text.Printf
 
 import System.FilePath
@@ -23,6 +24,13 @@ import Zikkurat.CodeGen.Misc
 
 isMinusOne :: Field f => f -> Bool
 isMinusOne  x = isZero (x + 1)
+
+--------------------------------------------------------------------------------
+
+data AnyExtProxy 
+  = forall f. (Field f, SerializeMontgomery f, ExtField' f) => AnyExtProxy (Proxy f)
+
+deriving instance Show AnyExtProxy
 
 --------------------------------------------------------------------------------
 
@@ -71,6 +79,7 @@ data ExtParams = ExtParams
   , typeNamePrime  :: String         -- ^ the name of the haskell type of the prime field
   , extFieldName   :: String         -- ^ name of the field
   , irredPoly      :: AnyIrredPoly   -- ^ the defining polynomial
+  , pureTypeProxy  :: AnyExtProxy    -- ^ the defining polynomial
   , expoBigintType :: String         -- ^ bigint type used for the exponent in @pow@
 --  , primGen       :: Integer       -- ^ the primitive generator
   }
@@ -99,6 +108,9 @@ c_header (ExtParams{..}) =
   , "extern void " ++ prefix ++ "scale_by_base_field ( const uint64_t *coeff , const uint64_t *src, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "scale_by_prime_field( const uint64_t *coeff , const uint64_t *src, uint64_t *tgt );"
   , ""
+  , "extern void " ++ prefix ++ "frobenius( const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "frobenius_inplace( uint64_t *tgt );"
+  ,""
   , "extern uint8_t " ++ prefix ++ "is_valid ( const uint64_t *src );"
   , "extern uint8_t " ++ prefix ++ "is_zero  ( const uint64_t *src );"
   , "extern uint8_t " ++ prefix ++ "is_one   ( const uint64_t *src );"
@@ -776,6 +788,42 @@ c_divExtGeneric ExtParams{..} =
   ]  
 
 --------------------------------------------------------------------------------
+-- frobenius
+
+frobeniusBases :: forall f. (Field f, SerializeMontgomery f, ExtField' f) => Proxy f -> [[Word64]]
+frobeniusBases proxy = map toWordsMontgomery ys where
+  m  = primeDeg proxy
+  bs = [ packPrimeBase (ei i) | i<-[0..m-1] ] :: [f]
+  ys = map frobenius bs
+
+  ei :: Int -> [PrimeBase f]
+  ei i = replicate i 0 ++ [1] ++ replicate (m-i-1) 0
+
+c_frobenius :: ExtParams -> Code
+c_frobenius ExtParams{..} = 
+  [ ""
+  , mkConstWordArray (prefix ++ "frobenius_basis") frobBases
+  , "" 
+  , "void " ++ prefix ++ "frobenius ( const uint64_t *src, uint64_t *tgt ) {"
+  , "  uint64_t acc[EXT_NWORDS];"
+  , "  uint64_t tmp[EXT_NWORDS];"
+  , "  " ++ prefix ++ "set_zero(acc);"
+  , "  for(int i=0; i<PRIME_DEGREE; i++) {"
+  , "    " ++ prefix ++ "scale_by_prime_field( src + i*PRIME_NWORDS , " ++ prefix ++ "frobenius_basis + i*EXT_NWORDS , tmp );"
+  , "    " ++ prefix ++ "add_inplace( acc, tmp );"
+  , "  }"
+  , "  " ++ prefix ++ "copy( acc, tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "frobenius_inplace ( uint64_t *tgt ) {"
+  , "  " ++ prefix ++ "frobenius( tgt, tgt );"
+  , "}"
+  ] 
+  where 
+    frobBases = case pureTypeProxy of
+      AnyExtProxy proxy -> frobeniusBases proxy
+
+--------------------------------------------------------------------------------
 
 hsBegin :: ExtParams -> Code
 hsBegin extparams@(ExtParams{..}) =
@@ -805,6 +853,8 @@ hsBegin extparams@(ExtParams{..}) =
   , "    -- * Relation to the base and prime fields"
   , "  , embedBase" ++ postfix ++ " , embedPrime" ++ postfix 
   , "  , scaleBase" ++ postfix ++ " , scalePrime" ++ postfix 
+  , "    -- * Frobenius automorphism"
+  , "  , frob"
   , "    -- * Random"
   , "  , rnd"
   , "    -- * Export to C"
@@ -913,6 +963,7 @@ hsBegin extparams@(ExtParams{..}) =
   , "  dimPxy     _ = C.dimPxy  (Proxy @" ++ typeNameBase ++ ") * " ++ show extDegree  
   , "  primGenPxy _ = primGen"
   , "  batchInverse = batchInv"
+  , "  frobenius    = frob"
   , ""
   , "instance C.ExtField " ++ typeName ++ " where"
   , "  type ExtBase " ++ typeName ++ " = " ++ typeNameBase
@@ -1174,6 +1225,8 @@ hsFFI extparams@(ExtParams{..}) = catCode $
   , mkffi "div"         $ cfun "div"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
     --
   , mkffi "pow_"        $ cfun "pow_uint64"       (CTyp [CArgInPtr , CArg64    , CArgOutPtr ] CRetVoid)
+    --
+  , mkffi "frob"        $ cfun "frobenius"        (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
   ]
   where
     cfun  cname = CFun (prefix ++ cname)
@@ -1196,6 +1249,7 @@ c_code extparams = concat $ map ("":)
   , c_mulExt        extparams
   , c_invExt        extparams
   , c_divExt        extparams
+  , c_frobenius     extparams
     --
   , exponentiation (toCommonParams extparams)
   , batchInverse   (toCommonParams extparams)

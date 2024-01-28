@@ -6,6 +6,9 @@ extern void bn128_Fp2_mont_from_prime_field( const uint64_t *src , uint64_t *tgt
 extern void bn128_Fp2_mont_scale_by_base_field ( const uint64_t *coeff , const uint64_t *src, uint64_t *tgt );
 extern void bn128_Fp2_mont_scale_by_prime_field( const uint64_t *coeff , const uint64_t *src, uint64_t *tgt );
 
+extern void bn128_Fp2_mont_frobenius( const uint64_t *src , uint64_t *tgt );
+extern void bn128_Fp2_mont_frobenius_inplace( uint64_t *tgt );
+
 extern uint8_t bn128_Fp2_mont_is_valid ( const uint64_t *src );
 extern uint8_t bn128_Fp2_mont_is_zero  ( const uint64_t *src );
 extern uint8_t bn128_Fp2_mont_is_one   ( const uint64_t *src );

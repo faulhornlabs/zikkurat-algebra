@@ -75,6 +75,7 @@ extParams_bn128_Fp2 = ExtParams
   , typeNameBase   = "Fp"
   , typeNamePrime  = "Fp"
   , extFieldName   = "BN128/Fp2"
+  , pureTypeProxy  = AnyExtProxy    (Proxy @BN254.Fp2)
   , irredPoly      = mkAnyIrredPoly (Proxy @BN254.Fp2) 
   , expoBigintType = "BigInt256"
   }  
@@ -98,6 +99,7 @@ extParams_bn128_Fp6 = ExtParams
   , typeNameBase   = "Fp2"
   , typeNamePrime  = "Fp"
   , extFieldName   = "BN128/Fp6"
+  , pureTypeProxy  = AnyExtProxy    (Proxy @BN254.Fp6)
   , irredPoly      = mkAnyIrredPoly (Proxy @BN254.Fp6) 
   , expoBigintType = "BigInt256"
   }  
@@ -121,6 +123,7 @@ extParams_bn128_Fp12 = ExtParams
   , typeNameBase   = "Fp6"
   , typeNamePrime  = "Fp"
   , extFieldName   = "BN128/Fp12"
+  , pureTypeProxy  = AnyExtProxy    (Proxy @BN254.Fp12)
   , irredPoly      = mkAnyIrredPoly (Proxy @BN254.Fp12) 
   , expoBigintType = "BigInt256"
   }  
@@ -147,6 +150,7 @@ extParams_bls12_381_Fp2 = ExtParams
   , typeNameBase   = "Fp"
   , typeNamePrime  = "Fp"
   , extFieldName   = "BLS12_381/Fp2"
+  , pureTypeProxy  = AnyExtProxy    (Proxy @BLS12_381.Fp2)
   , irredPoly      = mkAnyIrredPoly (Proxy @BLS12_381.Fp2) 
   , expoBigintType = "BigInt384"
   }  
@@ -170,6 +174,7 @@ extParams_bls12_381_Fp6 = ExtParams
   , typeNameBase   = "Fp2"
   , typeNamePrime  = "Fp"
   , extFieldName   = "BLS12_381/Fp6"
+  , pureTypeProxy  = AnyExtProxy    (Proxy @BLS12_381.Fp6)
   , irredPoly      = mkAnyIrredPoly (Proxy @BLS12_381.Fp6) 
   , expoBigintType = "BigInt384"
   }  
@@ -193,6 +198,7 @@ extParams_bls12_381_Fp12 = ExtParams
   , typeNameBase   = "Fp6"
   , typeNamePrime  = "Fp"
   , extFieldName   = "BLS12_381/Fp12"
+  , pureTypeProxy  = AnyExtProxy    (Proxy @BLS12_381.Fp12)
   , irredPoly      = mkAnyIrredPoly (Proxy @BLS12_381.Fp12) 
   , expoBigintType = "BigInt384"
   }  

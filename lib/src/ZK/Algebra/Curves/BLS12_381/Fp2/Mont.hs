@@ -25,6 +25,8 @@ module ZK.Algebra.Curves.BLS12_381.Fp2.Mont
     -- * Relation to the base and prime fields
   , embedBase , embedPrime
   , scaleBase , scalePrime
+    -- * Frobenius automorphism
+  , frob
     -- * Random
   , rnd
     -- * Export to C
@@ -123,6 +125,7 @@ instance C.Field Fp2 where
   dimPxy     _ = C.dimPxy  (Proxy @Fp) * 2
   primGenPxy _ = primGen
   batchInverse = batchInv
+  frobenius    = frob
 
 instance C.ExtField Fp2 where
   type ExtBase Fp2 = Fp
@@ -505,4 +508,15 @@ pow_ (MkFp2 fptr1) x = unsafePerformIO $ do
   cret <- withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do
       c_bls12_381_Fp2_mont_pow_uint64 ptr1 x ptr2
+  return (MkFp2 fptr2)
+
+foreign import ccall unsafe "bls12_381_Fp2_mont_frobenius" c_bls12_381_Fp2_mont_frobenius :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE frob #-}
+frob :: Fp2 -> Fp2
+frob (MkFp2 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bls12_381_Fp2_mont_frobenius ptr1 ptr2
   return (MkFp2 fptr2)

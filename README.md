@@ -129,9 +129,10 @@ TODO
 - [x] implement NTT and iNTT
 - [x] property-based test framework
 - [ ] unit-test framework
+- [ ] figure out nicer API-s
 - [x] vectors of field elements
 - [ ] long division of bigints
-- [ ] faster Frobenius
+- [x] faster Frobenius automorphism
 - [ ] square roots in prime fields 
 - [ ] hash-to-curve & better (faster) random curve points  
 - [ ] add benchmarking

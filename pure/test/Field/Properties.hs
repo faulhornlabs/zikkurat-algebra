@@ -162,6 +162,7 @@ fieldOnlyProps =
   , FieldProp3 prop_mul_div_associative_2      "mul-div assoc /2"
   , FieldProp3 prop_mul_div_associative_3      "mul-div assoc /3"
 --  , FieldProp3 prop_batch_inverse              "batch inverse"
+--  , FieldProp1 prop_frobenius                  "frobenius == frobeniusNaive"
   ]
 
 --------------------------------------------------------------------------------
@@ -314,5 +315,8 @@ prop_mul_div_associative_3 x y z = ((x / y) / z) == (x / (y * z))
 -- prop_batch_inverse x y z = any (==0) as || (map recip as == bs) where
 --   as = [ x,y,z, x+y, y+z, z+x, x+y+z ]
 --   bs = batchInverse as
+
+-- prop_frobenius :: Field a => a -> Bool
+-- prop_frobenius x = (frobenius x == frobeniusNaive x)
 
 --------------------------------------------------------------------------------

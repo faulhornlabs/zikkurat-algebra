@@ -118,6 +118,15 @@ mkConstArrFp2 n name values = "const uint64_t " ++ name ++ "[" ++ show (n*length
     ws1 = toWord64sLE' (div n 2) value1
     ws2 = toWord64sLE' (div n 2) value2
 
+-- | 2D word array
+mkConstWordArray :: String -> [[Word64]] -> String
+mkConstWordArray name wss = unlines ([header] ++ stuff ++ [footer]) where
+  header = "const uint64_t " ++ name ++ "[" ++ show (sum $ map length wss) ++ "] = "
+  stuff  = zipWith line commas wss
+  footer = "  };"
+  line ch ws = "  " ++ [ch] ++ " " ++ intercalate ", " (map showHex64 ws)
+  commas = '{' : repeat ','
+
 --------------------------------------------------------------------------------
 
 type CName  = String

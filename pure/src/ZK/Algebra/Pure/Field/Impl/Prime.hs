@@ -1,7 +1,7 @@
 
 -- | Prime field implementations
 
-{-# LANGUAGE KindSignatures, ScopedTypeVariables #-}
+{-# LANGUAGE KindSignatures, ScopedTypeVariables, TypeFamilies #-}
 module ZK.Algebra.Pure.Field.Impl.Prime where
 
 --------------------------------------------------------------------------------
@@ -93,6 +93,27 @@ instance LowerPrimeField t => Field (FF t) where
 
 instance LowerPrimeField t => PrimeField (FF t) where
   asInteger (FF a) = a
+
+--------------------------------------------------------------------------------
+-- * hackety hack...
+
+instance LowerPrimeField t => ExtField (FF t) where
+  type ExtBase (FF t) = FF t
+  extDeg _ = 1
+  definingPoly       _ = error "defining polynomial of a prime field"
+  definingPolyCoeffs _ = error "defining polynomial of a prime field"
+  embedExtBase     = id
+  projectToExtBase = Just
+  unpackBase x = [x]
+  packBase [x] = x
+
+instance LowerPrimeField t => ExtField' (FF t) where
+  type PrimeBase (FF t) = FF t
+  primeDeg _         = 1
+  embedPrimeBase     = id
+  projectToPrimeBase = Just
+  unpackPrimeBase  x = [x]
+  packPrimeBase  [x] = x
 
 --------------------------------------------------------------------------------
 

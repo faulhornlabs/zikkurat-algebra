@@ -213,6 +213,7 @@ fieldOnlyProps =
   , FieldProp1 prop_inv_fermat                 "inv == fermat"
   , FieldProp1 prop_fermat_1                   "fermat/1"
   , FieldProp1 prop_fermat_2                   "fermat/2"
+  , FieldProp1 prop_frobenius                  "frobenius == naive"
   ]
 
 --------------------------------------------------------------------------------
@@ -365,6 +366,9 @@ prop_batch_inverse :: Field a => a -> a -> a -> Bool
 prop_batch_inverse x y z = any (==0) as || (map recip as == bs) where
   as = [ x,y,z, x+y, y+z, z+x, x+y+z ]
   bs = (unpackFlatArrayToList . batchInverse . packFlatArrayFromList) as
+
+prop_frobenius :: Field a => a -> Bool
+prop_frobenius x = (frobenius x == frobeniusNaive x)
 
 --------------------------------------------------------------------------------
 -- * Extension field properties
