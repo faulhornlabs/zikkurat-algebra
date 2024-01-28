@@ -427,6 +427,7 @@ c_mulExtQuadratic ExtParams{..} =
   , "  uint64_t p[BASE_NWORDS];"
   , "  uint64_t q[BASE_NWORDS];"
   , "  uint64_t r[BASE_NWORDS];"
+  , "  uint64_t tmp[BASE_NWORDS];"
   , "  " ++ base_prefix ++ "sqr( SRC1(0) , p );              // a0^2"
   , "  " ++ base_prefix ++ "sqr( SRC1(1) , r );              // a1^2"
   , "  " ++ base_prefix ++ "add( SRC1(0) , SRC1(1) , q );    // (a0+a1)"

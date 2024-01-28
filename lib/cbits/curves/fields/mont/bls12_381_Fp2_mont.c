@@ -190,6 +190,7 @@ void bls12_381_Fp2_mont_sqr ( const uint64_t *src1, uint64_t *tgt ) {
   uint64_t p[BASE_NWORDS];
   uint64_t q[BASE_NWORDS];
   uint64_t r[BASE_NWORDS];
+  uint64_t tmp[BASE_NWORDS];
   bls12_381_Fp_mont_sqr( SRC1(0) , p );              // a0^2
   bls12_381_Fp_mont_sqr( SRC1(1) , r );              // a1^2
   bls12_381_Fp_mont_add( SRC1(0) , SRC1(1) , q );    // (a0+a1)

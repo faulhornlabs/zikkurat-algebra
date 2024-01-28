@@ -75,6 +75,9 @@ runTests_BN254 n = do
   printHeader "running tests for BN254/Fp"
   runFieldTests theOKFlag n (Proxy @BN254.Fp)
 
+  printHeader "\nsanity check for BN254 extension tower"
+  putStrLn $ "OK = " ++ show BN254.sanityCheckBN254
+
   printHeader "running tests for BN254/Fp2"
   runFieldTests theOKFlag n (Proxy @BN254.Fp2)
 
@@ -96,6 +99,9 @@ runTests_BLS12_381 n = do
 
   printHeader "running tests for BLS12_381/Fp"
   runFieldTests theOKFlag n (Proxy @BLS12_381.Fp)
+
+  printHeader "\nsanity check for BLS12_381 extension tower"
+  putStrLn $ "OK = " ++ show BLS12_381.sanityCheckBLS12_381
 
   printHeader "running tests for BLS12_381/Fp2"
   runFieldTests theOKFlag n (Proxy @BLS12_381.Fp2)
