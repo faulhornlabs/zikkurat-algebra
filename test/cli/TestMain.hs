@@ -41,6 +41,7 @@ help = do
   putStrLn " - jac_curve"
   putStrLn " - affine_curve_g2"
   putStrLn " - proj_curve_g2"
+  putStrLn " - pairings"
   putStrLn " - poly"
   putStrLn ""
 
@@ -60,6 +61,7 @@ validNames =
   , "projcurve"   , "projective"   , "proj" 
   , "projcurveg2" , "projectiveg2" , "projg2"
   , "jaccurve" , "jacobiancurve" , "jacobian"
+  , "pairing", "pairings"
   , "poly" , "polynomial" , "univariate"
   ]
 
@@ -104,6 +106,9 @@ testMain what n = case canonicalizeName what of
   "jaccurve"      -> runTestsJacCurve n
   "jacobian"      -> runTestsJacCurve n
   "jacobiancurve" -> runTestsJacCurve n
+
+  "pairing"     -> runTestsPairings n
+  "pairings"    -> runTestsPairings n
 
   "poly"        -> runTestsPolys n 
   "polynomial"  -> runTestsPolys n 

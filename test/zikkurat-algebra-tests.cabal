@@ -36,6 +36,7 @@ Library
                         ZK.Test.Field.Ref_BN254
                         ZK.Test.Field.Ref_BLS12_381
                         ZK.Test.Curve.Properties
+                        ZK.Test.Curve.Pairings
                         ZK.Test.Poly.Properties
 
   Default-Language:     Haskell2010

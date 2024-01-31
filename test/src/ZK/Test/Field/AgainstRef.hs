@@ -10,65 +10,13 @@ module ZK.Test.Field.AgainstRef where
 
 import Data.Proxy
 import Control.Monad
+import System.Random
 
 import qualified ZK.Algebra.Pure.Field.Class as Pure
 import qualified ZK.Algebra.Pure.Misc        as Pure
 
 import qualified ZK.Algebra.Class.Field      as Fast
 import qualified ZK.Algebra.Class.Flat       as Fast
-
---------------------------------------------------------------------------------
-
-{-
-
-baz :: forall r f. (Pure.ExtField r, Fast.CubicExt f) => Proxy r -> Proxy f -> IO ()
-baz pxy1 pxy2 = do
-  x  <- Pure.rndIO @r
-  x' <- fromRef @r @f x 
-  putStrLn $ "x  = " ++ show x
-  putStrLn $ "x' = " ++ show x'
-  putStrLn ""
-  putStrLn $ "inv x  = " ++ show (recip x )
-  putStrLn $ "inv x' = " ++ show (recip x')
-  putStrLn ""
-  putStrLn $ "x  * inv x  = " ++ show (x  * recip x )
-  putStrLn $ "x' * inv x' = " ++ show (x' * recip x')
-  putStrLn ""
-
-  let irred = Pure.definingPolyCoeffs (Proxy @r)
-  print irred
-
-  let [p0_,_,_,_] = irred
-  p0 <- fromRef @(Pure.ExtBase r) @(Fast.ExtBase f) p0_
-
-  let (a0,a1,a2) = Fast.cubicUnpack x'
-  let denom = ( a0^3 - a1^3*p0 + 3*a0*a1*a2*p0 + a2^3*p0^2 )
-  let b0    =   ( a0^2 + a1*a2*p0 ) / denom
-  let b1    = - ( a0*a1 + a2^2*p0 ) / denom
-  let b2    =   ( a1^2  - a0*a2   ) / denom
-
-  let y' = Fast.cubicPack (b0,b1,b2)
-  putStrLn $ "y' = " ++ show y' 
-  putStrLn $ "x' * y' = " ++ show(x' * y')
-
---------------------
-
-bar :: forall r f. (Pure.Field r, Fast.Field f) => Proxy r -> Proxy f -> IO ()
-bar pxy1 pxy2 = do
-  x  <- Pure.rndIO @r
-  y  <- Pure.rndIO @r
-  x' <- fromRef @r @f x 
-  y' <- fromRef @r @f y 
-  print (x ,y )
-  print (x',y')
-  let z  = recip x  -- Pure.inv     x 
-  let z' = recip x' -- Fast.inverse x'
-  print (x * z)
-  print (x'* z')
-  print z
-  print z'
-
--}
 
 --------------------------------------------------------------------------------
 
@@ -79,6 +27,13 @@ fromRef x = Fast.newFlat (Pure.toWordsMontgomery x)
 
 toRef :: forall ref fast. (Pure.Field ref, Fast.Field fast) => fast -> IO ref
 toRef x = Pure.fromWordsMontgomery <$> Fast.peekFlat x
+
+--------------------------------------------------------------------------------
+
+randomSign :: IO Integer
+randomSign = do
+  a <- randomRIO (0,1)
+  return (2*a - 1)
 
 --------------------------------------------------------------------------------
 
@@ -101,6 +56,18 @@ runCmpA cmp pxy1 pxy2 = case cmp of
     rhs <- toRef (fastOp x' y')
     return (lhs == rhs)
 
+  FieldCmp1B (refOp,fastOp) _ -> do
+    s  <- randomSign
+    a  <- randomRIO (0,4)              :: IO Integer
+    b  <- randomRIO (-1000000,1000000) :: IO Integer
+    let p = Pure.characteristic pxy1
+    let e = s * (p^a + b)
+    y  <- Pure.rndIO @r
+    y' <- fromRef @r @f y 
+    let lhs =    (refOp  y  e) 
+    rhs <- toRef (fastOp y' e)
+    return (lhs == rhs)
+
 runCmpB :: forall r f. (Pure.Field r, Fast.Field f) => FieldCmp -> Proxy r -> Proxy f -> IO Bool
 runCmpB cmp pxy1 pxy2 = case cmp of
   
@@ -118,6 +85,18 @@ runCmpB cmp pxy1 pxy2 = case cmp of
     y  <- toRef @r @f y'
     lhs <- fromRef (refOp  x  y ) 
     let rhs =      (fastOp x' y')
+    return (lhs == rhs)
+
+  FieldCmp1B (refOp,fastOp) _ -> do
+    s  <- randomSign
+    a  <- randomRIO (0,4)              :: IO Integer
+    b  <- randomRIO (-1000000,1000000) :: IO Integer
+    let p = Pure.characteristic pxy1
+    let e = s * (p^a + b)
+    y' <- Fast.rndIO @f
+    y  <- toRef @r @f y'
+    lhs <- fromRef (refOp  y  e) 
+    let rhs =      (fastOp y' e)
     return (lhs == rhs)
 
 runSingleCmpTests :: (Pure.Field r, Fast.Field f) => Int -> FieldCmp -> Proxy r -> Proxy f -> IO Bool
@@ -152,12 +131,14 @@ runAllCmpTests n pxy1 pxy2 = do
 --------------------------------------------------------------------------------
 
 data FieldCmp
-  = FieldCmp1 (forall r f. (Pure.Field r, Fast.Field f) => (r -> r      , f -> f     )) String
-  | FieldCmp2 (forall r f. (Pure.Field r, Fast.Field f) => (r -> r -> r , f -> f -> f)) String
+  = FieldCmp1  (forall r f. (Pure.Field r, Fast.Field f) => (r -> r            , f -> f            )) String
+  | FieldCmp2  (forall r f. (Pure.Field r, Fast.Field f) => (r -> r -> r       , f -> f -> f       )) String
+  | FieldCmp1B (forall r f. (Pure.Field r, Fast.Field f) => (r -> Integer -> r , f -> Integer -> f )) String
 
 fieldCmpText :: FieldCmp -> String
-fieldCmpText (FieldCmp1 _ text) = text
-fieldCmpText (FieldCmp2 _ text) = text
+fieldCmpText (FieldCmp1  _ text) = text
+fieldCmpText (FieldCmp2  _ text) = text
+fieldCmpText (FieldCmp1B _ text) = text
 
 comparisons :: [FieldCmp]
 comparisons = 
@@ -169,15 +150,17 @@ comparisons =
   , op_mul
   , op_div
   , op_frob
+  , op_pow
   ]
 
-op_neg  = FieldCmp1 ( negate         , negate         ) "neg"
-op_inv  = FieldCmp1 ( recip          , recip          ) "inv"
-op_sqr  = FieldCmp1 ( Pure.square    , Fast.square    ) "sqr"
-op_add  = FieldCmp2 ( (+)            , (+)            ) "add"
-op_sub  = FieldCmp2 ( (-)            , (-)            ) "sub"
-op_mul  = FieldCmp2 ( (*)            , (*)            ) "mul"
-op_div  = FieldCmp2 ( (*)            , (*)            ) "div"
-op_frob = FieldCmp1 ( Pure.frobenius , Fast.frobenius ) "frob"
+op_neg  = FieldCmp1  ( negate         , negate         ) "neg"
+op_inv  = FieldCmp1  ( recip          , recip          ) "inv"
+op_sqr  = FieldCmp1  ( Pure.square    , Fast.square    ) "sqr"
+op_add  = FieldCmp2  ( (+)            , (+)            ) "add"
+op_sub  = FieldCmp2  ( (-)            , (-)            ) "sub"
+op_mul  = FieldCmp2  ( (*)            , (*)            ) "mul"
+op_div  = FieldCmp2  ( (*)            , (*)            ) "div"
+op_frob = FieldCmp1  ( Pure.frobenius , Fast.frobenius ) "frob"
+op_pow  = FieldCmp1B ( Pure.pow       , Fast.power     ) "pow"
 
 --------------------------------------------------------------------------------

@@ -102,6 +102,7 @@ Library
                         ZK.Algebra.Curves.BN128.G2.Proj
                         ZK.Algebra.Curves.BN128.Poly
                         ZK.Algebra.Curves.BN128.Array
+                        ZK.Algebra.Reference.Pairing.BN128
 
   if flag(BLS12_381)
     Exposed-Modules:    ZK.Algebra.Curves.BLS12_381.Fp.Std
@@ -118,6 +119,7 @@ Library
                         ZK.Algebra.Curves.BLS12_381.G2.Proj
                         ZK.Algebra.Curves.BLS12_381.Poly
                         ZK.Algebra.Curves.BLS12_381.Array
+                        ZK.Algebra.Reference.Pairing.BLS12_381
 
   c-sources:            cbits/platform.c
                         cbits/bigint/bigint128.c

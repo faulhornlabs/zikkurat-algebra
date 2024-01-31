@@ -15,6 +15,7 @@ import ZK.Test.Curve.Properties ( runGroupTests , runCurveTests , runProjCurveTe
 import ZK.Test.Poly.Properties  ( runPolyTests )
 import ZK.Test.Field.Ref_BN254     ( runTests_compare_BN254     )
 import ZK.Test.Field.Ref_BLS12_381 ( runTests_compare_BLS12_381 )
+import ZK.Test.Curve.Pairings ( runTestsPairing_BN128 , runTestsPairing_BLS12_381 )
 
 import qualified ZK.Algebra.BigInt.Platform            as Platform
 
@@ -77,6 +78,7 @@ runTestsAll n = do
   runTestsJacCurve      n
   runTestsProjCurveG2   n
   runTestsAffineCurveG2 n
+  runTestsPairings      n
   runTestsPolys         n
   runTestsCompare       n
 
@@ -105,6 +107,23 @@ runTestsPolys n = do
 
   printHeader "running tests for BN128/Poly"
   runPolyTests n (Proxy @BN128_Poly.Poly)
+
+----------------------------------------
+
+runTestsPairings :: Int -> IO ()
+runTestsPairings n = do
+
+  printHeader "running tests for BLS12-381/Pairing"
+  runTestsPairing_BLS12_381 n
+
+  printHeader "running tests for BN128/Pairing"
+  runTestsPairing_BN128 n
+
+  -- printHeader "running tests for BLS12-381/Pairing"
+  -- runPairingTests n (Proxy @BLS12_381.G1) (Proxy @BLS12_381.G2)
+
+  -- printHeader "running tests for BN128/Pairing"
+  -- runPaiirngTests n (Proxy @BN128.G1) (Proxy @BN128.G2)
 
 ----------------------------------------
 

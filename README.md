@@ -129,20 +129,21 @@ TODO
 - [x] implement NTT and iNTT
 - [x] property-based test framework
 - [ ] unit-test framework
-- [ ] figure out nicer API-s
+- [ ] figure out nicer polymorphic API-s
 - [x] vectors of field elements
 - [ ] long division of bigints
-- [x] faster Frobenius automorphism
+- [x] faster Frobenius automorphism (TODO: optimize away the multiplications by zero)
 - [ ] square roots in prime fields 
 - [ ] hash-to-curve & better (faster) random curve points  
 - [ ] add benchmarking
 - [x] implement field extensions
 - [x] implement "G2" twisted curves (WIP)
+- [x] implement pairings (TODO: make it faster)
+- [ ] assembly routines (x86-64, arm64) for prime field multiplication
 - [ ] figure out a better meta-programming story
-- [x] add pure Haskell reference implementations (not really necessary, but would make codegen nicer)
+- [x] add pure Haskell reference implementations (also used by the codegen)
 - [ ] try to optimize a bit more
 - [ ] add an explicit discrete logarithm type (integers modulo `p-1`)
-- [ ] implement pairings
 - [ ] implement multivariate polynomials
 
 
