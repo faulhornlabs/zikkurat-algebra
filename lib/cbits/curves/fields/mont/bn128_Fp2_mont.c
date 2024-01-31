@@ -238,19 +238,27 @@ void bn128_Fp2_mont_div_inplace ( uint64_t *tgt, const uint64_t *src2 ) {
 }
 
 
-const uint64_t bn128_Fp2_mont_frobenius_basis[16] = 
-  { 0xd35d438dc58f0d9d, 0x0a78eb28f5c70b3d, 0x666ea36f7879462c, 0x0e0a77c19a07df2f, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000
-  , 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x68c3488912edefaa, 0x8d087f6872aabf4f, 0x51e1a24709081231, 0x2259d6b14729c0fa
+const uint64_t bn128_Fp2_mont_frobenius_sparse_indices[2] = 
+  { 0x0000000000000000, 0x0000000000010001
+  };
+
+
+const uint64_t bn128_Fp2_mont_frobenius_sparse_entries[8] = 
+  { 0xd35d438dc58f0d9d, 0x0a78eb28f5c70b3d, 0x666ea36f7879462c, 0x0e0a77c19a07df2f
+  , 0x68c3488912edefaa, 0x8d087f6872aabf4f, 0x51e1a24709081231, 0x2259d6b14729c0fa
   };
 
 
 void bn128_Fp2_mont_frobenius ( const uint64_t *src, uint64_t *tgt ) {
   uint64_t acc[EXT_NWORDS];
-  uint64_t tmp[EXT_NWORDS];
+  uint64_t tmp[PRIME_NWORDS];
   bn128_Fp2_mont_set_zero(acc);
-  for(int i=0; i<PRIME_DEGREE; i++) {
-    bn128_Fp2_mont_scale_by_prime_field( src + i*PRIME_NWORDS , bn128_Fp2_mont_frobenius_basis + i*EXT_NWORDS , tmp );
-    bn128_Fp2_mont_add_inplace( acc, tmp );
+  for(int k=0; k<2; k++) {
+    uint64_t ij = bn128_Fp2_mont_frobenius_sparse_indices[k];
+    uint64_t i  = (ij >> 16);
+    uint64_t j  = (ij &  0xffff);
+    bn128_Fp_mont_mul( src + i*PRIME_NWORDS , bn128_Fp2_mont_frobenius_sparse_entries + k*PRIME_NWORDS , tmp );
+    bn128_Fp_mont_add_inplace( acc + j*PRIME_NWORDS , tmp );
   }
   bn128_Fp2_mont_copy( acc, tgt );
 }

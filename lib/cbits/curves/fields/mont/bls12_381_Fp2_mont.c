@@ -239,19 +239,27 @@ void bls12_381_Fp2_mont_div_inplace ( uint64_t *tgt, const uint64_t *src2 ) {
 }
 
 
-const uint64_t bls12_381_Fp2_mont_frobenius_basis[24] = 
-  { 0x760900000002fffd, 0xebf4000bc40c0002, 0x5f48985753c758ba, 0x77ce585370525745, 0x5c071a97a256ec6d, 0x15f65ec3fa80e493, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000
-  , 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x43f5fffffffcaaae, 0x32b7fff2ed47fffd, 0x07e83a49a2e99d69, 0xeca8f3318332bb7a, 0xef148d1ea0f4c069, 0x040ab3263eff0206
+const uint64_t bls12_381_Fp2_mont_frobenius_sparse_indices[2] = 
+  { 0x0000000000000000, 0x0000000000010001
+  };
+
+
+const uint64_t bls12_381_Fp2_mont_frobenius_sparse_entries[12] = 
+  { 0x760900000002fffd, 0xebf4000bc40c0002, 0x5f48985753c758ba, 0x77ce585370525745, 0x5c071a97a256ec6d, 0x15f65ec3fa80e493
+  , 0x43f5fffffffcaaae, 0x32b7fff2ed47fffd, 0x07e83a49a2e99d69, 0xeca8f3318332bb7a, 0xef148d1ea0f4c069, 0x040ab3263eff0206
   };
 
 
 void bls12_381_Fp2_mont_frobenius ( const uint64_t *src, uint64_t *tgt ) {
   uint64_t acc[EXT_NWORDS];
-  uint64_t tmp[EXT_NWORDS];
+  uint64_t tmp[PRIME_NWORDS];
   bls12_381_Fp2_mont_set_zero(acc);
-  for(int i=0; i<PRIME_DEGREE; i++) {
-    bls12_381_Fp2_mont_scale_by_prime_field( src + i*PRIME_NWORDS , bls12_381_Fp2_mont_frobenius_basis + i*EXT_NWORDS , tmp );
-    bls12_381_Fp2_mont_add_inplace( acc, tmp );
+  for(int k=0; k<2; k++) {
+    uint64_t ij = bls12_381_Fp2_mont_frobenius_sparse_indices[k];
+    uint64_t i  = (ij >> 16);
+    uint64_t j  = (ij &  0xffff);
+    bls12_381_Fp_mont_mul( src + i*PRIME_NWORDS , bls12_381_Fp2_mont_frobenius_sparse_entries + k*PRIME_NWORDS , tmp );
+    bls12_381_Fp_mont_add_inplace( acc + j*PRIME_NWORDS , tmp );
   }
   bls12_381_Fp2_mont_copy( acc, tgt );
 }

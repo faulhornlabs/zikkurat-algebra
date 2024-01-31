@@ -6,6 +6,7 @@ module Zikkurat.CodeGen.ExtField where
 
 --------------------------------------------------------------------------------
 
+import Data.Bits
 import Data.Word
 import Data.List
 import Data.Proxy
@@ -791,8 +792,9 @@ c_divExtGeneric ExtParams{..} =
 --------------------------------------------------------------------------------
 -- frobenius
 
-frobeniusBases :: forall f. (Field f, SerializeMontgomery f, ExtField' f) => Proxy f -> [[Word64]]
-frobeniusBases proxy = map toWordsMontgomery ys where
+-- in practice this seems to be very sparse, so a dense representation is suboptimal
+frobeniusBasesDense :: forall f. (Field f, SerializeMontgomery f, ExtField' f) => Proxy f -> [[Word64]]
+frobeniusBasesDense proxy = map toWordsMontgomery ys where
   m  = primeDeg proxy
   bs = [ packPrimeBase (ei i) | i<-[0..m-1] ] :: [f]
   ys = map frobenius bs
@@ -800,8 +802,8 @@ frobeniusBases proxy = map toWordsMontgomery ys where
   ei :: Int -> [PrimeBase f]
   ei i = replicate i 0 ++ [1] ++ replicate (m-i-1) 0
 
-c_frobenius :: ExtParams -> Code
-c_frobenius ExtParams{..} = 
+c_frobenius_dense :: ExtParams -> Code
+c_frobenius_dense ExtParams{..} = 
   [ ""
   , mkConstWordArray (prefix ++ "frobenius_basis") frobBases
   , "" 
@@ -822,7 +824,55 @@ c_frobenius ExtParams{..} =
   ] 
   where 
     frobBases = case pureTypeProxy of
-      AnyExtProxy proxy -> frobeniusBases proxy
+      AnyExtProxy proxy -> frobeniusBasesDense proxy
+
+----------------------------------------
+
+frobeniusBasesSparse :: forall f. (Field f, SerializeMontgomery f, ExtField' f) => Proxy f -> ( [(Int,Int)] , [[Word64]] )
+frobeniusBasesSparse proxy = (indices, map toWordsMontgomery values) where
+  m  = primeDeg proxy
+  bs = [ packPrimeBase (ei i) | i<-[0..m-1] ] :: [f]
+  ys = map frobenius bs :: [f]
+
+  ei :: Int -> [PrimeBase f]
+  ei i = replicate i 0 ++ [1] ++ replicate (m-i-1) 0
+
+  list   = zip [0..] (map (zip [0..]) $ map unpackPrimeBase ys) :: [(Int,[(Int,PrimeBase f)])]
+  list'  = concatMap f list :: [((Int,Int),PrimeBase f)]
+  f (i,jcs) = [ ((i,j),c) | (j,c) <- jcs ]
+  list'' = filter (not . isZero . snd) list'
+  (indices,values) = unzip list''
+
+c_frobenius_sparse :: ExtParams -> Code
+c_frobenius_sparse ExtParams{..} = 
+  [ ""
+  , mkConstWordArray (prefix ++ "frobenius_sparse_indices") [indices]
+  , "" 
+  , mkConstWordArray (prefix ++ "frobenius_sparse_entries") ws
+  , "" 
+  , "void " ++ prefix ++ "frobenius ( const uint64_t *src, uint64_t *tgt ) {"
+  , "  uint64_t acc[EXT_NWORDS];"
+  , "  uint64_t tmp[PRIME_NWORDS];"
+  , "  " ++ prefix ++ "set_zero(acc);"
+  , "  for(int k=0; k<" ++ show nentries ++ "; k++) {"
+  , "    uint64_t ij = " ++ prefix ++ "frobenius_sparse_indices[k];"
+  , "    uint64_t i  = (ij >> 16);"
+  , "    uint64_t j  = (ij &  0xffff);"
+  , "    " ++ prime_prefix ++ "mul( src + i*PRIME_NWORDS , " ++ prefix ++ "frobenius_sparse_entries + k*PRIME_NWORDS , tmp );"
+  , "    " ++ prime_prefix ++ "add_inplace( acc + j*PRIME_NWORDS , tmp );"
+  , "  }"
+  , "  " ++ prefix ++ "copy( acc, tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "frobenius_inplace ( uint64_t *tgt ) {"
+  , "  " ++ prefix ++ "frobenius( tgt, tgt );"
+  , "}"
+  ] 
+  where 
+    nentries = length ijs
+    indices  = [ fromIntegral (shiftL i 16 + j) | (i,j) <- ijs ] :: [Word64]
+    (ijs,ws)   = case pureTypeProxy of
+      AnyExtProxy proxy -> frobeniusBasesSparse proxy
 
 --------------------------------------------------------------------------------
 
@@ -1244,13 +1294,13 @@ c_code :: ExtParams -> Code
 c_code extparams = concat $ map ("":)
   [ c_begin         extparams
     --
-  , c_basefield     extparams
-  , c_zeroOneEtcExt extparams
-  , c_addSubExt     extparams
-  , c_mulExt        extparams
-  , c_invExt        extparams
-  , c_divExt        extparams
-  , c_frobenius     extparams
+  , c_basefield        extparams
+  , c_zeroOneEtcExt    extparams
+  , c_addSubExt        extparams
+  , c_mulExt           extparams
+  , c_invExt           extparams
+  , c_divExt           extparams
+  , c_frobenius_sparse extparams
     --
   , exponentiation (toCommonParams extparams)
   , batchInverse   (toCommonParams extparams)
