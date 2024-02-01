@@ -151,16 +151,36 @@ millerLoop q u p = foldl' go (q,1) (reverse [0..n-1]) where
 
 --------------------------------------------------------------------------------
 
+finalExpoNaive :: Fp12 -> Fp12
+finalExpoNaive x = power x fullExpo
+
+finalExpo :: Fp12 -> Fp12
+finalExpo x = power (powEasy2 $ powEasy1 x) hardExpo where
+
+  powEasy1 x = frob6 x / x      -- x^(p^6-1)
+  powEasy2 x = frob2 x * x      -- x^(p^2+1)
+
+  frob2, frob6 :: Fp12 -> Fp12
+  frob2 = frobenius . frobenius
+  frob6 = frob2 . frob2 . frob2
+
+fullExpo :: Integer
+fullExpo = div (Fp.prime^12 - 1) Fr.prime
+
+hardExpo :: Integer
+hardExpo = div (Fp.prime^4 - Fp.prime^2 + 1) Fr.prime
+
+--------------------------------------------------------------------------------
+
 pairing :: G1 -> G2 -> Fp12
 pairing p q 
   | AffG1.isInfinity p  = 1
   | AffG2.isInfinity q  = 1
-  | otherwise           = power millerOut expo
+  | otherwise           = finalExpo millerOut
   where
     abs_x = 0xd201000000010000
     (_, millerOut) = millerLoop (fromAffine q) (abs_x) p 
 
-    expo = div (Fp.prime^12 - 1) Fr.prime
 
 --------------------------------------------------------------------------------
 
