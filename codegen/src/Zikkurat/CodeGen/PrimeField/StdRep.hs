@@ -74,6 +74,7 @@ c_header (Params{..}) =
   , ""
   , "extern void " ++ prefix ++ "div_by_2         ( const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "div_by_2_inplace ( uint64_t *tgt );"
+  , ""
   , "extern void " ++ prefix ++ "batch_inv        ( int n, const uint64_t *src, uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "reduce_modp     ( const uint64_t *src , uint64_t *tgt );"
@@ -107,7 +108,7 @@ hsBegin params@(Params{..}) =
   , "    -- * Field operations"
   , "  , neg , add , sub"
   , "  , sqr , mul"
-  , "  , inv , div , div_by_2 , batchInv"
+  , "  , inv , div , divBy2 , batchInv"
   , "    -- * Exponentiation"
   , "  , pow , pow_"
   ] ++ (if isJust fftDomain 
@@ -222,6 +223,7 @@ hsBegin params@(Params{..}) =
   , "  primGenPxy   _ = primGen"
   , "  batchInverse   = batchInv"
   , "  frobenius      = id"
+  , "  halve          = divBy2"
   , ""
   ] ++ (case fftDomain of
          Just (siz,gen) ->
@@ -264,7 +266,7 @@ hsFFI (Params{..}) = catCode $
   , mkffi "inv"         $ cfun "inv"              (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
   , mkffi "div"         $ cfun "div"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
     --
-  , mkffi "div_by_2"    $ cfun "div_by_2"         (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
+  , mkffi "divBy2"      $ cfun "div_by_2"         (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
   , mkffi "pow_"        $ cfun "pow_uint64"       (CTyp [CArgInPtr , CArg64    , CArgOutPtr ] CRetVoid)
   ]
   where

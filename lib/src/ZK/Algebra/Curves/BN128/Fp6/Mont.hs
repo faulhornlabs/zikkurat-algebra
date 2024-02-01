@@ -19,7 +19,7 @@ module ZK.Algebra.Curves.BN128.Fp6.Mont
     -- * Field operations
   , neg , add , sub
   , sqr , mul
-  , inv , div , batchInv
+  , inv , div , divBy2 , batchInv
     -- * Exponentiation
   , pow , pow_
     -- * Relation to the base and prime fields
@@ -127,6 +127,7 @@ instance C.Field Fp6 where
   primGenPxy _ = primGen
   batchInverse = batchInv
   frobenius    = frob
+  halve        = divBy2
 
 instance C.ExtField Fp6 where
   type ExtBase Fp6 = Fp2
@@ -523,6 +524,17 @@ div (MkFp6 fptr1) (MkFp6 fptr2) = unsafePerformIO $ do
       withForeignPtr fptr3 $ \ptr3 -> do
         c_bn128_Fp6_mont_div ptr1 ptr2 ptr3
   return (MkFp6 fptr3)
+
+foreign import ccall unsafe "bn128_Fp6_mont_div_by_2" c_bn128_Fp6_mont_div_by_2 :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE divBy2 #-}
+divBy2 :: Fp6 -> Fp6
+divBy2 (MkFp6 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 24
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bn128_Fp6_mont_div_by_2 ptr1 ptr2
+  return (MkFp6 fptr2)
 
 foreign import ccall unsafe "bn128_Fp6_mont_pow_uint64" c_bn128_Fp6_mont_pow_uint64 :: Ptr Word64 -> Word64 -> Ptr Word64 -> IO ()
 

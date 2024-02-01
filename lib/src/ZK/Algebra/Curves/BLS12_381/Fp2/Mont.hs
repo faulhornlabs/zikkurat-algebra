@@ -19,7 +19,7 @@ module ZK.Algebra.Curves.BLS12_381.Fp2.Mont
     -- * Field operations
   , neg , add , sub
   , sqr , mul
-  , inv , div , batchInv
+  , inv , div , divBy2 , batchInv
     -- * Exponentiation
   , pow , pow_
     -- * Relation to the base and prime fields
@@ -126,6 +126,7 @@ instance C.Field Fp2 where
   primGenPxy _ = primGen
   batchInverse = batchInv
   frobenius    = frob
+  halve        = divBy2
 
 instance C.ExtField Fp2 where
   type ExtBase Fp2 = Fp
@@ -498,6 +499,17 @@ div (MkFp2 fptr1) (MkFp2 fptr2) = unsafePerformIO $ do
       withForeignPtr fptr3 $ \ptr3 -> do
         c_bls12_381_Fp2_mont_div ptr1 ptr2 ptr3
   return (MkFp2 fptr3)
+
+foreign import ccall unsafe "bls12_381_Fp2_mont_div_by_2" c_bls12_381_Fp2_mont_div_by_2 :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE divBy2 #-}
+divBy2 :: Fp2 -> Fp2
+divBy2 (MkFp2 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bls12_381_Fp2_mont_div_by_2 ptr1 ptr2
+  return (MkFp2 fptr2)
 
 foreign import ccall unsafe "bls12_381_Fp2_mont_pow_uint64" c_bls12_381_Fp2_mont_pow_uint64 :: Ptr Word64 -> Word64 -> Ptr Word64 -> IO ()
 

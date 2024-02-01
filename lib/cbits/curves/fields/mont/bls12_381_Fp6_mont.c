@@ -66,6 +66,17 @@ void bls12_381_Fp6_mont_scale_by_prime_field( const uint64_t *coeff , const uint
   }
 }
 
+void bls12_381_Fp6_mont_div_by_2( const uint64_t *src1, uint64_t *tgt ) {
+  for(int i=0; i<PRIME_DEGREE; i++) {
+    bls12_381_Fp_mont_div_by_2( src1 + i*PRIME_NWORDS , tgt + i*PRIME_NWORDS );
+  }
+}
+
+void bls12_381_Fp6_mont_div_by_2_inplace(  uint64_t *tgt ) {
+  for(int i=0; i<PRIME_DEGREE; i++) {
+    bls12_381_Fp_mont_div_by_2_inplace( tgt + i*PRIME_NWORDS );
+  }
+}
 
 uint8_t bls12_381_Fp6_mont_is_valid ( const uint64_t *src1 ) {
   uint8_t ok = 1;

@@ -29,6 +29,7 @@ extern void bn128_Fr_std_sub_inplace_reverse( uint64_t *tgt, const uint64_t *src
 
 extern void bn128_Fr_std_div_by_2         ( const uint64_t *src , uint64_t *tgt );
 extern void bn128_Fr_std_div_by_2_inplace ( uint64_t *tgt );
+
 extern void bn128_Fr_std_batch_inv        ( int n, const uint64_t *src, uint64_t *tgt );
 
 extern void bn128_Fr_std_reduce_modp     ( const uint64_t *src , uint64_t *tgt );

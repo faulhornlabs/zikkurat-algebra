@@ -21,7 +21,7 @@ module ZK.Algebra.Curves.BLS12_381.Fr.Std
     -- * Field operations
   , neg , add , sub
   , sqr , mul
-  , inv , div , div_by_2 , batchInv
+  , inv , div , divBy2 , batchInv
     -- * Exponentiation
   , pow , pow_
     -- * FFT
@@ -130,6 +130,7 @@ instance C.Field Fr where
   primGenPxy   _ = primGen
   batchInverse   = batchInv
   frobenius      = id
+  halve          = divBy2
 
 fftDomain :: FFTSubgroup Fr
 fftDomain = MkFFTSubgroup gen 32 where
@@ -357,9 +358,9 @@ div (MkFr fptr1) (MkFr fptr2) = unsafePerformIO $ do
 
 foreign import ccall unsafe "bls12_381_Fr_std_div_by_2" c_bls12_381_Fr_std_div_by_2 :: Ptr Word64 -> Ptr Word64 -> IO ()
 
-{-# NOINLINE div_by_2 #-}
-div_by_2 :: Fr -> Fr
-div_by_2 (MkFr fptr1) = unsafePerformIO $ do
+{-# NOINLINE divBy2 #-}
+divBy2 :: Fr -> Fr
+divBy2 (MkFr fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 4
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do

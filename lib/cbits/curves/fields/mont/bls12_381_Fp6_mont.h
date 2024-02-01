@@ -36,6 +36,9 @@ extern void bls12_381_Fp6_mont_div_inplace ( uint64_t *tgt , const uint64_t *src
 
 extern void bls12_381_Fp6_mont_sub_inplace_reverse ( uint64_t *tgt , const uint64_t *src1 );
 
+extern void bls12_381_Fp6_mont_div_by_2         ( const uint64_t *src1 , uint64_t *tgt );
+extern void bls12_381_Fp6_mont_div_by_2_inplace ( uint64_t *tgt );
+
 extern void bls12_381_Fp6_mont_batch_inv( int n, const uint64_t *src, uint64_t *tgt );
 
 extern void bls12_381_Fp6_mont_pow_uint64( const uint64_t *src,       uint64_t  exponent, uint64_t *tgt );

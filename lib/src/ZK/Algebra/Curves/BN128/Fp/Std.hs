@@ -21,7 +21,7 @@ module ZK.Algebra.Curves.BN128.Fp.Std
     -- * Field operations
   , neg , add , sub
   , sqr , mul
-  , inv , div , div_by_2 , batchInv
+  , inv , div , divBy2 , batchInv
     -- * Exponentiation
   , pow , pow_
     -- * Random
@@ -126,6 +126,7 @@ instance C.Field Fp where
   primGenPxy   _ = primGen
   batchInverse   = batchInv
   frobenius      = id
+  halve          = divBy2
 
 
 
@@ -346,9 +347,9 @@ div (MkFp fptr1) (MkFp fptr2) = unsafePerformIO $ do
 
 foreign import ccall unsafe "bn128_Fp_std_div_by_2" c_bn128_Fp_std_div_by_2 :: Ptr Word64 -> Ptr Word64 -> IO ()
 
-{-# NOINLINE div_by_2 #-}
-div_by_2 :: Fp -> Fp
-div_by_2 (MkFp fptr1) = unsafePerformIO $ do
+{-# NOINLINE divBy2 #-}
+divBy2 :: Fp -> Fp
+divBy2 (MkFp fptr1) = unsafePerformIO $ do
   fptr2 <- mallocForeignPtrArray 4
   withForeignPtr fptr1 $ \ptr1 -> do
     withForeignPtr fptr2 $ \ptr2 -> do

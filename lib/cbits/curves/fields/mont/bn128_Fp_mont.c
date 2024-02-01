@@ -115,6 +115,17 @@ void bn128_Fp_mont_sub_inplace_reverse( uint64_t *tgt, const uint64_t *src1 ) {
   if (b) { bn128_Fp_mont_bigint256_add_prime_inplace( tgt ); }
 }
 
+// divides by 2
+void bn128_Fp_mont_div_by_2( const uint64_t *src, uint64_t *tgt ) {
+  return bn128_Fp_std_div_by_2(src,tgt);
+}
+
+// divides by 2, inplace
+void bn128_Fp_mont_div_by_2_inplace( uint64_t *tgt ) {
+  return bn128_Fp_std_div_by_2_inplace(tgt);
+}
+
+
 // Montgomery constants R, R^2, R^3 mod P
 const uint64_t bn128_Fp_mont_R_modp[4] = { 0xd35d438dc58f0d9d, 0x0a78eb28f5c70b3d, 0x666ea36f7879462c, 0x0e0a77c19a07df2f };
 const uint64_t bn128_Fp_mont_R_squared[4] = { 0xf32cfc5b538afa89, 0xb5e71911d44501fb, 0x47ab1eff0a417ff6, 0x06d89f71cab8351f };

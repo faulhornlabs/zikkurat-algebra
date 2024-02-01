@@ -48,6 +48,8 @@ class (Flat a, Ring a, Fractional a) => Field a where
   dimPxy       :: Proxy a -> Int         
   -- | a fixed primitive element (generator of the multiplicative group)
   primGenPxy   :: Proxy a -> a           
+  -- | efficient division by 2
+  halve        :: a -> a
   -- | efficient batch inverse
   batchInverse :: FlatArray a -> FlatArray a
   -- | the Frobenius endomorphism @\x -> x^p@ where $p$ is the characteristic of the field

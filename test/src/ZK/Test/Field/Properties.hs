@@ -177,6 +177,8 @@ ringProps =
   , RingProp3 prop_add_sub_associative_1       "add-sub assoc /1"
   , RingProp3 prop_add_sub_associative_2       "add-sub assoc /2"
   , RingProp3 prop_add_sub_associative_3       "add-sub assoc /3"
+  , RingProp1 prop_mul_by_2                    "multiply by 2"
+  , RingProp1 prop_mul_by_3                    "multiply by 3"
   , RingProp1 prop_is_zero                     "is zero"
   , RingProp1 prop_is_one                      "is one"
   , RingProp1 prop_is_equal                    "is equal"
@@ -200,7 +202,9 @@ ringProps =
 
 fieldOnlyProps :: [FieldProp]
 fieldOnlyProps = 
-  [ FieldProp1 prop_mul_left_inv               "mul left inv"
+  [ FieldProp1 prop_halve_1                    "halve /1"
+  , FieldProp1 prop_halve_2                    "halve /2"
+  , FieldProp1 prop_mul_left_inv               "mul left inv"
   , FieldProp1 prop_mul_right_inv              "mul right inv"
   , FieldProp2 prop_div_def                    "div def"
   , FieldProp1 prop_inv_def                    "inv def"
@@ -270,6 +274,14 @@ prop_is_equal x = and
 
 ----------------------------------------
 
+prop_mul_by_2 :: Ring a => a -> Bool
+prop_mul_by_2 x = (x + x == 2 * x)
+
+prop_mul_by_3 :: Ring a => a -> Bool
+prop_mul_by_3 x = (x + x + x == 3 * x)
+
+----------------------------------------
+
 prop_mul_left_unit :: Ring a => a -> Bool
 prop_mul_left_unit x = (one * x == x)
 
@@ -325,6 +337,12 @@ prop_power_5 x = power x 5 == x*x*x*x*x
 
 --------------------------------------------------------------------------------
 -- * Field properties
+
+prop_halve_1 :: Field a => a -> Bool
+prop_halve_1 x = let y = halve x in (y + y == x)
+
+prop_halve_2 :: Field a => a -> Bool
+prop_halve_2 x = (2 * halve x == x)
 
 prop_mul_left_inv :: Field a => a -> Bool
 prop_mul_left_inv x = isZero x || (inverse x) * x == one

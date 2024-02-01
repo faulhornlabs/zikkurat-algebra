@@ -139,6 +139,9 @@ c_header (ExtParams{..}) =
   , ""
   , "extern void " ++ prefix ++ "sub_inplace_reverse ( uint64_t *tgt , const uint64_t *src1 );"
   , ""
+  , "extern void " ++ prefix ++ "div_by_2         ( const uint64_t *src1 , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "div_by_2_inplace ( uint64_t *tgt );"
+  , ""
   , "extern void " ++ prefix ++ "batch_inv( int n, const uint64_t *src, uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "pow_uint64( const uint64_t *src,       uint64_t  exponent, uint64_t *tgt );"
@@ -211,6 +214,17 @@ c_basefield ExtParams{..} =
   , "  }"
   , "}"
   , ""
+  , "void " ++ prefix ++ "div_by_2( const uint64_t *src1, uint64_t *tgt ) {"
+  , "  for(int i=0; i<PRIME_DEGREE; i++) {"
+  , "    " ++ prime_prefix ++ "div_by_2( src1 + i*PRIME_NWORDS , tgt + i*PRIME_NWORDS );"
+  , "  }"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "div_by_2_inplace(  uint64_t *tgt ) {"
+  , "  for(int i=0; i<PRIME_DEGREE; i++) {"
+  , "    " ++ prime_prefix ++ "div_by_2_inplace( tgt + i*PRIME_NWORDS );"
+  , "  }"
+  , "}"
   ]
 
 --------------------------------------------------------------------------------
@@ -898,7 +912,7 @@ hsBegin extparams@(ExtParams{..}) =
   , "    -- * Field operations"
   , "  , neg , add , sub"
   , "  , sqr , mul"
-  , "  , inv , div , batchInv"
+  , "  , inv , div , divBy2 , batchInv"
   , "    -- * Exponentiation"
   , "  , pow , pow_"
   , "    -- * Relation to the base and prime fields"
@@ -1015,6 +1029,7 @@ hsBegin extparams@(ExtParams{..}) =
   , "  primGenPxy _ = primGen"
   , "  batchInverse = batchInv"
   , "  frobenius    = frob"
+  , "  halve        = divBy2"
   , ""
   , "instance C.ExtField " ++ typeName ++ " where"
   , "  type ExtBase " ++ typeName ++ " = " ++ typeNameBase
@@ -1274,6 +1289,8 @@ hsFFI extparams@(ExtParams{..}) = catCode $
   , mkffi "mul"         $ cfun "mul"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
   , mkffi "inv"         $ cfun "inv"              (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
   , mkffi "div"         $ cfun "div"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
+    --
+  , mkffi "divBy2"      $ cfun "div_by_2"         (CTyp [CArgInPtr ,             CArgOutPtr ] CRetVoid)
     --
   , mkffi "pow_"        $ cfun "pow_uint64"       (CTyp [CArgInPtr , CArg64    , CArgOutPtr ] CRetVoid)
     --
