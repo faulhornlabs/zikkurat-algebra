@@ -23,6 +23,9 @@ import qualified ZK.Algebra.Curves.BN128.G2.Affine       as BN128
 import qualified ZK.Algebra.Curves.BLS12_381.G1.Affine   as BLS12_381
 import qualified ZK.Algebra.Curves.BLS12_381.G2.Affine   as BLS12_381
 
+import qualified ZK.Algebra.Curves.BN128.Pairing         as Fast.BN128
+import qualified ZK.Algebra.Curves.BLS12_381.Pairing     as Fast.BLS12_381
+
 import qualified ZK.Algebra.Reference.Pairing.BN128      as Ref.BN128
 import qualified ZK.Algebra.Reference.Pairing.BLS12_381  as Ref.BLS12_381
 
@@ -44,6 +47,11 @@ runPairingTests :: forall a b. (Curve a, Curve b) => Int -> Proxy a -> Proxy b -
 runPairingTests n pxy1 pxy2 properties = do
 
   forM_ properties $ \prop -> case prop of
+
+    PairingProp12 test name -> doTests n name $ do
+      x <- rndIO @a
+      y <- rndIO @b
+      return (test x y) 
   
     PairingProp112 test name -> doTests n name $ do
       x <- rndIO @a
@@ -62,6 +70,11 @@ runPairingTests n pxy1 pxy2 properties = do
       x <- rndIO @a
       y <- rndIO @b
       return (test k x y) 
+
+    PairingPropII test name -> doTests n name $ do
+      k <- randomRIO (-10000,10000)
+      l <- randomRIO (-10000,10000)
+      return (test k l) 
 
 --------------------------------------------------------------------------------
 
@@ -84,9 +97,11 @@ doTests n name testAction =
 --------------------------------------------------------------------------------
 
 data PairingProp a b
-  = PairingProp112 (      a -> a -> b -> Bool) String
-  | PairingProp122 (      a -> b -> b -> Bool) String
-  | PairingPropI12 (Integer -> a -> b -> Bool) String
+  = PairingProp12  (      a -> b       -> Bool) String
+  | PairingProp112 (      a -> a -> b  -> Bool) String
+  | PairingProp122 (      a -> b -> b  -> Bool) String
+  | PairingPropI12 (Integer -> a -> b  -> Bool) String
+  | PairingPropII  (Integer -> Integer -> Bool) String
 
 --------------------------------------------------------------------------------
 -- * properties
@@ -98,6 +113,10 @@ pairingProps_BN128 =
   , PairingPropI12  prop_ref_scale_bn128             "left/right scale"
   , PairingPropI12  prop_ref_scale_l_bn128           "left scale"
   , PairingPropI12  prop_ref_scale_r_bn128           "right scale"
+  , PairingProp12   prop_ref_left_inf_bn128          "<inf,b> = 1"
+  , PairingProp12   prop_ref_right_inf_bn128         "<a,inf> = 1"
+  , PairingPropII   prop_ref_nondegenerate_bn128     "non-degenerate"
+  , PairingProp12   prop_ref_against_fast_bn128      "ref against fast"
   ]
 
 pairingProps_BLS12_381 :: [PairingProp BLS12_381.G1 BLS12_381.G2]
@@ -107,6 +126,10 @@ pairingProps_BLS12_381 =
   , PairingPropI12  prop_ref_scale_bls12_381         "left/right scale"
   , PairingPropI12  prop_ref_scale_l_bls12_381       "left scale"
   , PairingPropI12  prop_ref_scale_r_bls12_381       "right scale"
+  , PairingProp12   prop_ref_left_inf_bls12_381      "<inf,b> = 1"
+  , PairingProp12   prop_ref_right_inf_bls12_381     "<a,inf> = 1"
+  , PairingPropII   prop_ref_nondegenerate_bls12_381 "non-degenerate"
+  , PairingProp12   prop_ref_against_fast_bls12_381  "ref against fast"
   ]
 
 ----------------------------------------
@@ -126,6 +149,18 @@ prop_ref_scale_l_bn128 k a b = Ref.BN128.pairing (grpScale k a) b == (Ref.BN128.
 prop_ref_scale_r_bn128 :: Integer -> BN128.G1 -> BN128.G2 -> Bool
 prop_ref_scale_r_bn128 k a b = Ref.BN128.pairing a (grpScale k b) == (Ref.BN128.pairing a b) `power` k
 
+prop_ref_left_inf_bn128 :: BN128.G1 -> BN128.G2 -> Bool
+prop_ref_left_inf_bn128 a b = Ref.BN128.pairing grpUnit b == 1
+
+prop_ref_right_inf_bn128 :: BN128.G1 -> BN128.G2 -> Bool
+prop_ref_right_inf_bn128 a b = Ref.BN128.pairing a grpUnit == 1
+
+prop_ref_nondegenerate_bn128 :: Integer -> Integer -> Bool
+prop_ref_nondegenerate_bn128 k l = (k==0) || (l==0) || Ref.BN128.pairing (grpScale k BN128.genG1) (grpScale l BN128.genG2) /= 1
+
+prop_ref_against_fast_bn128 :: BN128.G1 -> BN128.G2 -> Bool
+prop_ref_against_fast_bn128 a b = Ref.BN128.pairing a b == Fast.BN128.pairing a b
+
 ----------------------------------------
 
 prop_ref_left_linear_bls12_381 :: BLS12_381.G1 -> BLS12_381.G1 -> BLS12_381.G2 -> Bool
@@ -142,6 +177,18 @@ prop_ref_scale_l_bls12_381 k a b = Ref.BLS12_381.pairing (grpScale k a) b == (Re
 
 prop_ref_scale_r_bls12_381 :: Integer -> BLS12_381.G1 -> BLS12_381.G2 -> Bool
 prop_ref_scale_r_bls12_381 k a b = Ref.BLS12_381.pairing a (grpScale k b) == (Ref.BLS12_381.pairing a b) `power` k
+
+prop_ref_left_inf_bls12_381 :: BLS12_381.G1 -> BLS12_381.G2 -> Bool
+prop_ref_left_inf_bls12_381 a b = Ref.BLS12_381.pairing grpUnit b == 1
+
+prop_ref_right_inf_bls12_381 :: BLS12_381.G1 -> BLS12_381.G2 -> Bool
+prop_ref_right_inf_bls12_381 a b = Ref.BLS12_381.pairing a grpUnit == 1
+
+prop_ref_nondegenerate_bls12_381 :: Integer -> Integer -> Bool
+prop_ref_nondegenerate_bls12_381 k l = (k==0) || (l==0) || Ref.BLS12_381.pairing (grpScale k BLS12_381.genG1) (grpScale l BLS12_381.genG2) /= 1
+
+prop_ref_against_fast_bls12_381 :: BLS12_381.G1 -> BLS12_381.G2 -> Bool
+prop_ref_against_fast_bls12_381 a b = Ref.BLS12_381.pairing a b == Fast.BLS12_381.pairing a b
 
 --------------------------------------------------------------------------------
 

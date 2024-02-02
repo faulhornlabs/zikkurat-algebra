@@ -133,7 +133,6 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   ] ++ 
   hsExportParams xcurve ++
   [ "    -- * Curve points"
-  , "    -- * Curve points"
   , "  , coords , mkPoint , mkPointMaybe , unsafeMkPoint"
   , "  , fromAffine , toAffine"
   , "  , normalize"

@@ -55,6 +55,7 @@ main1 hsOrC what tgtdir = case map toLower what of
   "curves" -> do Gen.generate_curves_proj            hsOrC tgtdir 
                  Gen.generate_curves_jac             hsOrC tgtdir 
                  Gen.generate_curves_affine          hsOrC tgtdir 
+                 Gen.generate_curves_pairing         hsOrC tgtdir 
 
   "poly"   -> do Gen.generate_curves_poly            hsOrC tgtdir
 
@@ -83,6 +84,7 @@ mainAllWhich hsOrC tgtdir = do
   Gen.generate_curves_proj            hsOrC tgtdir 
   Gen.generate_curves_jac             hsOrC tgtdir 
   Gen.generate_curves_affine          hsOrC tgtdir 
+  Gen.generate_curves_pairing         hsOrC tgtdir 
 
   Gen.generate_curves_poly            hsOrC tgtdir
   Gen.generate_curves_array           hsOrC tgtdir

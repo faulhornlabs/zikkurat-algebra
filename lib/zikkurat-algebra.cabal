@@ -40,7 +40,11 @@ extra-source-files:     cbits/*.h,
                         cbits/curves/g2/proj/*.h,
                         cbits/curves/g2/proj/*.c,
                         cbits/curves/poly/mont/*.h,
-                        cbits/curves/poly/mont/*.c
+                        cbits/curves/poly/mont/*.c,
+                        cbits/curves/array/mont/*.h,
+                        cbits/curves/array/mont/*.c,
+                        cbits/curves/pairing/*.h,
+                        cbits/curves/pairing/*.c
 
 --------------------------------------------------------------------------------
 
@@ -102,6 +106,7 @@ Library
                         ZK.Algebra.Curves.BN128.G2.Proj
                         ZK.Algebra.Curves.BN128.Poly
                         ZK.Algebra.Curves.BN128.Array
+                        ZK.Algebra.Curves.BN128.Pairing
                         ZK.Algebra.Reference.Pairing.BN128
 
   if flag(BLS12_381)
@@ -119,6 +124,7 @@ Library
                         ZK.Algebra.Curves.BLS12_381.G2.Proj
                         ZK.Algebra.Curves.BLS12_381.Poly
                         ZK.Algebra.Curves.BLS12_381.Array
+                        ZK.Algebra.Curves.BLS12_381.Pairing
                         ZK.Algebra.Reference.Pairing.BLS12_381
 
   c-sources:            cbits/platform.c
@@ -150,6 +156,7 @@ Library
                         cbits/curves/g2/proj/bn128_G2_proj.c
                         cbits/curves/poly/mont/bn128_poly_mont.c
                         cbits/curves/array/mont/bn128_arr_mont.c
+                        cbits/curves/pairing/bn128_pairing.c
 
   if flag(BLS12_381)
 
@@ -167,6 +174,7 @@ Library
                         cbits/curves/g2/proj/bls12_381_G2_proj.c
                         cbits/curves/poly/mont/bls12_381_poly_mont.c
                         cbits/curves/array/mont/bls12_381_arr_mont.c
+                        cbits/curves/pairing/bls12_381_pairing.c
 
   Default-Language:     Haskell2010
   Default-Extensions:   CPP, BangPatterns

@@ -11,7 +11,6 @@ module ZK.Algebra.Curves.BLS12_381.G2.Proj
   , primeR , cofactor , curveA , curveB
   , genG2 , infinity
     -- * Curve points
-    -- * Curve points
   , coords , mkPoint , mkPointMaybe , unsafeMkPoint
   , fromAffine , toAffine
   , normalize

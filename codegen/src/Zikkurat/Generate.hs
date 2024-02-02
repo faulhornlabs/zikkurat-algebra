@@ -11,6 +11,7 @@ module Zikkurat.Generate
   , generate_curves_jac
   , generate_curves_poly
   , generate_curves_array
+  , generate_curves_pairing
   ) 
   where
 
@@ -32,6 +33,7 @@ import qualified Zikkurat.CodeGen.Towers                as Tow
 import qualified Zikkurat.CodeGen.Curve.MontAffine      as Affine
 import qualified Zikkurat.CodeGen.Curve.MontProj        as Proj
 import qualified Zikkurat.CodeGen.Curve.MontJac         as Jac
+import qualified Zikkurat.CodeGen.Curve.Pairing         as Pairing
 import qualified Zikkurat.CodeGen.Poly                  as Poly
 import qualified Zikkurat.CodeGen.Pointwise             as PW
 
@@ -404,6 +406,16 @@ generate_curves_array hsOrC tgtdir = do
     case hsOrC of 
       C  -> PW.pw_array_c_codegen  tgtdir pwparams
       Hs -> PW.pw_array_hs_codegen tgtdir pwparams
+
+generate_curves_pairing :: HsOrC -> FilePath -> IO ()
+generate_curves_pairing hsOrC tgtdir = do
+  let list = [ Pairing.pairingParams_BN128 
+             , Pairing.pairingParams_BLS12_381
+             ]
+  forM_ list $ \params -> do
+    case hsOrC of 
+      C  -> Pairing.curve_pairing_c_codegen  tgtdir params
+      Hs -> Pairing.curve_pairing_hs_codegen tgtdir params
 
 --------------------------------------------------------------------------------
 
