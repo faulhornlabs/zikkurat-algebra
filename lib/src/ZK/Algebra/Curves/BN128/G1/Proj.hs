@@ -12,7 +12,9 @@ module ZK.Algebra.Curves.BN128.G1.Proj
   , genG1 , infinity
     -- * Curve points
   , coords , mkPoint , mkPointMaybe , unsafeMkPoint
+    -- * Conversion to\/from affine
   , fromAffine , toAffine
+  , batchFromAffine , batchToAffine
   , normalize
     -- * Predicates
   , isEqual , isSame
@@ -24,7 +26,7 @@ module ZK.Algebra.Curves.BN128.G1.Proj
     -- * Random
   , rndG1 , rndG1_naive
     -- * Multi-scalar multiplication
-  , msm , msmStd
+  , msm , msmStd , msmProj
     -- * Fast-Fourier transform
   , forwardFFT , inverseFFT
     -- * Sage
@@ -61,6 +63,7 @@ import           ZK.Algebra.Class.Flat ( FlatArray(..) )
 import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as F
 import qualified ZK.Algebra.Class.Curve as C
+import qualified ZK.Algebra.Class.Misc  as M
 import           ZK.Algebra.Class.FFT
 
 --------------------------------------------------------------------------------
@@ -161,7 +164,7 @@ instance L.Flat G1 where
   withFlat (MkG1 fptr) = withForeignPtr fptr
   makeFlat = L.makeFlatGeneric MkG1 12
 
-instance F.Rnd G1 where
+instance M.Rnd G1 where
   rndIO = rndG1
 
 instance C.Group G1 where
@@ -185,14 +188,20 @@ instance C.Curve G1 where
   infinity    = ZK.Algebra.Curves.BN128.G1.Proj.infinity
   subgroupGen = ZK.Algebra.Curves.BN128.G1.Proj.genG1
   scalarMul   = ZK.Algebra.Curves.BN128.G1.Proj.sclFr
+  msm         = ZK.Algebra.Curves.BN128.G1.Proj.msmProj
+  curveFFT    = ZK.Algebra.Curves.BN128.G1.Proj.forwardFFT
+  curveIFFT   = ZK.Algebra.Curves.BN128.G1.Proj.inverseFFT
 
 instance C.ProjCurve G1 where
   type AffinePoint G1 = ZK.Algebra.Curves.BN128.G1.Affine.G1
   fromAffine = ZK.Algebra.Curves.BN128.G1.Proj.fromAffine
   toAffine   = ZK.Algebra.Curves.BN128.G1.Proj.toAffine
+  batchFromAffine = ZK.Algebra.Curves.BN128.G1.Proj.batchFromAffine
+  batchToAffine   = ZK.Algebra.Curves.BN128.G1.Proj.batchToAffine
   coords3    = ZK.Algebra.Curves.BN128.G1.Proj.coords
   mkPoint3   = ZK.Algebra.Curves.BN128.G1.Proj.mkPoint
   mixedAdd   = ZK.Algebra.Curves.BN128.G1.Proj.madd
+  affMSM     = ZK.Algebra.Curves.BN128.G1.Proj.msm
   
 --------------------------------------------------------------------------------
 
@@ -210,6 +219,11 @@ sclBig k pt
 
 --------------------------------------------------------------------------------
 
+msmProj :: FlatArray Fr -> FlatArray G1 -> G1
+msmProj cs gs = msm cs (batchToAffine gs)
+
+--------------------------------------------------------------------------------
+
 
 foreign import ccall unsafe "bn128_G1_proj_MSM_std_coeff_proj_out" c_bn128_G1_proj_MSM_std_coeff_proj_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
 foreign import ccall unsafe "bn128_G1_proj_MSM_mont_coeff_proj_out" c_bn128_G1_proj_MSM_mont_coeff_proj_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
@@ -218,7 +232,7 @@ foreign import ccall unsafe "bn128_G1_proj_MSM_mont_coeff_proj_out" c_bn128_G1_p
 -- | Multi-Scalar Multiplication (MSM), with the coefficients in Montgomery representation,
 -- and the curve points in affine coordinates
 -- 
--- > msmStd :: FlatArray Fr -> FlatArray Affine.G1 -> G1
+-- > msm :: FlatArray Fr -> FlatArray Affine.G1 -> G1
 -- 
 msm :: FlatArray Fr -> FlatArray ZK.Algebra.Curves.BN128.G1.Affine.G1 -> G1
 msm (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
@@ -263,7 +277,7 @@ forwardFFT sg (MkFlatArray n fptr2)
       L.withFlat (subgroupGen sg) $ \ptr1 -> do
         withForeignPtr fptr2 $ \ptr2 -> do
           withForeignPtr fptr3 $ \ptr3 -> do
-            c_bn128_G1_proj_fft_forward (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3
+            c_bn128_G1_proj_fft_forward (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3
       return (MkFlatArray n fptr3)
 
 {-# NOINLINE inverseFFT #-}
@@ -276,7 +290,7 @@ inverseFFT sg (MkFlatArray n fptr2)
       L.withFlat (subgroupGen sg) $ \ptr1 -> do
         withForeignPtr fptr2 $ \ptr2 -> do
           withForeignPtr fptr3 $ \ptr3 -> do
-            c_bn128_G1_proj_fft_inverse (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3
+            c_bn128_G1_proj_fft_inverse (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3
       return (MkFlatArray n fptr3)
 
 
@@ -391,6 +405,28 @@ toAffine (MkG1 fptr1) = unsafePerformIO $ do
     withForeignPtr fptr2 $ \ptr2 -> do
       c_bn128_G1_proj_to_affine ptr1 ptr2
   return (ZK.Algebra.Curves.BN128.G1.Affine.MkG1 fptr2)
+
+foreign import ccall unsafe "bn128_G1_proj_batch_from_affine" c_bn128_G1_proj_batch_from_affine :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE batchFromAffine #-}
+batchFromAffine :: FlatArray (ZK.Algebra.Curves.BN128.G1.Affine.G1) -> FlatArray (ZK.Algebra.Curves.BN128.G1.Proj.G1)
+batchFromAffine (MkFlatArray n fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n*12)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bn128_G1_proj_batch_from_affine (fromIntegral n) ptr1 ptr2
+  return (MkFlatArray n fptr2)
+
+foreign import ccall unsafe "bn128_G1_proj_batch_to_affine" c_bn128_G1_proj_batch_to_affine :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE batchToAffine #-}
+batchToAffine :: FlatArray (ZK.Algebra.Curves.BN128.G1.Proj.G1) -> FlatArray (ZK.Algebra.Curves.BN128.G1.Affine.G1)
+batchToAffine (MkFlatArray n fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n*8)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bn128_G1_proj_batch_to_affine (fromIntegral n) ptr1 ptr2
+  return (MkFlatArray n fptr2)
 
 foreign import ccall unsafe "bn128_G1_proj_neg" c_bn128_G1_proj_neg :: Ptr Word64 -> Ptr Word64 -> IO ()
 

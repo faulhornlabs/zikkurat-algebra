@@ -6,6 +6,8 @@ extern void bls12_381_G2_proj_normalize_inplace (       uint64_t *tgt );
 extern void bls12_381_G2_proj_copy        ( const uint64_t *src , uint64_t *tgt );
 extern void bls12_381_G2_proj_from_affine ( const uint64_t *src , uint64_t *tgt );
 extern void bls12_381_G2_proj_to_affine   ( const uint64_t *src , uint64_t *tgt );
+extern void bls12_381_G2_proj_batch_from_affine( int N, const uint64_t *src , uint64_t *tgt );
+extern void bls12_381_G2_proj_batch_to_affine  ( int N, const uint64_t *src , uint64_t *tgt );
 
 extern uint8_t bls12_381_G2_proj_is_on_curve   ( const uint64_t *src );
 extern uint8_t bls12_381_G2_proj_is_infinity   ( const uint64_t *src );

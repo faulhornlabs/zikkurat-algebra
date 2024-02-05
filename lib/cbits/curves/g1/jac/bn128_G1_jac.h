@@ -6,6 +6,8 @@ extern void bn128_G1_jac_normalize_inplace (       uint64_t *tgt );
 extern void bn128_G1_jac_copy        ( const uint64_t *src , uint64_t *tgt );
 extern void bn128_G1_jac_from_affine ( const uint64_t *src , uint64_t *tgt );
 extern void bn128_G1_jac_to_affine   ( const uint64_t *src , uint64_t *tgt );
+extern void bn128_G1_jac_batch_from_affine( int N, const uint64_t *src , uint64_t *tgt );
+extern void bn128_G1_jac_batch_to_affine  ( int N, const uint64_t *src , uint64_t *tgt );
 
 extern uint8_t bn128_G1_jac_is_on_curve   ( const uint64_t *src );
 extern uint8_t bn128_G1_jac_is_infinity   ( const uint64_t *src );

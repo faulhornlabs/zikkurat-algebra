@@ -953,6 +953,7 @@ hsBegin extparams@(ExtParams{..}) =
   , ""
   , "import           ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as C"
+  , "import qualified ZK.Algebra.Class.Misc  as M"
   , "import ZK.Algebra.Helpers"
   , ""
   , "--------------------------------------------------------------------------------  "
@@ -1010,7 +1011,7 @@ hsBegin extparams@(ExtParams{..}) =
   ] ++ 
   [ "  return $ pack" ++ postfix ++ " " ++ tuple' [  "x" ++ show i | i<-[1..extDegree] ]
   , ""
-  , "instance C.Rnd " ++ typeName ++ " where"
+  , "instance M.Rnd " ++ typeName ++ " where"
   , "  rndIO = rnd"
   , ""
   , "instance C.Ring " ++ typeName ++ " where"

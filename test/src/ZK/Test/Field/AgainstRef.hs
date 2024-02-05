@@ -17,6 +17,7 @@ import qualified ZK.Algebra.Pure.Misc        as Pure
 
 import qualified ZK.Algebra.Class.Field      as Fast
 import qualified ZK.Algebra.Class.Flat       as Fast
+import qualified ZK.Algebra.Class.Misc       as Fast
 
 --------------------------------------------------------------------------------
 

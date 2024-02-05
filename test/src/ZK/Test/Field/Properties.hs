@@ -13,6 +13,7 @@ import System.IO
 
 import ZK.Algebra.Class.Flat
 import ZK.Algebra.Class.Field
+import ZK.Algebra.Class.Misc
 
 --------------------------------------------------------------------------------
 

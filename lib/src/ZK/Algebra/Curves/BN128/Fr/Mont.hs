@@ -55,6 +55,7 @@ import qualified ZK.Algebra.Curves.BN128.Fr.Std as Std
 
 import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
+import qualified ZK.Algebra.Class.Misc  as M
 import qualified ZK.Algebra.Class.FFT as T
 import           ZK.Algebra.Class.FFT hiding (fftDomain)
 import ZK.Algebra.Helpers
@@ -111,7 +112,7 @@ rnd = do
   x <- randomRIO (0,prime-1)
   return (unsafeTo x)
 
-instance C.Rnd Fr where
+instance M.Rnd Fr where
   rndIO = rnd
 
 instance C.Ring Fr where
@@ -134,7 +135,7 @@ instance C.Field Fr where
   halve        = divBy2
 
 fftDomain :: FFTSubgroup Fr
-fftDomain = MkFFTSubgroup gen 28 where
+fftDomain = MkFFTSubgroup gen (M.Log2 28) where
   gen :: Fr
   gen = to 19103219067921713944291392827692070036145651957329286315305642004821462161904
 

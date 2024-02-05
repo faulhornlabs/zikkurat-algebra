@@ -16,6 +16,7 @@ import System.IO
 
 import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Curve
+import ZK.Algebra.Class.Misc
 
 import qualified ZK.Algebra.Curves.BN128.G1.Affine       as BN128
 import qualified ZK.Algebra.Curves.BN128.G2.Affine       as BN128

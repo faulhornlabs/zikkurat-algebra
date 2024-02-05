@@ -60,6 +60,7 @@ import qualified ZK.Algebra.Curves.BLS12_381.Fp.Mont as Prime
 
 import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
+import qualified ZK.Algebra.Class.Misc  as M
 import ZK.Algebra.Helpers
 
 --------------------------------------------------------------------------------  
@@ -107,7 +108,7 @@ rnd = do
   x2 <- Base.rnd
   return $ pack (x1, x2)
 
-instance C.Rnd Fp2 where
+instance M.Rnd Fp2 where
   rndIO = rnd
 
 instance C.Ring Fp2 where

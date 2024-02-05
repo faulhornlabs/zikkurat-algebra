@@ -73,6 +73,7 @@ import           ZK.Algebra.Class.Flat  as L
 import           ZK.Algebra.Class.FFT   as T
 import qualified ZK.Algebra.Class.Field as F
 import qualified ZK.Algebra.Class.Poly  as P
+import qualified ZK.Algebra.Class.Misc  as M
 
 import ZK.Algebra.Class.Poly
   ( polyIsOne
@@ -133,7 +134,7 @@ mul = mulNaive       -- TEMPORARY !!!
 
 sqr x = mul x x      -- TEMPORARY ???
 
-instance F.Rnd Poly where
+instance M.Rnd Poly where
   rndIO = rnd
 
 instance F.Ring Poly where
@@ -184,7 +185,7 @@ isOne p = (mbConst p == Just ZK.Algebra.Curves.BN128.Fr.Mont.one)
 
 -- | @rndPoly d@ generates a random polynomial of degree @d@
 rndPoly :: Int -> IO Poly
-rndPoly d = mkPoly <$> replicateM (d+1) F.rndIO
+rndPoly d = mkPoly <$> replicateM (d+1) M.rndIO
 
 -- | @rnd@ generates a random polynomial between degree 0 and 12
 rnd :: IO Poly
@@ -405,7 +406,7 @@ forwardNTT sg (MkPoly (MkFlatArray n fptr2))
       withFlat (subgroupGen sg) $ \ptr1 -> do
         withForeignPtr fptr2 $ \ptr2 -> do
           withForeignPtr fptr3 $ \ptr3 -> do
-            c_bn128_poly_mont_ntt_forward (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3
+            c_bn128_poly_mont_ntt_forward (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3
       return (MkFlatArray n fptr3)
 
 {-# NOINLINE inverseNTT #-}
@@ -417,7 +418,7 @@ inverseNTT sg (MkFlatArray n fptr2)
       withFlat (subgroupGen sg) $ \ptr1 -> do
         withForeignPtr fptr2 $ \ptr2 -> do
           withForeignPtr fptr3 $ \ptr3 -> do
-            c_bn128_poly_mont_ntt_inverse (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3
+            c_bn128_poly_mont_ntt_inverse (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3
       return (MkPoly (MkFlatArray n fptr3))
 
 instance P.UnivariateFFT Poly where

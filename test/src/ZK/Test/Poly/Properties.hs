@@ -17,6 +17,7 @@ import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Poly
 import ZK.Algebra.Class.FFT
 import ZK.Algebra.Class.Flat
+import ZK.Algebra.Class.Misc
 
 --------------------------------------------------------------------------------
 
@@ -363,7 +364,7 @@ prop_ntt_then_intt :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
 prop_ntt_then_intt _pxy input = (cs == coeffs poly2) where
   m  = 5
   n  = 2^m
-  sg = getFFTSubgroup m
+  sg = getFFTSubgroup (Log2 m)
   cs    = take n $ zipWith (*) (cycle input) someNumbers :: [Coeff p]
   poly1 = mkPoly cs     :: p
   varr  = ntt  sg poly1 :: FlatArray (Coeff p)
@@ -373,7 +374,7 @@ prop_intt_then_ntt :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
 prop_intt_then_ntt _pxy input = (ys == zs) where
   m  = 5
   n  = 2^m
-  sg = getFFTSubgroup m
+  sg = getFFTSubgroup (Log2 m)
   ys    = take n $ zipWith (*) (cycle input) someNumbers :: [Coeff p]
   poly  = intt sg (packFlatArrayFromList ys) :: p
   varr  = ntt  sg poly                       :: FlatArray (Coeff p)
@@ -383,7 +384,7 @@ prop_ntt_vs_eval :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
 prop_ntt_vs_eval _pxy input = (us == vs) where
   m  = 5
   n  = 2^m
-  sg = getFFTSubgroup m
+  sg = getFFTSubgroup (Log2 m)
   cs    = take n $ zipWith (*) (cycle input) someNumbers :: [Coeff p] 
   poly  = mkPoly cs                                      :: p
   us    = unpackFlatArrayToList $ ntt sg poly            :: [Coeff p]

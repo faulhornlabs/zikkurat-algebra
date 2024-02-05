@@ -10,6 +10,7 @@ import Data.List
 
 import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Curve
+import ZK.Algebra.Class.Misc
 import ZK.Algebra.Helpers
 
 import ZK.Algebra.Curves.BN128.Fp.Mont   ( Fp   )
@@ -134,7 +135,7 @@ triple x = x+x+x
 
 millerLoop :: ProjG2 -> Integer -> G1 -> (ProjG2,Fp12)
 millerLoop q u p = foldl' go (q,1) (reverse [0..n-1]) where
-  n = integerLog2 u   
+  n = fromLog2 (integerLog2 u)
 
   -- remark: point addition and line function evaluation could be merged
   go :: (ProjG2,Fp12) -> Int -> (ProjG2,Fp12)

@@ -16,6 +16,8 @@ import System.IO
 
 import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Curve
+import ZK.Algebra.Class.Flat
+import ZK.Algebra.Class.Misc
 
 --------------------------------------------------------------------------------
 
@@ -117,6 +119,18 @@ runProjCurveOnlyTests n pxy = do
       x <- rndIO @a
       return (test k x) 
 
+    ProjCurveProp3 test name -> doTests n name $ do
+      x <- rndIO @a
+      y <- rndIO @a
+      z <- rndIO @a
+      return (test x y z) 
+
+    ProjCurveProp3A test name -> doTests n name $ do
+      x <- rndIO @(AffinePoint a)
+      y <- rndIO @(AffinePoint a)
+      z <- rndIO @(AffinePoint a)
+      return (test pxy x y z) 
+
 --------------------------------------------------------------------------------
 
 doTests :: Int -> String -> IO Bool -> IO Bool
@@ -156,6 +170,8 @@ data ProjCurveProp
   | ProjCurveProp2  (forall a. ProjCurve a  => a -> a -> Bool       ) String
   | ProjCurvePropA  (forall a. ProjCurve a  => Proxy a -> AffinePoint a -> Bool) String
   | ProjCurvePropI1 (forall a. ProjCurve a  => Int -> a -> Bool     ) String
+  | ProjCurveProp3  (forall a. ProjCurve a  => a -> a -> a -> Bool  ) String
+  | ProjCurveProp3A (forall a. ProjCurve a  => Proxy a -> AffinePoint a -> AffinePoint a -> AffinePoint a -> Bool) String
 
 --------------------------------------------------------------------------------
 
@@ -389,6 +405,8 @@ projCurveOnlyProps :: [ProjCurveProp]
 projCurveOnlyProps = 
   [ ProjCurveProp1   prop_to_from_affine            "fromAffine . toAffine"  
   , ProjCurvePropA   prop_from_to_affine            "toAffine . fromAffine"  
+  , ProjCurveProp3   prop_batch_to_from_affine      "batch from/to affine"
+  , ProjCurveProp3A  prop_batch_from_to_affine      "batch to/from affine"
   , ProjCurveProp1   prop_is_on_curve_toAffine      "oncurve(toAffine(x))"  
   , ProjCurveProp1   prop_normalize_then_toAffine   "toAffine(normalize(x))"  
   , ProjCurvePropA   prop_is_on_curve_fromAffine    "oncurve(fromAffine(x))"  
@@ -410,6 +428,20 @@ prop_to_from_affine x = (fromAffine (toAffine x)) == x
 
 prop_from_to_affine :: forall a. ProjCurve a => Proxy a -> AffinePoint a -> Bool
 prop_from_to_affine _ x = toAffine (fromAffine @a x) == x
+
+prop_batch_to_from_affine :: forall a. ProjCurve a => a -> a -> a -> Bool
+prop_batch_to_from_affine x y z = lhs == rhs where
+  lhs = [x, y, z, grpAdd x y, grpAdd x z, grpAdd y z] :: [a]
+  inp = packFlatArrayFromList lhs                     :: FlatArray a
+  out = batchFromAffine @a (batchToAffine @a inp)     :: FlatArray a
+  rhs = unpackFlatArrayToList out                     :: [a]
+
+prop_batch_from_to_affine :: forall a. ProjCurve a => Proxy a -> AffinePoint a -> AffinePoint a -> AffinePoint a -> Bool
+prop_batch_from_to_affine _ x y z = lhs == rhs where
+  lhs = [x, y, z, grpAdd x y, grpAdd x z, grpAdd y z] :: [AffinePoint a]
+  inp = packFlatArrayFromList lhs                     :: FlatArray (AffinePoint a) 
+  out = batchToAffine @a (batchFromAffine @a inp)     :: FlatArray (AffinePoint a)
+  rhs = unpackFlatArrayToList out                     :: [AffinePoint a]
 
 prop_is_on_curve_toAffine :: ProjCurve a => a -> Bool
 prop_is_on_curve_toAffine x = isOnCurve (toAffine x)

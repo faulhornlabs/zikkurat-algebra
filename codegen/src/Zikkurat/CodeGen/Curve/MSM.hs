@@ -40,7 +40,7 @@ msm_hs_binding (CodeGenParams{..}) =
   , "-- | Multi-Scalar Multiplication (MSM), with the coefficients in Montgomery representation,"
   , "-- and the curve points in affine coordinates"
   , "-- "
-  , "-- > msmStd :: FlatArray Fr -> FlatArray Affine.G1 -> G1"
+  , "-- > msm :: FlatArray Fr -> FlatArray Affine.G1 -> G1"
   , "-- "
   , "msm :: FlatArray Fr -> FlatArray " ++ hsModule hs_path_affine ++ "." ++ typeName ++ " -> " ++ typeName
   , "msm (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)"

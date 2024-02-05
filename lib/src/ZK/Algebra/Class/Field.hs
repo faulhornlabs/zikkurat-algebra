@@ -11,12 +11,8 @@ import Data.Proxy
 import Data.Kind
 
 import ZK.Algebra.Class.Flat ( Flat , FlatArray )
+import ZK.Algebra.Class.Misc
 
---------------------------------------------------------------------------------
-
-class Rnd a where
-  rndIO :: IO a
-  
 --------------------------------------------------------------------------------
 -- * Rings (finite rings and polynomials rings)
 

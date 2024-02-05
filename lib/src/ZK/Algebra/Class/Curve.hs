@@ -11,7 +11,10 @@ import Data.Proxy
 import Data.List
 import Data.Kind
 
+import ZK.Algebra.Class.Flat
 import ZK.Algebra.Class.Field
+import ZK.Algebra.Class.FFT
+import ZK.Algebra.Class.Misc
 
 --------------------------------------------------------------------------------
 
@@ -23,7 +26,7 @@ class StrictEq a where
 -- * Finite groups
 
 -- | The class of (finite) groups
-class (Eq a, StrictEq a, Show a, Rnd a) => Group a where
+class (Eq a, StrictEq a, Flat a, Show a, Rnd a) => Group a where
   -- | name of the group
   grpName :: Proxy a -> String
   -- | checks whether an element is the unit of the group
@@ -50,6 +53,18 @@ grpSum :: Group a => [a] -> a
 grpSum []     = grpUnit
 grpSum (x:xs) = foldl' grpAdd x xs
 
+-- | Convenient alias for 'grpAdd'
+(<+>) :: Group a => a -> a -> a
+(<+>) = grpAdd
+
+-- | Convenient alias for 'grpSub'
+(<->) :: Group a => a -> a -> a
+(<->) = grpSub
+
+-- | Convenient alias for 'grpScale'
+(<***>) :: Group a => Integer -> a -> a
+(<***>) = grpScale
+
 --------------------------------------------------------------------------------
 -- * Elliptic curves
 
@@ -70,6 +85,16 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   subgroupGen :: a
   -- | scalar multiplication
   scalarMul   :: ScalarField a -> a -> a
+  -- | multi-scalar multiplication  
+  msm :: FlatArray (ScalarField a) -> FlatArray a -> a
+  -- | curve forward FFT
+  curveFFT :: FFTSubgroup (ScalarField a) -> FlatArray a -> FlatArray a
+  -- | curve inverse FFT
+  curveIFFT :: FFTSubgroup (ScalarField a) -> FlatArray a -> FlatArray a
+
+-- | Convenient alias for 'scalarMul'
+(<**>) :: Curve a => ScalarField a -> a -> a
+(<**>) = scalarMul
 
 --------------------------------------------------------------------------------
 -- * Affine curves
@@ -90,11 +115,17 @@ class (Curve a, AffineCurve (AffinePoint a)) => ProjCurve a where
   fromAffine :: AffinePoint a -> a 
   -- | convert from projective to affine coordinates
   toAffine   :: a -> AffinePoint a
+  -- | convert many curve points from affine to projective coordinates
+  batchFromAffine :: FlatArray (AffinePoint a) -> FlatArray a 
+  -- | convert many curve points from projective to affine coordinates
+  batchToAffine   :: FlatArray a -> FlatArray (AffinePoint a)
   -- | projective coordinates
   coords3  :: a -> (BaseField a, BaseField a, BaseField a)
   -- | making a point from projective coordinates
   mkPoint3 :: (BaseField a, BaseField a, BaseField a) -> a   
   -- | mixed addition
   mixedAdd :: a -> AffinePoint a -> a
+  -- | multi-scalar multiplication
+  affMSM :: FlatArray (ScalarField a) -> FlatArray (AffinePoint a) -> a
 
 --------------------------------------------------------------------------------

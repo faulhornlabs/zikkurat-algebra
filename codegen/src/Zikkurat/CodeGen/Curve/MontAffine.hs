@@ -102,6 +102,8 @@ hsBoot (CodeGenParams{..}) =
   , "import qualified ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Curve as C"
+  , "import qualified ZK.Algebra.Class.Misc  as M"
+  , "import           ZK.Algebra.Class.FFT"
   , ""
   , "-- | An elliptic curve point, in affine coordinates"
   , "newtype " ++ typeName ++ " = Mk" ++ typeName ++ " (ForeignPtr Word64)"
@@ -110,7 +112,7 @@ hsBoot (CodeGenParams{..}) =
   , "instance   Show        " ++ typeName 
   , "instance L.Flat        " ++ typeName 
   , "instance C.StrictEq    " ++ typeName 
-  , "instance F.Rnd         " ++ typeName 
+  , "instance M.Rnd         " ++ typeName 
   , "instance C.Group       " ++ typeName 
   , "instance C.Curve       " ++ typeName 
   , "instance C.AffineCurve " ++ typeName
@@ -140,6 +142,10 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  , sclFr , sclBig , sclSmall"
   , "    -- * Random"
   , "  , rnd" ++ typeName
+  , "    -- * Multi-scalar-multiplication"
+  , "  , msm , msmStd"
+  , "    -- * Fast-Fourier transform"
+  , "  , forwardFFT , inverseFFT"
   , "    -- * Sage"
   , "  , sageSetup , printSageSetup"
   , "  )"  
@@ -167,6 +173,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
       , "import " ++ hsModule hs_path_r ++ " ( Fr(..) )"
       , "import qualified " ++ hsModule hs_path_p ++ " as Fp"
       , "import qualified " ++ hsModule hs_path_r ++ " as Fr"
+      , "import qualified " ++ hsModule hs_path_r_std 
       , "import qualified " ++ hsModule hs_path_big_p ++ " as BigP"
       ]
     Right _ -> 
@@ -176,6 +183,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
       , "import qualified " ++ hsModule hs_path_p   ++ " as Fp"
       , "import qualified " ++ hsModule hs_path_fp2 ++ " as Fp2"
       , "import qualified " ++ hsModule hs_path_r   ++ " as Fr"
+      , "import qualified " ++ hsModule hs_path_r_std 
       , "import qualified " ++ hsModule hs_path_big_p ++ " as BigP"
       ]
   ) ++
@@ -185,6 +193,8 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "import qualified ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Curve as C"
+  , "import qualified ZK.Algebra.Class.Misc  as M"
+  , "import           ZK.Algebra.Class.FFT"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -247,6 +257,24 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
+  , "-- | Multi-Scalar Multiplication (MSM), with the coefficients in Montgomery representation"
+  , "msm :: L.FlatArray Fr -> L.FlatArray " ++ hsModule hs_path_affine ++ "." ++ typeName ++ " -> " ++ typeName
+  , "msm cs gs = Proj.toAffine $ Proj.msm cs gs"
+  , ""
+  , "-- | Multi-Scalar Multiplication (MSM), with the coefficients in standard representation"
+  , "msmStd :: L.FlatArray " ++ hsModule hs_path_r_std ++ ".Fr -> L.FlatArray " ++ hsModule hs_path_affine ++ "." ++ typeName ++ " -> " ++ typeName
+  , "msmStd cs gs = Proj.toAffine $ Proj.msmStd cs gs"
+  , ""
+  , "-- | Forward FFT for groups (converting @[L_k(tau)]@ points to @[tau^i]@ points)"
+  , "forwardFFT :: FFTSubgroup Fr -> L.FlatArray " ++ typeName ++ " -> L.FlatArray " ++ typeName
+  , "forwardFFT sg = Proj.batchToAffine . Proj.forwardFFT sg . Proj.batchFromAffine"
+  , "" 
+  , "-- | Inverse FFT for groups (converting @[tau^i]@ points to @[L_k(tau)]@ points)"
+  , "inverseFFT :: FFTSubgroup Fr -> L.FlatArray " ++ typeName ++ " -> L.FlatArray " ++ typeName
+  , "inverseFFT sg = Proj.batchToAffine . Proj.inverseFFT sg . Proj.batchFromAffine"
+  , "" 
+  , "--------------------------------------------------------------------------------"
+  , ""
   , "instance C.StrictEq " ++ typeName ++ " where"
   , "  (===) = isSame"
   , ""
@@ -265,7 +293,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  withFlat (Mk" ++ typeName ++ " fptr) = withForeignPtr fptr"
   , "  makeFlat = L.makeFlatGeneric Mk" ++ typeName ++ " " ++ show (2*nlimbs_p)
   , ""
-  , "instance F.Rnd " ++ typeName ++ " where"
+  , "instance M.Rnd " ++ typeName ++ " where"
   , "  rndIO = rnd" ++ typeName
   , ""
   , "instance C.Group " ++ typeName ++ " where"
@@ -289,6 +317,9 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  infinity    = " ++ hsModule hs_path_affine ++ ".infinity"
   , "  subgroupGen = " ++ hsModule hs_path_affine ++ ".gen" ++ typeName
   , "  scalarMul   = " ++ hsModule hs_path_affine ++ ".sclFr"
+  , "  msm         = " ++ hsModule hs_path_affine ++ ".msm"
+  , "  curveFFT    = " ++ hsModule hs_path_affine ++ ".forwardFFT"
+  , "  curveIFFT   = " ++ hsModule hs_path_affine ++ ".inverseFFT"
   , ""
   , "instance C.AffineCurve " ++ typeName ++ " where"
   , "  coords2    = " ++ hsModule hs_path_affine ++ ".coords"

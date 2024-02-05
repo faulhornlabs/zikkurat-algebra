@@ -144,6 +144,7 @@ hsBegin params@(Params{..}) =
   , ""
   , "import           ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as C"
+  , "import qualified ZK.Algebra.Class.Misc  as M"
   ] ++ (if isJust fftDomain 
           then [ "import qualified ZK.Algebra.Class.FFT as T"
                , "import           ZK.Algebra.Class.FFT hiding (fftDomain)"
@@ -203,7 +204,7 @@ hsBegin params@(Params{..}) =
   , "  x <- randomRIO (0,prime-1)"
   , "  return (unsafeTo" ++ postfix ++ " x)"
   , ""
-  , "instance C.Rnd " ++ typeName ++ " where"
+  , "instance M.Rnd " ++ typeName ++ " where"
   , "  rndIO = rnd"
   , ""
   , "instance C.Ring " ++ typeName ++ " where"
@@ -228,7 +229,7 @@ hsBegin params@(Params{..}) =
   ] ++ (case fftDomain of
          Just (siz,gen) ->
            [ "fftDomain :: FFTSubgroup " ++ typeName 
-           , "fftDomain = MkFFTSubgroup gen " ++ show siz ++ " where"
+           , "fftDomain = MkFFTSubgroup gen (M.Log2 " ++ show siz ++ ") where"
            , "  gen :: " ++ typeName
            , "  gen = to" ++ postfix ++ " " ++ show gen
            , ""

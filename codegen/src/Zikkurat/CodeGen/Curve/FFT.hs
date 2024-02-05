@@ -44,7 +44,7 @@ fft_hs_binding (CodeGenParams{..}) =
   , "      L.withFlat (subgroupGen sg) $ \\ptr1 -> do"
   , "        withForeignPtr fptr2 $ \\ptr2 -> do"
   , "          withForeignPtr fptr3 $ \\ptr3 -> do"
-  , "            c_" ++ prefix ++ "fft_forward (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3"
+  , "            c_" ++ prefix ++ "fft_forward (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3"
   , "      return (MkFlatArray n fptr3)"
   , "" 
   , "{-# NOINLINE inverseFFT #-}"
@@ -57,7 +57,7 @@ fft_hs_binding (CodeGenParams{..}) =
   , "      L.withFlat (subgroupGen sg) $ \\ptr1 -> do"
   , "        withForeignPtr fptr2 $ \\ptr2 -> do"
   , "          withForeignPtr fptr3 $ \\ptr3 -> do"
-  , "            c_" ++ prefix ++ "fft_inverse (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3"
+  , "            c_" ++ prefix ++ "fft_inverse (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3"
   , "      return (MkFlatArray n fptr3)"
   , ""
   ]

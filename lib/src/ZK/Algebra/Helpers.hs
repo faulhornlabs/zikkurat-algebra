@@ -1,5 +1,5 @@
 
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, GeneralizedNewtypeDeriving #-}
 module ZK.Algebra.Helpers where
 
 --------------------------------------------------------------------------------
@@ -12,25 +12,11 @@ import Text.Printf
 --------------------------------------------------------------------------------
 -- * Integers
 
+-- | Modulo but first just does two comparison, and only calls `mod` if necessary
 happyMod :: Integer -> Integer -> Integer
 happyMod !a !p 
   | a >= 0 && a < p   = a
   | otherwise         = mod a p
-
---------------------------------------------------------------------------------
-
--- | Largest integer @k@ such that @2^k@ is smaller or equal to @n@
-integerLog2 :: Integer -> Int
-integerLog2 n = go n where
-  go 0 = -1
-  go k = 1 + go (shiftR k 1)
-
--- | Smallest integer @k@ such that @2^k@ is larger or equal to @n@
-ceilingLog2 :: Integer -> Int
-ceilingLog2 0 = 0
-ceilingLog2 n = 1 + go (n-1) where
-  go 0 = -1
-  go k = 1 + go (shiftR k 1)
 
 --------------------------------------------------------------------------------
 -- * Export constants to C

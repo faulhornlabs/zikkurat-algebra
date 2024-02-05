@@ -7,6 +7,7 @@ module ZK.Algebra.Class.FFT where
 --------------------------------------------------------------------------------
 
 import ZK.Algebra.Class.Field
+import ZK.Algebra.Class.Misc
   
 --------------------------------------------------------------------------------
 -- * Synonyms
@@ -16,7 +17,7 @@ type FFTDomain a = FFTSubgroup a
 domainSize :: FFTDomain a -> Int
 domainSize = subgroupSize
 
-getFFTDomain :: forall a. FFTField a => Int -> FFTDomain a
+getFFTDomain :: forall a. FFTField a => Log2 -> FFTDomain a
 getFFTDomain = getFFTSubgroup
 
 --------------------------------------------------------------------------------
@@ -25,20 +26,20 @@ getFFTDomain = getFFTSubgroup
 -- | An FFT-friendly cyclic subgroup of the multiplicative group of a finite field
 data FFTSubgroup a = MkFFTSubgroup
   { subgroupGen     :: !a        -- ^ the generator of the subgroup
-  , subgroupLogSize :: !Int      -- ^ @log2@ of the size of the subgroup
+  , subgroupLogSize :: !Log2     -- ^ @log2@ of the size of the subgroup
   }
   deriving (Eq,Show)
 
 -- | The size of the subgroup
 subgroupSize :: FFTSubgroup a -> Int
-subgroupSize sg = 2^(subgroupLogSize sg)
+subgroupSize sg = fromInteger $ exp2 (subgroupLogSize sg)
 
 -- | Elements of the subgroup in standard order:
 --
 -- > [ 1, g, g^2, g^3, ... g^(n-1) ]
 --
 enumerateSubgroup :: forall a. Field a => FFTSubgroup a -> [a]
-enumerateSubgroup (MkFFTSubgroup g m) = go (2^m) 1 where
+enumerateSubgroup (MkFFTSubgroup g m) = go (fromInteger $ exp2 m) 1 where
   go :: Int -> a -> [a] 
   go 0 _ = []
   go k x = x : go (k-1) (g*x)
@@ -56,13 +57,14 @@ class Field a => FFTField a where
   fftDomain :: FFTSubgroup a      
 
 -- | Given @n@, we construct the subgroup of size @2^n@
-getFFTSubgroup :: forall a. FFTField a => Int -> FFTSubgroup a
+getFFTSubgroup :: forall a. FFTField a => Log2 -> FFTSubgroup a
 getFFTSubgroup k 
   | k < 0     = error $ "fftSubGroup: expecting a nonnegative input (desired logarithmic size)"
-  | k > m     = error $ "fftSubGroup: this field supports FFT subgroups of size at most " ++ show m
-  | otherwise = let g = power gen (2^(m-k)) 
+  | k > m     = error $ "fftSubGroup: this field supports FFT subgroups of size at most 2^" ++ show im ++ " = " ++ show (exp2 m)
+  | otherwise = let g = power gen (exp2 (m-k)) 
                 in  MkFFTSubgroup g k
   where
     domain@(MkFFTSubgroup gen m) = fftDomain @a
+    Log2 im = m
 
 --------------------------------------------------------------------------------

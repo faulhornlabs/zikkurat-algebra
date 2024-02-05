@@ -34,6 +34,8 @@ c_header cgparams@(CodeGenParams{..}) =
   , "extern void " ++ prefix ++ "copy        ( const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "from_affine ( const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "to_affine   ( const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "batch_from_affine( int N, const uint64_t *src , uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "batch_to_affine  ( int N, const uint64_t *src , uint64_t *tgt );"
   , ""
   , "extern uint8_t " ++ prefix ++ "is_on_curve   ( const uint64_t *src );"
   , "extern uint8_t " ++ prefix ++ "is_infinity   ( const uint64_t *src );"
@@ -85,6 +87,8 @@ hsFFI (CodeGenParams{..}) = catCode $
     --
   , mkffi "fromAffine"  $ cfun "from_affine"      (CTyp [CArgInAffine , CArgOutProj   ] CRetVoid)
   , mkffi "toAffine"    $ cfun "to_affine"        (CTyp [CArgInProj   , CArgOutAffine ] CRetVoid)
+  , mkffi "batchFromAffine"  $ cfun "batch_from_affine"      (CTyp [CArgCount, CArgInAffineArray , CArgOutProjArray   ] CRetVoid)
+  , mkffi "batchToAffine"    $ cfun "batch_to_affine"        (CTyp [CArgCount, CArgInProjArray   , CArgOutAffineArray ] CRetVoid)
     --
   , mkffi "neg"         $ cfun "neg"              (CTyp [CArgInProj              , CArgOutProj ] CRetVoid)
   , mkffi "dbl"         $ cfun "dbl"              (CTyp [CArgInProj              , CArgOutProj ] CRetVoid)
@@ -134,7 +138,9 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   hsExportParams xcurve ++
   [ "    -- * Curve points"
   , "  , coords , mkPoint , mkPointMaybe , unsafeMkPoint"
+  , "    -- * Conversion to\\/from affine"
   , "  , fromAffine , toAffine"
+  , "  , batchFromAffine , batchToAffine"
   , "  , normalize"
   , "    -- * Predicates"
   , "  , isEqual , isSame"
@@ -146,7 +152,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "    -- * Random"
   , "  , rnd" ++ typeName ++ " , rnd" ++ typeName ++ "_naive"
   , "    -- * Multi-scalar multiplication"
-  , "  , msm , msmStd"
+  , "  , msm , msmStd , msmProj"
   , "    -- * Fast-Fourier transform"
   , "  , forwardFFT , inverseFFT"
   , "    -- * Sage"
@@ -199,6 +205,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "import qualified ZK.Algebra.Class.Flat  as L"
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Curve as C"
+  , "import qualified ZK.Algebra.Class.Misc  as M"
   , "import           ZK.Algebra.Class.FFT"
   , ""
   , "--------------------------------------------------------------------------------"
@@ -283,7 +290,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  withFlat (Mk" ++ typeName ++ " fptr) = withForeignPtr fptr"
   , "  makeFlat = L.makeFlatGeneric Mk" ++ typeName ++ " " ++ show (3*nlimbs_p)
   , ""
-  , "instance F.Rnd " ++ typeName ++ " where"
+  , "instance M.Rnd " ++ typeName ++ " where"
   , "  rndIO = rnd" ++ typeName
   , ""
   , "instance C.Group " ++ typeName ++ " where"
@@ -307,14 +314,21 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  infinity    = " ++ hsModule hs_path_proj ++ ".infinity"
   , "  subgroupGen = " ++ hsModule hs_path_proj ++ ".gen" ++ typeName
   , "  scalarMul   = " ++ hsModule hs_path_proj ++ ".sclFr"
+  , "  msm         = " ++ hsModule hs_path_proj ++ ".msmProj"
+--  , "  msmStd      = " ++ hsModule hs_path_proj ++ ".msmStd"
+  , "  curveFFT    = " ++ hsModule hs_path_proj ++ ".forwardFFT"
+  , "  curveIFFT   = " ++ hsModule hs_path_proj ++ ".inverseFFT"
   , ""
   , "instance C.ProjCurve " ++ typeName ++ " where"
   , "  type AffinePoint " ++ typeName ++ " = " ++ hsModule hs_path_affine ++ "." ++ typeName
   , "  fromAffine = " ++ hsModule hs_path_proj ++ ".fromAffine"
   , "  toAffine   = " ++ hsModule hs_path_proj ++ ".toAffine"
+  , "  batchFromAffine = " ++ hsModule hs_path_proj ++ ".batchFromAffine"
+  , "  batchToAffine   = " ++ hsModule hs_path_proj ++ ".batchToAffine"
   , "  coords3    = " ++ hsModule hs_path_proj ++ ".coords"
   , "  mkPoint3   = " ++ hsModule hs_path_proj ++ ".mkPoint"
   , "  mixedAdd   = " ++ hsModule hs_path_proj ++ ".madd"
+  , "  affMSM     = " ++ hsModule hs_path_proj ++ ".msm"
   , "  "
   , "--------------------------------------------------------------------------------"
   , ""
@@ -329,6 +343,11 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  | k == 0    = infinity"
   , "  | k < 0     = neg $ sclBigNonNeg (fromInteger $ negate k) pt"
   , "  | otherwise =       sclBigNonNeg (fromInteger $        k) pt"
+  , ""
+  , "--------------------------------------------------------------------------------"
+  , ""
+  , "msmProj :: FlatArray Fr -> FlatArray " ++ typeName ++ " -> " ++ typeName
+  , "msmProj cs gs = msm cs (batchToAffine gs)"
   , ""
   , "--------------------------------------------------------------------------------"
   ]
@@ -703,6 +722,28 @@ convertAffine (CodeGenParams{..}) =
   , "    " ++ prefix_p ++ "inv( Z1, zinv );"
   , "    " ++ prefix_p ++ "mul( X1, zinv, X3 );"
   , "    " ++ prefix_p ++ "mul( Y1, zinv, Y3 );"
+  , "  }"
+  , "}"
+  , ""
+  , "// converts N points from affine coordinates"
+  , "void " ++ prefix ++ "batch_from_affine( int N, const uint64_t *src , uint64_t *tgt ) {"
+  , "  uint64_t *p = src;"
+  , "  uint64_t *q = tgt;"
+  , "  for(int i=0; i<N; i++) {"
+  , "    " ++ prefix ++ "from_affine(p,q);"
+  , "    p += 2*NLIMBS_P;"
+  , "    q += 3*NLIMBS_P;"
+  , "  }"
+  , "}"
+  , ""
+  , "// converts N points to affine coordinates"
+  , "void " ++ prefix ++ "batch_to_affine( int N, const uint64_t *src , uint64_t *tgt ) {"
+  , "  uint64_t *p = src;"
+  , "  uint64_t *q = tgt;"
+  , "  for(int i=0; i<N; i++) {"
+  , "    " ++ prefix ++ "to_affine(p,q);"
+  , "    p += 3*NLIMBS_P;"
+  , "    q += 2*NLIMBS_P;"
   , "  }"
   , "}"
   , ""

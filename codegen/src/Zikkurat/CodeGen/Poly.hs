@@ -170,6 +170,7 @@ hsBegin (PolyParams{..}) =
   , "import           ZK.Algebra.Class.FFT   as T"
   , "import qualified ZK.Algebra.Class.Field as F"
   , "import qualified ZK.Algebra.Class.Poly  as P"
+  , "import qualified ZK.Algebra.Class.Misc  as M"
   , ""
   , "import ZK.Algebra.Class.Poly"
   , "  ( polyIsOne"
@@ -230,7 +231,7 @@ hsBegin (PolyParams{..}) =
   , ""
   , "sqr x = mul x x      -- TEMPORARY ???"
   , ""
-  , "instance F.Rnd " ++ typeName ++ " where"
+  , "instance M.Rnd " ++ typeName ++ " where"
   , "  rndIO = rnd"
   , ""
   , "instance F.Ring " ++ typeName ++ " where"
@@ -313,7 +314,7 @@ hsBegin (PolyParams{..}) =
 -}
   , "-- | @rndPoly d@ generates a random polynomial of degree @d@"
   , "rndPoly :: Int -> IO " ++ typeName
-  , "rndPoly d = mkPoly <$> replicateM (d+1) F.rndIO"
+  , "rndPoly d = mkPoly <$> replicateM (d+1) M.rndIO"
   , ""
   , "-- | @rnd@ generates a random polynomial between degree 0 and 12"
   , "rnd :: IO " ++ typeName
@@ -1077,7 +1078,7 @@ hsNTT (PolyParams{..}) =
   , "      withFlat (subgroupGen sg) $ \\ptr1 -> do"
   , "        withForeignPtr fptr2 $ \\ptr2 -> do"
   , "          withForeignPtr fptr3 $ \\ptr3 -> do"
-  , "            c_" ++ prefix ++ "ntt_forward (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3"
+  , "            c_" ++ prefix ++ "ntt_forward (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3"
   , "      return (MkFlatArray n fptr3)"
   , ""
   , "{-# NOINLINE inverseNTT #-}"
@@ -1089,7 +1090,7 @@ hsNTT (PolyParams{..}) =
   , "      withFlat (subgroupGen sg) $ \\ptr1 -> do"
   , "        withForeignPtr fptr2 $ \\ptr2 -> do"
   , "          withForeignPtr fptr3 $ \\ptr3 -> do"
-  , "            c_" ++ prefix ++ "ntt_inverse (fromIntegral $ subgroupLogSize sg) ptr1 ptr2 ptr3"
+  , "            c_" ++ prefix ++ "ntt_inverse (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3"
   , "      return (Mk" ++ typeName ++ " (MkFlatArray n fptr3))"
   , ""
   , "instance P.UnivariateFFT " ++ typeName ++ " where"

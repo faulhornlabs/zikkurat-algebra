@@ -135,6 +135,28 @@ void bls12_381_G2_proj_to_affine( const uint64_t *src1 , uint64_t *tgt ) {
   }
 }
 
+// converts N points from affine coordinates
+void bls12_381_G2_proj_batch_from_affine( int N, const uint64_t *src , uint64_t *tgt ) {
+  uint64_t *p = src;
+  uint64_t *q = tgt;
+  for(int i=0; i<N; i++) {
+    bls12_381_G2_proj_from_affine(p,q);
+    p += 2*NLIMBS_P;
+    q += 3*NLIMBS_P;
+  }
+}
+
+// converts N points to affine coordinates
+void bls12_381_G2_proj_batch_to_affine( int N, const uint64_t *src , uint64_t *tgt ) {
+  uint64_t *p = src;
+  uint64_t *q = tgt;
+  for(int i=0; i<N; i++) {
+    bls12_381_G2_proj_to_affine(p,q);
+    p += 3*NLIMBS_P;
+    q += 2*NLIMBS_P;
+  }
+}
+
 void bls12_381_G2_proj_copy( const uint64_t *src1 , uint64_t *tgt ) {
   if (tgt != src1) { memcpy( tgt, src1, 288 ); }
 }

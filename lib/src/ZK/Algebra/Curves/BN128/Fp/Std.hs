@@ -52,6 +52,7 @@ import qualified ZK.Algebra.BigInt.BigInt256 as B
 
 import           ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
+import qualified ZK.Algebra.Class.Misc  as M
 import ZK.Algebra.Helpers
 
 --------------------------------------------------------------------------------  
@@ -106,7 +107,7 @@ rnd = do
   x <- randomRIO (0,prime-1)
   return (unsafeTo x)
 
-instance C.Rnd Fp where
+instance M.Rnd Fp where
   rndIO = rnd
 
 instance C.Ring Fp where

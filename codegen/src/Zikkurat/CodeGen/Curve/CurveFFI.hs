@@ -24,6 +24,7 @@ data CRet
 
 data CArg
   = CArgInt           -- ^ C integer
+  | CArgCount         -- ^ number of array elements
   | CArgInBigIntP     -- ^ input ptr to a bigint of size the same as Fp
   | CArgInScalarP     -- ^ input ptr to a scalar in Fp
   | CArgInScalarR     -- ^ input ptr to a scalar in Fr
@@ -32,6 +33,10 @@ data CArg
   | CArgInProj        -- ^ input ptr to a projective point (3 coordinates, doesn't matter if weighted)
   | CArgOutAffine     -- ^ output ptr to an affine point
   | CArgOutProj       -- ^ output ptr to a projective point
+  | CArgInAffineArray      -- ^ input ptr to an affine point (2 coordinates)
+  | CArgInProjArray        -- ^ input ptr to a projective point (3 coordinates, doesn't matter if weighted)
+  | CArgOutAffineArray     -- ^ output ptr to an affine point
+  | CArgOutProjArray       -- ^ output ptr to a projective point
   deriving (Eq, Show)
 
 data CTyp 
@@ -220,6 +225,32 @@ curveFfiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
     , "    withForeignPtr fptr2 $ \\ptr2 -> do"
     , "      c_" ++ cname ++ " ptr1 ptr2"
     , "  return (" ++ hsTyConAffine ++ " fptr2)"
+    ]
+
+  CTyp [CArgCount, CArgInAffineArray, CArgOutProjArray] CRetVoid -> 
+    [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()"
+    , ""
+    , "{-# NOINLINE " ++ hsFunName ++ " #-}"
+    , hsFunName ++ " :: FlatArray (" ++ hsTyNameAffine ++ ") -> FlatArray (" ++ hsTyNameProj ++ ")"
+    , hsFunName ++ " (MkFlatArray n fptr1) = unsafePerformIO $ do"
+    , "  fptr2 <- mallocForeignPtrArray (n*" ++ show (3*hsNLimbsP) ++ ")"
+    , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+    , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+    , "      c_" ++ cname ++ " (fromIntegral n) ptr1 ptr2"
+    , "  return (MkFlatArray n fptr2)"
+    ]
+
+  CTyp [CArgCount, CArgInProjArray, CArgOutAffineArray] CRetVoid -> 
+    [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()"
+    , ""
+    , "{-# NOINLINE " ++ hsFunName ++ " #-}"
+    , hsFunName ++ " :: FlatArray (" ++ hsTyNameProj ++ ") -> FlatArray (" ++ hsTyNameAffine ++ ")"
+    , hsFunName ++ " (MkFlatArray n fptr1) = unsafePerformIO $ do"
+    , "  fptr2 <- mallocForeignPtrArray (n*" ++ show (2*hsNLimbsP) ++ ")"
+    , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+    , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+    , "      c_" ++ cname ++ " (fromIntegral n) ptr1 ptr2"
+    , "  return (MkFlatArray n fptr2)"
     ]
 
   ------------------------- NOW PURE AFFINE -------------------------------

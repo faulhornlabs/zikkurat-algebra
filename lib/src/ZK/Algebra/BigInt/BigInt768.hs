@@ -49,6 +49,7 @@ import ZK.Algebra.BigInt.Types
 
 import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as C
+import qualified ZK.Algebra.Class.Misc  as M
 
 --------------------------------------------------------------------------------  
 
@@ -92,7 +93,7 @@ rnd = do
     pokeArray ptr xs
   return (MkBigInt768 fptr)
 
-instance C.Rnd BigInt768 where
+instance M.Rnd BigInt768 where
   rndIO = rnd
 
 instance C.Ring BigInt768 where

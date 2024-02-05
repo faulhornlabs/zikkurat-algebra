@@ -21,6 +21,10 @@ module ZK.Algebra.Curves.BN128.G2.Affine
   , sclFr , sclBig , sclSmall
     -- * Random
   , rndG2
+    -- * Multi-scalar-multiplication
+  , msm , msmStd
+    -- * Fast-Fourier transform
+  , forwardFFT , inverseFFT
     -- * Sage
   , sageSetup , printSageSetup
   )
@@ -47,6 +51,7 @@ import ZK.Algebra.Curves.BN128.Fr.Mont ( Fr(..)  )
 import qualified ZK.Algebra.Curves.BN128.Fp.Mont as Fp
 import qualified ZK.Algebra.Curves.BN128.Fp2.Mont as Fp2
 import qualified ZK.Algebra.Curves.BN128.Fr.Mont as Fr
+import qualified ZK.Algebra.Curves.BN128.Fr.Std
 import qualified ZK.Algebra.BigInt.BigInt512 as BigP
 
 import qualified ZK.Algebra.Curves.BN128.G2.Proj as Proj    -- note: be careful with cyclic imports!
@@ -54,6 +59,8 @@ import qualified ZK.Algebra.Curves.BN128.G2.Proj as Proj    -- note: be careful 
 import qualified ZK.Algebra.Class.Flat  as L
 import qualified ZK.Algebra.Class.Field as F
 import qualified ZK.Algebra.Class.Curve as C
+import qualified ZK.Algebra.Class.Misc  as M
+import           ZK.Algebra.Class.FFT
 
 --------------------------------------------------------------------------------
 
@@ -131,6 +138,24 @@ rndG2 = Proj.toAffine <$> Proj.rndG2
 
 --------------------------------------------------------------------------------
 
+-- | Multi-Scalar Multiplication (MSM), with the coefficients in Montgomery representation
+msm :: L.FlatArray Fr -> L.FlatArray ZK.Algebra.Curves.BN128.G2.Affine.G2 -> G2
+msm cs gs = Proj.toAffine $ Proj.msm cs gs
+
+-- | Multi-Scalar Multiplication (MSM), with the coefficients in standard representation
+msmStd :: L.FlatArray ZK.Algebra.Curves.BN128.Fr.Std.Fr -> L.FlatArray ZK.Algebra.Curves.BN128.G2.Affine.G2 -> G2
+msmStd cs gs = Proj.toAffine $ Proj.msmStd cs gs
+
+-- | Forward FFT for groups (converting @[L_k(tau)]@ points to @[tau^i]@ points)
+forwardFFT :: FFTSubgroup Fr -> L.FlatArray G2 -> L.FlatArray G2
+forwardFFT sg = Proj.batchToAffine . Proj.forwardFFT sg . Proj.batchFromAffine
+
+-- | Inverse FFT for groups (converting @[tau^i]@ points to @[L_k(tau)]@ points)
+inverseFFT :: FFTSubgroup Fr -> L.FlatArray G2 -> L.FlatArray G2
+inverseFFT sg = Proj.batchToAffine . Proj.inverseFFT sg . Proj.batchFromAffine
+
+--------------------------------------------------------------------------------
+
 instance C.StrictEq G2 where
   (===) = isSame
 
@@ -149,7 +174,7 @@ instance L.Flat G2 where
   withFlat (MkG2 fptr) = withForeignPtr fptr
   makeFlat = L.makeFlatGeneric MkG2 16
 
-instance F.Rnd G2 where
+instance M.Rnd G2 where
   rndIO = rndG2
 
 instance C.Group G2 where
@@ -173,6 +198,9 @@ instance C.Curve G2 where
   infinity    = ZK.Algebra.Curves.BN128.G2.Affine.infinity
   subgroupGen = ZK.Algebra.Curves.BN128.G2.Affine.genG2
   scalarMul   = ZK.Algebra.Curves.BN128.G2.Affine.sclFr
+  msm         = ZK.Algebra.Curves.BN128.G2.Affine.msm
+  curveFFT    = ZK.Algebra.Curves.BN128.G2.Affine.forwardFFT
+  curveIFFT   = ZK.Algebra.Curves.BN128.G2.Affine.inverseFFT
 
 instance C.AffineCurve G2 where
   coords2    = ZK.Algebra.Curves.BN128.G2.Affine.coords
