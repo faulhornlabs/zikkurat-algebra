@@ -57,7 +57,8 @@ newFlat ws = do
 
 --------------------------------------------------------------------------------
 
--- | Something which is a newtype containing a FlatArray
+-- | Something which is a newtype containing a 'FlatArray' 
+-- (for example: a dense univariate polynomial)
 class WrappedArray a where
   type Element a :: Type
   wrapArray   :: FlatArray (Element a) -> a
@@ -86,6 +87,7 @@ withFlatArray (MkFlatArray n fptr) action = do
 -- TODO:
 -- parallelWithFlatArray :: Int -> FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO [b]
 
+-- | Extracts the @n@-th element
 {-# NOINLINE peekFlatArray #-}
 peekFlatArray :: Flat a => FlatArray a -> Int -> a
 peekFlatArray arr j = unsafePerformIO $ peekFlatArrayIO arr j
@@ -96,6 +98,10 @@ peekFlatArrayIO arr j = do
   let s = sizeInBytes (Proxy @a)
   withFlatArray arr $ \_ ptr -> do
     makeFlat (plusPtr ptr (s*j))
+
+-- | The first @m@ elements of a flat array (note: this operation is essentially free)
+takeFlatArray :: Int -> FlatArray a -> FlatArray a
+takeFlatArray m (MkFlatArray n fptr) = MkFlatArray (min n m) fptr
 
 --------------------------------------------------------------------------------
 -- * Pack \/ unpack flat arrays

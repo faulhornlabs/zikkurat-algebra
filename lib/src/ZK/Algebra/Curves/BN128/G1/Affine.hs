@@ -195,7 +195,7 @@ instance C.Curve G1 where
   isOnCurve   = ZK.Algebra.Curves.BN128.G1.Affine.isOnCurve
   isInifinity = ZK.Algebra.Curves.BN128.G1.Affine.isInfinity
   infinity    = ZK.Algebra.Curves.BN128.G1.Affine.infinity
-  subgroupGen = ZK.Algebra.Curves.BN128.G1.Affine.genG1
+  curveSubgroupGen = ZK.Algebra.Curves.BN128.G1.Affine.genG1
   scalarMul   = ZK.Algebra.Curves.BN128.G1.Affine.sclFr
   msm         = ZK.Algebra.Curves.BN128.G1.Affine.msm
   curveFFT    = ZK.Algebra.Curves.BN128.G1.Affine.forwardFFT

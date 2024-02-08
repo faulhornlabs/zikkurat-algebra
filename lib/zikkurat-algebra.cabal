@@ -11,7 +11,7 @@ License-files:        LICENSE-MIT
                       LICENSE-APACHE-2.0
 
 Author:               Balazs Komuves
-Copyright:            (c) 2023 Faulhorn Labs
+Copyright:            (c) 2023-2024 Faulhorn Labs
 Maintainer:           balazs.komuves (at) faulhornlabs (dot) com
 
 Stability:            Experimental
@@ -75,6 +75,7 @@ Library
                         ZK.Algebra.Class.Curve
                         ZK.Algebra.Class.Poly
                         ZK.Algebra.Class.FFT
+                        ZK.Algebra.Class.Pairing
                         ZK.Algebra.Class.Misc
                         ZK.Algebra.Helpers
 
@@ -192,6 +193,8 @@ Library
                         cbits/curves/g2/affine
                         cbits/curves/g2/proj
                         cbits/curves/poly/mont
+                        cbits/curves/array/mont
+                        cbits/curves/pairing
 
   ghc-options:          -fwarn-tabs -fno-warn-unused-matches -fno-warn-name-shadowing -fno-warn-unused-imports                        
 

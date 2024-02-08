@@ -312,7 +312,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  isOnCurve   = " ++ hsModule hs_path_proj ++ ".isOnCurve"
   , "  isInifinity = " ++ hsModule hs_path_proj ++ ".isInfinity"
   , "  infinity    = " ++ hsModule hs_path_proj ++ ".infinity"
-  , "  subgroupGen = " ++ hsModule hs_path_proj ++ ".gen" ++ typeName
+  , "  curveSubgroupGen = " ++ hsModule hs_path_proj ++ ".gen" ++ typeName
   , "  scalarMul   = " ++ hsModule hs_path_proj ++ ".sclFr"
   , "  msm         = " ++ hsModule hs_path_proj ++ ".msmProj"
 --  , "  msmStd      = " ++ hsModule hs_path_proj ++ ".msmStd"
@@ -727,7 +727,7 @@ convertAffine (CodeGenParams{..}) =
   , ""
   , "// converts N points from affine coordinates"
   , "void " ++ prefix ++ "batch_from_affine( int N, const uint64_t *src , uint64_t *tgt ) {"
-  , "  uint64_t *p = src;"
+  , "  const uint64_t *p = src;"
   , "  uint64_t *q = tgt;"
   , "  for(int i=0; i<N; i++) {"
   , "    " ++ prefix ++ "from_affine(p,q);"
@@ -738,7 +738,7 @@ convertAffine (CodeGenParams{..}) =
   , ""
   , "// converts N points to affine coordinates"
   , "void " ++ prefix ++ "batch_to_affine( int N, const uint64_t *src , uint64_t *tgt ) {"
-  , "  uint64_t *p = src;"
+  , "  const uint64_t *p = src;"
   , "  uint64_t *q = tgt;"
   , "  for(int i=0; i<N; i++) {"
   , "    " ++ prefix ++ "to_affine(p,q);"

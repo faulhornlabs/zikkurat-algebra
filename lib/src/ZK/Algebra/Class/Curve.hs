@@ -82,7 +82,7 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   -- | the infinity element
   infinity    :: a
   -- | the subgroup generator
-  subgroupGen :: a
+  curveSubgroupGen :: a
   -- | scalar multiplication
   scalarMul   :: ScalarField a -> a -> a
   -- | multi-scalar multiplication  

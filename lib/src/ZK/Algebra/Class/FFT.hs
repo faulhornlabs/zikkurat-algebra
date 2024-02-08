@@ -14,8 +14,8 @@ import ZK.Algebra.Class.Misc
 
 type FFTDomain a = FFTSubgroup a
 
-domainSize :: FFTDomain a -> Int
-domainSize = subgroupSize
+fftDomainSize :: FFTDomain a -> Int
+fftDomainSize = fftSubgroupSize
 
 getFFTDomain :: forall a. FFTField a => Log2 -> FFTDomain a
 getFFTDomain = getFFTSubgroup
@@ -25,14 +25,14 @@ getFFTDomain = getFFTSubgroup
 
 -- | An FFT-friendly cyclic subgroup of the multiplicative group of a finite field
 data FFTSubgroup a = MkFFTSubgroup
-  { subgroupGen     :: !a        -- ^ the generator of the subgroup
-  , subgroupLogSize :: !Log2     -- ^ @log2@ of the size of the subgroup
+  { fftSubgroupGen     :: !a        -- ^ the generator of the subgroup
+  , fftSubgroupLogSize :: !Log2     -- ^ @log2@ of the size of the subgroup
   }
   deriving (Eq,Show)
 
 -- | The size of the subgroup
-subgroupSize :: FFTSubgroup a -> Int
-subgroupSize sg = fromInteger $ exp2 (subgroupLogSize sg)
+fftSubgroupSize :: FFTSubgroup a -> Int
+fftSubgroupSize sg = fromInteger $ exp2 (fftSubgroupLogSize sg)
 
 -- | Elements of the subgroup in standard order:
 --
@@ -54,17 +54,17 @@ halveSubgroup (MkFFTSubgroup gen k)
 
 class Field a => FFTField a where
   -- | The largest power-of-two multiplicative subgroup the field supports
-  fftDomain :: FFTSubgroup a      
+  theFFTDomain :: FFTSubgroup a      
 
 -- | Given @n@, we construct the subgroup of size @2^n@
 getFFTSubgroup :: forall a. FFTField a => Log2 -> FFTSubgroup a
 getFFTSubgroup k 
-  | k < 0     = error $ "fftSubGroup: expecting a nonnegative input (desired logarithmic size)"
-  | k > m     = error $ "fftSubGroup: this field supports FFT subgroups of size at most 2^" ++ show im ++ " = " ++ show (exp2 m)
+  | k < 0     = error $ "getFFTSubGroup: expecting a nonnegative input (desired logarithmic size)"
+  | k > m     = error $ "getFFTSubGroup: this field supports FFT subgroups of size at most 2^" ++ show im ++ " = " ++ show (exp2 m)
   | otherwise = let g = power gen (exp2 (m-k)) 
                 in  MkFFTSubgroup g k
   where
-    domain@(MkFFTSubgroup gen m) = fftDomain @a
+    domain@(MkFFTSubgroup gen m) = theFFTDomain @a
     Log2 im = m
 
 --------------------------------------------------------------------------------

@@ -137,7 +137,7 @@ void bn128_G2_proj_to_affine( const uint64_t *src1 , uint64_t *tgt ) {
 
 // converts N points from affine coordinates
 void bn128_G2_proj_batch_from_affine( int N, const uint64_t *src , uint64_t *tgt ) {
-  uint64_t *p = src;
+  const uint64_t *p = src;
   uint64_t *q = tgt;
   for(int i=0; i<N; i++) {
     bn128_G2_proj_from_affine(p,q);
@@ -148,7 +148,7 @@ void bn128_G2_proj_batch_from_affine( int N, const uint64_t *src , uint64_t *tgt
 
 // converts N points to affine coordinates
 void bn128_G2_proj_batch_to_affine( int N, const uint64_t *src , uint64_t *tgt ) {
-  uint64_t *p = src;
+  const uint64_t *p = src;
   uint64_t *q = tgt;
   for(int i=0; i<N; i++) {
     bn128_G2_proj_to_affine(p,q);

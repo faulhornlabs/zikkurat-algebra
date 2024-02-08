@@ -186,7 +186,7 @@ instance C.Curve G1 where
   isOnCurve   = ZK.Algebra.Curves.BN128.G1.Proj.isOnCurve
   isInifinity = ZK.Algebra.Curves.BN128.G1.Proj.isInfinity
   infinity    = ZK.Algebra.Curves.BN128.G1.Proj.infinity
-  subgroupGen = ZK.Algebra.Curves.BN128.G1.Proj.genG1
+  curveSubgroupGen = ZK.Algebra.Curves.BN128.G1.Proj.genG1
   scalarMul   = ZK.Algebra.Curves.BN128.G1.Proj.sclFr
   msm         = ZK.Algebra.Curves.BN128.G1.Proj.msmProj
   curveFFT    = ZK.Algebra.Curves.BN128.G1.Proj.forwardFFT
@@ -271,26 +271,26 @@ foreign import ccall unsafe "bn128_G1_proj_fft_forward" c_bn128_G1_proj_fft_forw
 -- | Forward FFT for groups (converting @[L_k(tau)]@ points to @[tau^i]@ points)
 forwardFFT :: FFTSubgroup Fr -> FlatArray G1 -> FlatArray G1
 forwardFFT sg (MkFlatArray n fptr2)
-  | subgroupSize sg /= n   = error "forwardNTT: subgroup size differs from the array size"
-  | otherwise              = unsafePerformIO $ do
+  | fftSubgroupSize sg /= n   = error "forwardNTT: subgroup size differs from the array size"
+  | otherwise                 = unsafePerformIO $ do
       fptr3 <- mallocForeignPtrArray (n*12)
-      L.withFlat (subgroupGen sg) $ \ptr1 -> do
+      L.withFlat (fftSubgroupGen sg) $ \ptr1 -> do
         withForeignPtr fptr2 $ \ptr2 -> do
           withForeignPtr fptr3 $ \ptr3 -> do
-            c_bn128_G1_proj_fft_forward (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3
+            c_bn128_G1_proj_fft_forward (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
       return (MkFlatArray n fptr3)
 
 {-# NOINLINE inverseFFT #-}
 -- | Inverse FFT for groups (converting @[tau^i]@ points to @[L_k(tau)]@ points)
 inverseFFT :: FFTSubgroup Fr -> FlatArray G1 -> FlatArray G1
 inverseFFT sg (MkFlatArray n fptr2)
-  | subgroupSize sg /= n   = error "inverseNTT: subgroup size differs from the array size"
-  | otherwise              = unsafePerformIO $ do
+  | fftSubgroupSize sg /= n   = error "inverseNTT: subgroup size differs from the array size"
+  | otherwise                 = unsafePerformIO $ do
       fptr3 <- mallocForeignPtrArray (n*12)
-      L.withFlat (subgroupGen sg) $ \ptr1 -> do
+      L.withFlat (fftSubgroupGen sg) $ \ptr1 -> do
         withForeignPtr fptr2 $ \ptr2 -> do
           withForeignPtr fptr3 $ \ptr3 -> do
-            c_bn128_G1_proj_fft_inverse (fromIntegral $ M.fromLog2 $ subgroupLogSize sg) ptr1 ptr2 ptr3
+            c_bn128_G1_proj_fft_inverse (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
       return (MkFlatArray n fptr3)
 
 

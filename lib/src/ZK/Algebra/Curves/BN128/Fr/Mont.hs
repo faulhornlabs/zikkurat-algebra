@@ -140,7 +140,7 @@ fftDomain = MkFFTSubgroup gen (M.Log2 28) where
   gen = to 19103219067921713944291392827692070036145651957329286315305642004821462161904
 
 instance FFTField Fr where
-  fftDomain = ZK.Algebra.Curves.BN128.Fr.Mont.fftDomain
+  theFFTDomain = ZK.Algebra.Curves.BN128.Fr.Mont.fftDomain
 
 ----------------------------------------
 

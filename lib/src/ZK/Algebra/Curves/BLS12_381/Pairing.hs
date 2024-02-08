@@ -3,6 +3,7 @@
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
 
+{-# LANGUAGE ScopedTypeVariables, DataKinds, TypeFamilies #-}
 module ZK.Algebra.Curves.BLS12_381.Pairing
   ( pairing
   , pairingProj
@@ -19,8 +20,12 @@ import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc
 
--- import ZK.Algebra.Class.Field
-import ZK.Algebra.Class.Curve
+import ZK.Algebra.Class.Field   as F
+import ZK.Algebra.Class.Curve   as C
+import qualified ZK.Algebra.Class.Pairing as P
+
+import ZK.Algebra.Curves.BLS12_381.Fr.Mont ( Fr   )
+import ZK.Algebra.Curves.BLS12_381.Poly    ( Poly )
 
 import ZK.Algebra.Curves.BLS12_381.Fp.Mont   ( Fp   )
 import ZK.Algebra.Curves.BLS12_381.Fp2.Mont  ( Fp2  )
@@ -45,6 +50,21 @@ import qualified ZK.Algebra.Curves.BLS12_381.G2.Proj   as ProjG2
 
 type ProjG1 = ProjG1.G1
 type ProjG2 = ProjG2.G2
+
+--------------------------------------------------------------------------------
+
+instance P.PairingCurve 'P.BLS12_381 where
+  type Fp     'P.BLS12_381 = Fp.Fp
+  type Fp2    'P.BLS12_381 = Fp2.Fp2
+  type Fp12   'P.BLS12_381 = Fp12.Fp12
+  type Fr     'P.BLS12_381 = Fr.Fr
+  type G1     'P.BLS12_381 = AffG1.G1
+  type G2     'P.BLS12_381 = AffG2.G2
+  type ProjG1 'P.BLS12_381 = ProjG1.G1
+  type ProjG2 'P.BLS12_381 = ProjG2.G2
+  type Poly   'P.BLS12_381 = Poly
+
+  pairing _proxy = ZK.Algebra.Curves.BLS12_381.Pairing.pairing
 
 --------------------------------------------------------------------------------
 

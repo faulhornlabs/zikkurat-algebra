@@ -237,7 +237,7 @@ hsBegin params@(Params{..}) =
            , "  gen = to" ++ postfix ++ " " ++ show gen
            , ""
            , "instance FFTField " ++ typeName ++ " where"
-           , "  fftDomain = " ++ hsModule hs_path ++ ".fftDomain"
+           , "  theFFTDomain = " ++ hsModule hs_path ++ ".fftDomain"
            ]
          Nothing -> []) ++
   [ ""  
