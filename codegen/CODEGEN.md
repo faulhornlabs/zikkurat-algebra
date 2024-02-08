@@ -24,11 +24,15 @@ The C library
 
 Organization of the generated C source files:
 
+    /cbits/platform/                 - platform-specific pieces
     /cbits/bigint/                   - unsigned integers of various bit sizes
     /cbits/curves/fields/std/        - base and scalar fields of curves, standard repr.
     /cbits/curves/fields/mont/       - base and scalar fields of curves, Montogomery repr.
     /cbits/curves/g1/affine/         - G1 curve points, affine coordinates
     /cbits/curves/g1/proj/           - G1 curve points, projective coordiates
     /cbits/curves/g1/jac/            - G1 curve points, Jacobian coordinates
-    /cbits/curves/g1/poly/mont/      - polynomials with coefficients in the scalar field
-
+    /cbits/curves/g2/affine/         - G2 curve points, affine coordinates
+    /cbits/curves/g2/proj/           - G2 curve points, projective coordiates
+    /cbits/curves/poly/mont/         - polynomials with coefficients in the scalar field
+    /cbits/curves/array/mont/        - vectors of scalar field elements
+    /cbits/curves/pairing/           - elliptic curve pairings

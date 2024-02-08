@@ -132,7 +132,7 @@ TODO
 - [ ] figure out nicer polymorphic API-s
 - [x] vectors of field elements
 - [ ] long division of bigints
-- [x] faster Frobenius automorphism (TODO: optimize away the multiplications by zero)
+- [x] faster Frobenius automorphism 
 - [ ] square roots in prime fields 
 - [ ] hash-to-curve & better (faster) random curve points  
 - [ ] add benchmarking

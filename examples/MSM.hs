@@ -51,30 +51,30 @@ sanityCheck2  n = unpackFlatArrayToList (packFlatArrayFromList' n points   ) == 
 
 --------------------------------------------------------------------------------
 
-standardMSM :: Int -> G1
-standardMSM n = msmStd
+standardMSM :: Int -> Affine.G1
+standardMSM n = Affine.msmStd
   (packFlatArrayFromList' n coeffsStd)
   (packFlatArrayFromList' n points) 
 
-montgomeryMSM :: Int -> G1
-montgomeryMSM n = msm
+montgomeryMSM :: Int -> Affine.G1
+montgomeryMSM n = Affine.msm
   (packFlatArrayFromList' n coeffs)
   (packFlatArrayFromList' n points) 
   
-referenceMSM :: Int -> G1
-referenceMSM n = grpSum $ take n $ zipWith scalarMul coeffs (map fromAffine points)
+referenceMSM :: Int -> Affine.G1
+referenceMSM n = toAffine $ grpSum $ take n $ zipWith scalarMul coeffs (map fromAffine points :: [G1])
 
 --------------------------------------------------------------------------------
 
 main :: IO ()
 main = do
   let n = 123
-  let ex1 = toAffine (standardMSM   n)
-  let ex2 = toAffine (montgomeryMSM n)
-  let ref = toAffine (referenceMSM  n)
-  putStrLn $ "result of (standard coeff)   MSM of size " ++ show n ++ " = " ++ show ex1 ++ "\n"
-  putStrLn $ "result of (Montgomery coeff) MSM of size " ++ show n ++ " = " ++ show ex2 ++ "\n"
-  putStrLn $ "result of reference          MSM of size " ++ show n ++ " = " ++ show ref ++ "\n" 
+  let ex1 = standardMSM   n
+  let ex2 = montgomeryMSM n
+  let ref = referenceMSM  n
+  putStrLn $ "result of (standard coeff)   MSM of size " ++ show n ++ "\n = " ++ show ex1 ++ "\n"
+  putStrLn $ "result of (Montgomery coeff) MSM of size " ++ show n ++ "\n = " ++ show ex2 ++ "\n"
+  putStrLn $ "result of reference          MSM of size " ++ show n ++ "\n = " ++ show ref ++ "\n" 
   if (ex1 == ref) && (ex1 == ex2)
     then putStrLn "they match! OK."
     else putStrLn "they do not match! FAIL!"
