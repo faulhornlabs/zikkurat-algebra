@@ -76,6 +76,7 @@ Library
                         ZK.Algebra.Class.Poly
                         ZK.Algebra.Class.FFT
                         ZK.Algebra.Class.Pairing
+                        ZK.Algebra.Class.Vector
                         ZK.Algebra.Class.Misc
                         ZK.Algebra.Helpers
 

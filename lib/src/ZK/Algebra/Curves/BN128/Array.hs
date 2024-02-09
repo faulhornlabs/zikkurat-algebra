@@ -25,6 +25,9 @@ module ZK.Algebra.Curves.BN128.Array
     -- * Fused mul-add
   , mulAdd
   , mulSub
+    -- * Linear combination
+  , linComb1
+  , linComb2
   )
   where
 
@@ -54,12 +57,83 @@ import qualified ZK.Algebra.Curves.BN128.Fr.Std as Std
 
 import ZK.Algebra.Class.Flat ( FlatArray(..) )
 
-import           ZK.Algebra.Class.Flat  as L
-import           ZK.Algebra.Class.FFT   as T
-import qualified ZK.Algebra.Class.Field as F
-import qualified ZK.Algebra.Class.Poly  as P
+import           ZK.Algebra.Class.Flat   as L
+import           ZK.Algebra.Class.FFT    as T
+import qualified ZK.Algebra.Class.Field  as F
+import qualified ZK.Algebra.Class.Poly   as P
+import qualified ZK.Algebra.Class.Vector as V
 
 --------------------------------------------------------------------------------
+
+instance Eq (FlatArray Fr) where
+  arr1 == arr2
+    | flatArrayLength arr1 == flatArrayLength arr2  = isEqual arr1 arr2
+    | otherwise                                     = False
+
+instance V.PointwiseGroup (FlatArray Fr) where
+  pwNeg = neg
+  pwAdd = add
+  pwSub = sub
+
+instance V.PointwiseRing (FlatArray Fr) where
+  pwSqr    = sqr
+  pwMul    = mul
+  pwMulAdd = mulAdd
+  pwMulSub = mulSub
+
+instance V.PointwiseField (FlatArray Fr) where
+  pwInv = ZK.Algebra.Curves.BN128.Array.inv
+  pwDiv = ZK.Algebra.Curves.BN128.Array.div
+
+--------------------------------------------------------------------------------
+
+instance V.VectorSpace (FlatArray Fr) where
+  -- type Element (FlatArray Fr) = Fr
+  vecSize  = flatArrayLength
+  vecIndex = flip peekFlatArray
+  vecScale = ZK.Algebra.Curves.BN128.Array.scale
+  dotProd  = ZK.Algebra.Curves.BN128.Array.dotProd
+  powers !a !b !n = ZK.Algebra.Curves.BN128.Array.powers n a b
+  linComb1 = ZK.Algebra.Curves.BN128.Array.linComb1
+  linComb2 = ZK.Algebra.Curves.BN128.Array.linComb2
+
+--------------------------------------------------------------------------------
+
+-- void bn128_arr_mont_Ax_plus_y ( int n, const uint64_t *coeffA,                         const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
+-- void bn128_arr_mont_Ax_plus_By( int n, const uint64_t *coeffA, const uint64_t *coeffB, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
+
+foreign import ccall unsafe "bn128_arr_mont_Ax_plus_y"  c_bn128_arr_mont_Ax_plus_y  :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_arr_mont_Ax_plus_By" c_bn128_arr_mont_Ax_plus_By :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE linComb1 #-}
+linComb1 :: (Fr, FlatArray Fr) -> FlatArray Fr -> FlatArray Fr
+linComb1 (MkFr fptr_a, MkFlatArray n1 fptr_x) (MkFlatArray n2 fptr_y)
+  | n1 /= n2   = error "linComb1: incompatible vector dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr_o <- mallocForeignPtrArray (n1*4)
+      withForeignPtr fptr_a $ \ptr_a -> do
+        withForeignPtr fptr_x $ \ptr_x -> do
+          withForeignPtr fptr_y $ \ptr_y -> do
+            withForeignPtr fptr_o $ \ptr_o -> do
+              c_bn128_arr_mont_Ax_plus_y (fromIntegral n1) ptr_a ptr_x ptr_y ptr_o
+      return (MkFlatArray n1 fptr_o)
+
+{-# NOINLINE linComb2 #-}
+linComb2 :: (Fr, FlatArray Fr) -> (Fr, FlatArray Fr) -> FlatArray Fr
+linComb2 (MkFr fptr_a, MkFlatArray n1 fptr_x) (MkFr fptr_b, MkFlatArray n2 fptr_y)
+  | n1 /= n2   = error "linComb2: incompatible vector dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr_o <- mallocForeignPtrArray (n1*4)
+      withForeignPtr fptr_a $ \ptr_a -> do
+        withForeignPtr fptr_b $ \ptr_b -> do
+          withForeignPtr fptr_x $ \ptr_x -> do
+            withForeignPtr fptr_y $ \ptr_y -> do
+              withForeignPtr fptr_o $ \ptr_o -> do
+                c_bn128_arr_mont_Ax_plus_By (fromIntegral n1) ptr_a ptr_b ptr_x ptr_y ptr_o
+      return (MkFlatArray n1 fptr_o)
+
+--------------------------------------------------------------------------------
+
 
 foreign import ccall unsafe "bn128_arr_mont_from_std" c_bn128_arr_mont_from_std :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
 foreign import ccall unsafe "bn128_arr_mont_to_std" c_bn128_arr_mont_to_std   :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
@@ -267,7 +341,7 @@ mulSub (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2) (MkFlatArray n3 fptr3)
               c_bn128_arr_mont_mul_sub (fromIntegral n1) ptr1 ptr2 ptr3 ptr4
       return (MkFlatArray n1 fptr4)
 
-foreign import ccall unsafe "bn128_arr_mont_scaled" c_bn128_arr_mont_scaled :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_arr_mont_scale" c_bn128_arr_mont_scale :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE scale #-}
 scale :: Fr -> FlatArray Fr -> FlatArray Fr
@@ -277,5 +351,5 @@ scale (MkFr fptr1) (MkFlatArray n2 fptr2) =
     withForeignPtr fptr1 $ \ptr1 -> do
       withForeignPtr fptr2 $ \ptr2 -> do
          withForeignPtr fptr3 $ \ptr3 -> do
-           c_bn128_arr_mont_scaled (fromIntegral n2) ptr1 ptr2 ptr3
+           c_bn128_arr_mont_scale (fromIntegral n2) ptr1 ptr2 ptr3
       return (MkFlatArray n2 fptr3)

@@ -15,7 +15,7 @@
 
 #define SRC1(i) ((src1) + (i)*ELEM_NWORDS)
 #define SRC2(i) ((src2) + (i)*ELEM_NWORDS)
-#define SRC3(i) ((src2) + (i)*ELEM_NWORDS)
+#define SRC3(i) ((src3) + (i)*ELEM_NWORDS)
 #define TGT(i)  (( tgt) + (i)*ELEM_NWORDS)
 #define TMP(i)  (( tmp) + (i)*ELEM_NWORDS)
 
@@ -97,8 +97,9 @@ void bn128_arr_mont_inv ( int n, const uint64_t *src1, uint64_t *tgt ) {
 }
 
 void bn128_arr_mont_div ( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
-  uint64_t *tmp = malloc( n*(8*ELEM_NWORDS) );
-  bn128_Fr_mont_batch_inv( n, src2, tgt );
+  uint64_t *tmp = (uint64_t*) malloc( n*(8*ELEM_NWORDS) );
+  assert( tmp != 0);
+  bn128_Fr_mont_batch_inv( n, src2, tmp );
   for(int i=0; i<n; i++) bn128_Fr_mont_mul( SRC1(i), TMP(i), TGT(i) ); 
   free(tmp);
 }
