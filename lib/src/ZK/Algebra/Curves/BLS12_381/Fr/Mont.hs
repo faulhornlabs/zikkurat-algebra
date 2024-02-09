@@ -7,13 +7,14 @@
 --
 -- * NOTE 2: Generated code, do not edit!
 
-{-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
 module ZK.Algebra.Curves.BLS12_381.Fr.Mont
   ( Fr(..)
   , prime
     -- * Conversion
   , to , from
   , toStd , fromStd
+  , batchToStd , batchFromStd
     -- * Field elements
   , zero , one , two, primGen
     -- * Predicates
@@ -134,6 +135,13 @@ instance C.Field Fr where
   frobenius    = id
   halve        = divBy2
 
+instance C.MontgomeryField Fr where
+  type StandardField Fr = Std.Fr
+  toStandardRep        = toStd
+  fromStandardRep      = fromStd
+  batchToStandardRep   = batchToStd
+  batchFromStandardRep = batchFromStd
+
 fftDomain :: FFTSubgroup Fr
 fftDomain = MkFFTSubgroup gen (M.Log2 32) where
   gen :: Fr
@@ -165,6 +173,30 @@ toStd (MkFr fptr1) = unsafePerformIO $ do
     withForeignPtr fptr2 $ \ptr2 -> do
       c_bls12_381_Fr_mont_to_std ptr1 ptr2
   return (Std.MkFr fptr2)
+
+----------------------------------------
+
+foreign import ccall unsafe "bls12_381_Fr_mont_batch_from_std" c_bls12_381_Fr_mont_batch_from_std :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE batchFromStd#-}
+batchFromStd :: L.FlatArray (Std.Fr) -> L.FlatArray (Fr)
+batchFromStd (MkFlatArray n fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bls12_381_Fr_mont_batch_from_std (fromIntegral n) ptr1 ptr2
+  return (MkFlatArray n fptr2)
+
+foreign import ccall unsafe "bls12_381_Fr_mont_batch_to_std" c_bls12_381_Fr_mont_batch_to_std :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE batchToStd#-}
+batchToStd :: L.FlatArray (Fr) -> L.FlatArray (Std.Fr)
+batchToStd (MkFlatArray n fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bls12_381_Fr_mont_batch_to_std (fromIntegral n) ptr1 ptr2
+  return (MkFlatArray n fptr2)
 
 
 {-# NOINLINE exportToCDef #-}

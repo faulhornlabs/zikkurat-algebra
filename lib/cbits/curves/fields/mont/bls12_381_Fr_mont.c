@@ -321,13 +321,37 @@ void bls12_381_Fr_mont_copy( const uint64_t *src, uint64_t *tgt ) {
   bigint256_copy( src , tgt );
 }
 
+// convert a field elementfrom standard to Montgomery representation
 void bls12_381_Fr_mont_from_std( const uint64_t *src, uint64_t *tgt) {
   bls12_381_Fr_mont_mul( src, bls12_381_Fr_mont_R_squared, tgt );
 }
 
+// convert a field element from Montgomery to standard representation
 void bls12_381_Fr_mont_to_std( const uint64_t *src, uint64_t *tgt) {
   uint64_t T[9];
   memcpy( T, src, 32);
   memset( T+4, 0, 32);
   bls12_381_Fr_mont_REDC_unsafe( T, tgt );
+};
+
+// convert a vector of elements from standard to Montgomery representation
+void bls12_381_Fr_mont_batch_from_std( int N, const uint64_t *src, uint64_t *tgt) {
+  const uint64_t *p = src;
+  uint64_t       *q = tgt;
+  for(int i=0; i<N; i++) {
+    bls12_381_Fr_mont_from_std(p,q);
+    p += NLIMBS;
+    q += NLIMBS;
+  }
+}
+
+// convert a vector of elements from Montgomery to standard representation
+void bls12_381_Fr_mont_batch_to_std( int N, const uint64_t *src, uint64_t *tgt) {
+  const uint64_t *p = src;
+  uint64_t       *q = tgt;
+  for(int i=0; i<N; i++) {
+    bls12_381_Fr_mont_to_std(p,q);
+    p += NLIMBS;
+    q += NLIMBS;
+  }
 };

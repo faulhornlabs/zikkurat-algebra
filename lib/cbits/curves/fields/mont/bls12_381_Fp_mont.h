@@ -1,7 +1,9 @@
 #include <stdint.h>
 
-extern void bls12_381_Fp_mont_from_std   ( const uint64_t *src ,       uint64_t *tgt );
-extern void bls12_381_Fp_mont_to_std     ( const uint64_t *src ,       uint64_t *tgt );
+extern void bls12_381_Fp_mont_from_std       (        const uint64_t *src ,       uint64_t *tgt );
+extern void bls12_381_Fp_mont_to_std         (        const uint64_t *src ,       uint64_t *tgt );
+extern void bls12_381_Fp_mont_batch_from_std ( int N, const uint64_t *src ,       uint64_t *tgt );
+extern void bls12_381_Fp_mont_batch_to_std   ( int N, const uint64_t *src ,       uint64_t *tgt );
 
 extern uint8_t bls12_381_Fp_mont_is_valid ( const uint64_t *src );
 extern uint8_t bls12_381_Fp_mont_is_zero  ( const uint64_t *src );

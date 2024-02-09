@@ -61,10 +61,20 @@ fieldNamePxy = ringNamePxy
 fieldSizePxy :: Field a => Proxy a -> Integer
 fieldSizePxy = ringSizePxy
 
-----------------------------------------
-
 primGen :: forall a. Field a => a
 primGen = primGenPxy (Proxy :: Proxy a)
+
+----------------------------------------
+-- * Converting between standard and Montgomery representation
+
+-- | Fields in both standard and Montgomery representation
+class (Field a, Field (StandardField a)) => MontgomeryField a where
+  -- | the standard representation
+  type StandardField a :: Type
+  toStandardRep   :: a -> StandardField a
+  fromStandardRep :: StandardField a -> a
+  batchToStandardRep   :: FlatArray a -> FlatArray (StandardField a)
+  batchFromStandardRep :: FlatArray (StandardField a) -> FlatArray a
 
 --------------------------------------------------------------------------------
 -- * Algebraic field extensions

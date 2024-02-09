@@ -41,24 +41,26 @@ data SomeCurve
 -- (again, I wish for parametrized modules, importing instances, and stuff like that...)
 --
 class 
-  ( Field         (Fp   c)
-  , ExtField      (Fp2  c)
-  , ExtField'     (Fp12 c)
-  , FFTField      (Fr   c)
-  , AffineCurve   (G1 c)
-  , AffineCurve   (G2 c)
-  , ProjCurve     (ProjG1 c)
-  , ProjCurve     (ProjG2 c)
-  , UnivariateFFT (Poly c)
-  , ExtBase       (Fp2  c) ~ Fp c
-  , PrimeBase     (Fp12 c) ~ Fp c
-  , BaseField     (G1 c) ~ Fp  c
-  , BaseField     (G2 c) ~ Fp2 c
-  , ScalarField   (G1 c) ~ Fr  c
-  , ScalarField   (G2 c) ~ Fr  c
-  , AffinePoint   (ProjG1 c) ~ G1 c
-  , AffinePoint   (ProjG2 c) ~ G2 c
-  , Coeff         (Poly c) ~ Fr c
+  ( Field           (Fp   c)
+  , ExtField        (Fp2  c)
+  , ExtField'       (Fp12 c)
+  , FFTField        (Fr   c)
+  , MontgomeryField (Fp c)
+  , MontgomeryField (Fr c)
+  , AffineCurve     (G1 c)
+  , AffineCurve     (G2 c)
+  , ProjCurve       (ProjG1 c)
+  , ProjCurve       (ProjG2 c)
+  , UnivariateFFT   (Poly c)
+  , ExtBase         (Fp2  c) ~ Fp c
+  , PrimeBase       (Fp12 c) ~ Fp c
+  , BaseField       (G1 c) ~ Fp  c
+  , BaseField       (G2 c) ~ Fp2 c
+  , ScalarField     (G1 c) ~ Fr  c
+  , ScalarField     (G2 c) ~ Fr  c
+  , AffinePoint     (ProjG1 c) ~ G1 c
+  , AffinePoint     (ProjG2 c) ~ G2 c
+  , Coeff           (Poly c) ~ Fr c
   ) => PairingCurve (c :: SomeCurve) 
   where
     type Fp     c :: Type

@@ -7,13 +7,14 @@
 --
 -- * NOTE 2: Generated code, do not edit!
 
-{-# LANGUAGE BangPatterns, ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
 module ZK.Algebra.Curves.BN128.Fp.Mont
   ( Fp(..)
   , prime
     -- * Conversion
   , to , from
   , toStd , fromStd
+  , batchToStd , batchFromStd
     -- * Field elements
   , zero , one , two, primGen
     -- * Predicates
@@ -130,6 +131,13 @@ instance C.Field Fp where
   frobenius    = id
   halve        = divBy2
 
+instance C.MontgomeryField Fp where
+  type StandardField Fp = Std.Fp
+  toStandardRep        = toStd
+  fromStandardRep      = fromStd
+  batchToStandardRep   = batchToStd
+  batchFromStandardRep = batchFromStd
+
 
 ----------------------------------------
 
@@ -154,6 +162,30 @@ toStd (MkFp fptr1) = unsafePerformIO $ do
     withForeignPtr fptr2 $ \ptr2 -> do
       c_bn128_Fp_mont_to_std ptr1 ptr2
   return (Std.MkFp fptr2)
+
+----------------------------------------
+
+foreign import ccall unsafe "bn128_Fp_mont_batch_from_std" c_bn128_Fp_mont_batch_from_std :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE batchFromStd#-}
+batchFromStd :: L.FlatArray (Std.Fp) -> L.FlatArray (Fp)
+batchFromStd (MkFlatArray n fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bn128_Fp_mont_batch_from_std (fromIntegral n) ptr1 ptr2
+  return (MkFlatArray n fptr2)
+
+foreign import ccall unsafe "bn128_Fp_mont_batch_to_std" c_bn128_Fp_mont_batch_to_std :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE batchToStd#-}
+batchToStd :: L.FlatArray (Fp) -> L.FlatArray (Std.Fp)
+batchToStd (MkFlatArray n fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bn128_Fp_mont_batch_to_std (fromIntegral n) ptr1 ptr2
+  return (MkFlatArray n fptr2)
 
 
 {-# NOINLINE exportToCDef #-}
