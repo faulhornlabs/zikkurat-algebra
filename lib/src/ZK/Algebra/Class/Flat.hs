@@ -1,7 +1,7 @@
 
--- | Objects having flat representation in memory
+-- | Objects having flat (constant sized) representation in memory
 --
--- Examples are: bigints, field elements, elliptic curve points
+-- Examples are: fixed size bigints, field elements, elliptic curve points
 --
 
 {-# LANGUAGE ScopedTypeVariables, TypeApplications, TypeFamilies, FlexibleContexts #-}

@@ -35,6 +35,7 @@ help = putStrLn $ unlines
   , "$ zikkurat-algebra-codegen [c|hs] curves      <tgt_dir>"
   , "$ zikkurat-algebra-codegen [c|hs] poly        <tgt_dir>"
   , "$ zikkurat-algebra-codegen [c|hs] array       <tgt_dir>"
+  , "$ zikkurat-algebra-codegen [c|hs] reexports   <tgt_dir>"
   , "$ zikkurat-algebra-codegen [c|hs] testfields  <tgt_dir>"
   , "$ zikkurat-algebra-codegen        all         <tgt_dir>"
   ]
@@ -60,6 +61,8 @@ main1 hsOrC what tgtdir = case map toLower what of
   "poly"   -> do Gen.generate_curves_poly            hsOrC tgtdir
 
   "array"  -> do Gen.generate_curves_array           hsOrC tgtdir
+
+  "reexports" -> do Gen.generate_reexports           hsOrC tgtdir
 
   _        ->    help
 
@@ -88,6 +91,8 @@ mainAllWhich hsOrC tgtdir = do
 
   Gen.generate_curves_poly            hsOrC tgtdir
   Gen.generate_curves_array           hsOrC tgtdir
+
+  Gen.generate_reexports              hsOrC tgtdir
 
 ----------------------------------------
 

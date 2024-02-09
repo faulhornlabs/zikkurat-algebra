@@ -12,25 +12,10 @@ import Data.Kind
 
 import Control.Monad
 
-import ZK.Algebra.Class.Field
-import ZK.Algebra.Class.Curve 
+import ZK.Algebra.API
 import ZK.Algebra.Class.Pairing
-import ZK.Algebra.Class.Poly
-import ZK.Algebra.Class.Flat
-import ZK.Algebra.Class.FFT
-import ZK.Algebra.Class.Misc
 
-import qualified ZK.Algebra.Curves.BN128.Fr.Mont   as BN128.Fr
-import qualified ZK.Algebra.Curves.BN128.Fp.Mont   as BN128.Fp
-import qualified ZK.Algebra.Curves.BN128.Fp2.Mont  as BN128.Fp2
-import qualified ZK.Algebra.Curves.BN128.Fp6.Mont  as BN128.Fp6
-import qualified ZK.Algebra.Curves.BN128.Fp12.Mont as BN128.Fp12
-import qualified ZK.Algebra.Curves.BN128.G1.Affine as BN128.AffG1
-import qualified ZK.Algebra.Curves.BN128.G2.Affine as BN128.AffG2
-import qualified ZK.Algebra.Curves.BN128.G1.Proj   as BN128.ProjG1
-import qualified ZK.Algebra.Curves.BN128.G2.Proj   as BN128.ProjG2
-import qualified ZK.Algebra.Curves.BN128.Pairing   as BN128.Pairing
-import qualified ZK.Algebra.Curves.BN128.Poly      as BN128.Poly
+import qualified ZK.Algebra.Curves.BN128 as BN128
 
 --------------------------------------------------------------------------------
 
@@ -149,13 +134,13 @@ main = do
   setup <- newKZGSetup pxy m
   let vkey = extractVerifierKey setup
   let dom = _kzgDomain setup
-  ys <- replicateM n rndIO :: IO [BN128.Fr.Fr]
+  ys <- replicateM n rndIO :: IO [BN128.Fr]
   let values = packFlatArrayFromList' n ys
   let poly = intt dom values
   let com1 = commitValues pxy setup values
   let com2 = commitPoly   pxy setup poly
   putStrLn $ "the two commitments match: " ++ show (com1==com2)
-  loc <- rndIO :: IO BN128.Fr.Fr
+  loc <- rndIO :: IO BN128.Fr
   let prf = openingProof pxy setup poly loc
   -- print prf
   putStrLn $ "x0 = " ++ show loc

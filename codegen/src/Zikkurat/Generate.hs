@@ -12,6 +12,7 @@ module Zikkurat.Generate
   , generate_curves_poly
   , generate_curves_array
   , generate_curves_pairing
+  , generate_reexports
   ) 
   where
 
@@ -34,6 +35,7 @@ import qualified Zikkurat.CodeGen.Curve.MontAffine      as Affine
 import qualified Zikkurat.CodeGen.Curve.MontProj        as Proj
 import qualified Zikkurat.CodeGen.Curve.MontJac         as Jac
 import qualified Zikkurat.CodeGen.Curve.Pairing         as Pairing
+import qualified Zikkurat.CodeGen.Curve.ReExport        as RE
 import qualified Zikkurat.CodeGen.Poly                  as Poly
 import qualified Zikkurat.CodeGen.Pointwise             as PW
 
@@ -302,6 +304,13 @@ bn128_pwParams = PW.PwParams
   , PW.typeNameBaseStd  = "Std.Fr"
   }
 
+bn128_reexport :: RE.ReExportParams
+bn128_reexport = RE.ReExportParams 
+  { RE.hsPath       = Path ["ZK","Algebra","Curves","BN128"]
+  , RE.moduleName   = "BN128"
+  , RE.moduleList   = RE.reexports_standardPairingCurve
+  }
+
 --------------------------------------------------------------------------------
 -- * BLS12-381 params
 
@@ -391,6 +400,13 @@ bls12_381_pwParams = PW.PwParams
   , PW.typeNameBaseStd  = "Std.Fr"
   }
 
+bls12_381_reexport :: RE.ReExportParams
+bls12_381_reexport = RE.ReExportParams 
+  { RE.hsPath       = Path ["ZK","Algebra","Curves","BLS12_381"]
+  , RE.moduleName   = "BLS12_381"
+  , RE.moduleList   = RE.reexports_standardPairingCurve
+  }
+
 --------------------------------------------------------------------------------
 
 generate_curves_poly :: HsOrC -> FilePath -> IO ()
@@ -416,6 +432,16 @@ generate_curves_pairing hsOrC tgtdir = do
     case hsOrC of 
       C  -> Pairing.curve_pairing_c_codegen  tgtdir params
       Hs -> Pairing.curve_pairing_hs_codegen tgtdir params
+
+generate_reexports :: HsOrC -> FilePath -> IO ()
+generate_reexports hsOrC tgtdir = do
+  let list = [ bn128_reexport
+             , bls12_381_reexport
+             ]
+  forM_ list $ \params -> do
+    case hsOrC of 
+      C  -> return ()
+      Hs -> RE.curve_reexport_hs_codegen tgtdir params
 
 --------------------------------------------------------------------------------
 
