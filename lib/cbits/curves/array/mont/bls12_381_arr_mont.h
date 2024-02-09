@@ -2,6 +2,7 @@
 
 extern uint8_t bls12_381_arr_mont_is_valid ( int n, const uint64_t *src );
 extern uint8_t bls12_381_arr_mont_is_zero  ( int n, const uint64_t *src );
+extern uint8_t bls12_381_arr_mont_is_one   ( int n, const uint64_t *src );
 extern uint8_t bls12_381_arr_mont_is_equal ( int n, const uint64_t *src1, const uint64_t *src2 );
 extern void    bls12_381_arr_mont_set_zero ( int n,       uint64_t *tgt );
 extern void    bls12_381_arr_mont_set_one  ( int n,       uint64_t *tgt );

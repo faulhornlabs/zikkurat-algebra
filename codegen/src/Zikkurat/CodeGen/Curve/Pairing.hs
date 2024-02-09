@@ -723,6 +723,7 @@ hs_code params@(PairingParams{..}) =
   , ""
   , "import ZK.Algebra.Curves." ++ hs_curve ++ ".Fr.Mont ( Fr   )"
   , "import ZK.Algebra.Curves." ++ hs_curve ++ ".Poly    ( Poly )"
+  , "import ZK.Algebra.Curves." ++ hs_curve ++ ".Array   ()"
   , ""
   , "import ZK.Algebra.Curves." ++ hs_curve ++ ".Fp.Mont   ( Fp   )"
   , "import ZK.Algebra.Curves." ++ hs_curve ++ ".Fp2.Mont  ( Fp2  )"

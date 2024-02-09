@@ -26,6 +26,7 @@ import qualified ZK.Algebra.Class.Pairing as P
 
 import ZK.Algebra.Curves.BLS12_381.Fr.Mont ( Fr   )
 import ZK.Algebra.Curves.BLS12_381.Poly    ( Poly )
+import ZK.Algebra.Curves.BLS12_381.Array   ()
 
 import ZK.Algebra.Curves.BLS12_381.Fp.Mont   ( Fp   )
 import ZK.Algebra.Curves.BLS12_381.Fp2.Mont  ( Fp2  )

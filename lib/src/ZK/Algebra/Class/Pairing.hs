@@ -16,6 +16,7 @@ import ZK.Algebra.Class.Field
 import ZK.Algebra.Class.Curve 
 import ZK.Algebra.Class.Poly
 import ZK.Algebra.Class.Flat
+import ZK.Algebra.Class.Vector
 import ZK.Algebra.Class.FFT
 import ZK.Algebra.Class.Misc
 
@@ -52,6 +53,7 @@ class
   , ProjCurve       (ProjG1 c)
   , ProjCurve       (ProjG2 c)
   , UnivariateFFT   (Poly c)
+  , VectorSpace     (FlatArray (Fr c))
   , ExtBase         (Fp2  c) ~ Fp c
   , PrimeBase       (Fp12 c) ~ Fp c
   , BaseField       (G1 c) ~ Fp  c

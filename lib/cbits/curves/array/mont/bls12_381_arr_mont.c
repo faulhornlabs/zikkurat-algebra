@@ -38,6 +38,15 @@ uint8_t bls12_381_arr_mont_is_zero  ( int n, const uint64_t *src1 ) {
   return ok;
 }
 
+// not that this looks very useful, whatever
+uint8_t bls12_381_arr_mont_is_one  ( int n, const uint64_t *src1 ) {
+  uint8_t ok = 1;
+  for(int i=0; i<n; i++) {
+    if (!bls12_381_Fr_mont_is_one( SRC1(i) )) { ok=0; break; }
+  }
+  return ok;
+}
+
 uint8_t bls12_381_arr_mont_is_equal ( int n, const uint64_t *src1, const uint64_t *src2 ) {
   uint8_t ok = 1;
   for(int i=0; i<n; i++) {
