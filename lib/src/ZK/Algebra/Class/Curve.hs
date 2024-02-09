@@ -54,14 +54,17 @@ grpSum []     = grpUnit
 grpSum (x:xs) = foldl' grpAdd x xs
 
 -- | Convenient alias for 'grpAdd'
+infixl 6 <+>
 (<+>) :: Group a => a -> a -> a
 (<+>) = grpAdd
 
 -- | Convenient alias for 'grpSub'
+infixl 6 <->
 (<->) :: Group a => a -> a -> a
 (<->) = grpSub
 
 -- | Convenient alias for 'grpScale'
+infixr 7 <***>
 (<***>) :: Group a => Integer -> a -> a
 (<***>) = grpScale
 
@@ -93,6 +96,7 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   curveIFFT :: FFTSubgroup (ScalarField a) -> FlatArray a -> FlatArray a
 
 -- | Convenient alias for 'scalarMul'
+infixr 7 <**>
 (<**>) :: Curve a => ScalarField a -> a -> a
 (<**>) = scalarMul
 
