@@ -89,6 +89,16 @@ withFlatArray :: FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO b
 withFlatArray (MkFlatArray n fptr) action = do
   withForeignPtr fptr $ \ptr -> action n ptr
 
+-- | Note: currently, this does a copy. Maybe we should refactor @Flat@ so that this not happen? 
+{-# NOINLINE singletonArray #-}
+singletonArray :: forall a. Flat a => a -> FlatArray a
+singletonArray x = unsafePerformIO (singletonArrayIO x)
+
+{-# NOINLINE singletonArrayIO #-}
+singletonArrayIO :: forall a. Flat a => a -> IO (FlatArray a)
+singletonArrayIO x = withFlat x $ \ptr -> do
+  makeFlatGeneric (MkFlatArray 1) (sizeInQWords (Proxy @a)) ptr
+
 -- TODO:
 -- parallelWithFlatArray :: Int -> FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO [b]
 

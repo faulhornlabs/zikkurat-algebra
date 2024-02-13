@@ -12,6 +12,8 @@ extern void    bn128_arr_mont_copy     ( int n, const uint64_t *src , uint64_t *
 extern void bn128_arr_mont_from_std ( int n, const uint64_t *src , uint64_t *tgt );
 extern void bn128_arr_mont_to_std   ( int n, const uint64_t *src , uint64_t *tgt );
 
+extern void bn128_arr_mont_append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
+
 extern void bn128_arr_mont_neg ( int n, const uint64_t *src ,       uint64_t *tgt );
 extern void bn128_arr_mont_add ( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 extern void bn128_arr_mont_sub ( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );

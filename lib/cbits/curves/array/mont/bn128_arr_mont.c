@@ -72,6 +72,13 @@ void bn128_arr_mont_copy ( int n, const uint64_t *src , uint64_t *tgt ) {
 }
 
 
+void bn128_arr_mont_append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+  int N1 = n1 * ELEM_NWORDS;
+  int N2 = n2 * ELEM_NWORDS;
+  memcpy( tgt    , src1 , 8*N1 );
+  memcpy( tgt+N1 , src2 , 8*N2 );
+}
+
 void bn128_arr_mont_from_std ( int n, const uint64_t *src1 , uint64_t *tgt ) {
   for(int i=0; i<n; i++) bn128_Fr_mont_from_std ( SRC1(i), TGT(i) ); 
 }

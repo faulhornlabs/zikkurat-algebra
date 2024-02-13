@@ -46,6 +46,24 @@ class PointwiseRing a => PointwiseField a where
 --------------------------------------------------------------------------------
 -- * 1 dimensional vectors 
 
+{-
+class Vector v where
+  -- | Dimension of the vector
+  vecSize :: v -> Int
+  -- | The k-th element
+  vecIndex :: Int -> v -> Element v
+  -- | Append
+  vecAppend :: v -> v -> v
+  -- | Cons
+  vecCons :: Element v -> v -> v
+  -- | Snoc
+  vecSnoc :: v -> Element v -> v 
+  -- | constant vector
+  constVector :: Int -> Element v -> v
+  -- | eg. @basisVector' 0 1 k@ 
+  basisVector' :: Element v -> Element v -> Int -> v
+-}
+
 -- | Finite dimensional vector spaces
 class (WrappedArray v, Field (Element v), PointwiseField v) => VectorSpace v where
   -- | Dimension of the vector
@@ -62,5 +80,16 @@ class (WrappedArray v, Field (Element v), PointwiseField v) => VectorSpace v whe
   linComb1 :: (Element v, v) -> v -> v
   -- | Linear combination @a*x + b*y@
   linComb2 :: (Element v, v) -> (Element v, v) -> v
+  -- | Append
+  vecAppend :: v -> v -> v
+  -- | Cons
+  vecCons :: Element v -> v -> v
+  -- | Snoc
+  vecSnoc :: v -> Element v -> v 
+
+{-
+basisVector :: VectorSpace v => Int -> v
+basisVector = basisVector' 0 1
+-}
 
 --------------------------------------------------------------------------------

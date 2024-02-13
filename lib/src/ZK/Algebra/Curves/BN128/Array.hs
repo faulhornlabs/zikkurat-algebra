@@ -14,6 +14,9 @@ module ZK.Algebra.Curves.BN128.Array
   , isEqual
     -- * Array conversion
   , fromStd , toStd
+    -- * Concatenation
+  , cons , snoc
+  , append
     -- * Pointwise arithmetics
   , neg , add , sub
   , sqr , mul
@@ -89,13 +92,36 @@ instance V.PointwiseField (FlatArray Fr) where
 
 instance V.VectorSpace (FlatArray Fr) where
   -- type Element (FlatArray Fr) = Fr
-  vecSize  = flatArrayLength
-  vecIndex = flip peekFlatArray
-  vecScale = ZK.Algebra.Curves.BN128.Array.scale
-  dotProd  = ZK.Algebra.Curves.BN128.Array.dotProd
+  vecSize   = flatArrayLength
+  vecIndex  = flip peekFlatArray
+  vecScale  = ZK.Algebra.Curves.BN128.Array.scale
+  dotProd   = ZK.Algebra.Curves.BN128.Array.dotProd
   powers !a !b !n = ZK.Algebra.Curves.BN128.Array.powers n a b
-  linComb1 = ZK.Algebra.Curves.BN128.Array.linComb1
-  linComb2 = ZK.Algebra.Curves.BN128.Array.linComb2
+  linComb1  = ZK.Algebra.Curves.BN128.Array.linComb1
+  linComb2  = ZK.Algebra.Curves.BN128.Array.linComb2
+  vecAppend = ZK.Algebra.Curves.BN128.Array.append
+  vecCons   = ZK.Algebra.Curves.BN128.Array.cons
+  vecSnoc   = ZK.Algebra.Curves.BN128.Array.snoc
+
+--------------------------------------------------------------------------------
+
+foreign import ccall unsafe "bn128_arr_mont_append" c_bn128_arr_mont_append :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE append #-}
+append :: FlatArray Fr -> FlatArray Fr -> FlatArray Fr
+append (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray ((n1+n2) * 4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bn128_arr_mont_append (fromIntegral n1) (fromIntegral n2) ptr1 ptr2 ptr3
+  return (MkFlatArray (n1+n2) fptr3)
+
+cons :: Fr -> FlatArray Fr -> FlatArray Fr
+cons x arr = append (singletonArray x) arr
+
+snoc :: FlatArray Fr -> Fr -> FlatArray Fr
+snoc arr y = append arr (singletonArray y)
 
 --------------------------------------------------------------------------------
 

@@ -53,6 +53,8 @@ c_header (PwParams{..}) =
   , "extern void " ++ prefix ++ "from_std ( int n, const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "to_std   ( int n, const uint64_t *src , uint64_t *tgt );"
   , ""
+  , "extern void " ++ prefix ++ "append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , ""
   , "extern void " ++ prefix ++ "neg ( int n, const uint64_t *src ,       uint64_t *tgt );"
   , "extern void " ++ prefix ++ "add ( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "sub ( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
@@ -305,6 +307,18 @@ c_dotprod_etc params@(PwParams{..}) =
 
 --------------------------------------------------------------------------------
 
+c_append :: PwParams -> Code
+c_append params@(PwParams{..}) =
+  [ "void " ++ prefix ++ "append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  int N1 = n1 * ELEM_NWORDS;"
+  , "  int N2 = n2 * ELEM_NWORDS;"
+  , "  memcpy( tgt    , src1 , 8*N1 );"
+  , "  memcpy( tgt+N1 , src2 , 8*N2 );"
+  , "}"
+  ]
+
+--------------------------------------------------------------------------------
+
 c_scale_lincomb_etc :: PwParams -> Code
 c_scale_lincomb_etc params@(PwParams{..}) =
   [ ""
@@ -369,6 +383,9 @@ hsBegin (PwParams{..}) =
   , "  , isEqual"
   , "    -- * Array conversion"
   , "  , fromStd , toStd"
+  , "    -- * Concatenation"
+  , "  , cons , snoc"
+  , "  , append"
   , "    -- * Pointwise arithmetics"
   , "  , neg , add , sub"  
   , "  , sqr , mul"  
@@ -444,13 +461,36 @@ hsBegin (PwParams{..}) =
   , ""
   , "instance V.VectorSpace (FlatArray " ++ typeNameBase ++ ") where"
   , "  -- type Element (FlatArray " ++ typeNameBase ++ ") = " ++ typeNameBase
-  , "  vecSize  = flatArrayLength"
-  , "  vecIndex = flip peekFlatArray"
-  , "  vecScale = " ++ hsModule hs_path ++ ".scale"
-  , "  dotProd  = " ++ hsModule hs_path ++ ".dotProd"
+  , "  vecSize   = flatArrayLength"
+  , "  vecIndex  = flip peekFlatArray"
+  , "  vecScale  = " ++ hsModule hs_path ++ ".scale"
+  , "  dotProd   = " ++ hsModule hs_path ++ ".dotProd"
   , "  powers !a !b !n = " ++ hsModule hs_path ++ ".powers n a b"
-  , "  linComb1 = " ++ hsModule hs_path ++ ".linComb1"
-  , "  linComb2 = " ++ hsModule hs_path ++ ".linComb2"
+  , "  linComb1  = " ++ hsModule hs_path ++ ".linComb1"
+  , "  linComb2  = " ++ hsModule hs_path ++ ".linComb2"
+  , "  vecAppend = " ++ hsModule hs_path ++ ".append"
+  , "  vecCons   = " ++ hsModule hs_path ++ ".cons"
+  , "  vecSnoc   = " ++ hsModule hs_path ++ ".snoc"
+  , ""
+  , "--------------------------------------------------------------------------------"
+  , ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "append\" c_" ++ prefix ++ "append :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "{-# NOINLINE append #-}"
+  , "append :: FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
+  , "append (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2) = unsafePerformIO $ do"
+  , "  fptr3 <- mallocForeignPtrArray ((n1+n2) * " ++ show elemNWords ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "append (fromIntegral n1) (fromIntegral n2) ptr1 ptr2 ptr3"
+  , "  return (MkFlatArray (n1+n2) fptr3)"
+  , ""
+  , "cons :: " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
+  , "cons x arr = append (singletonArray x) arr"
+  , ""
+  , "snoc :: FlatArray " ++ typeNameBase ++ " -> " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
+  , "snoc arr y = append arr (singletonArray y)"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -566,6 +606,7 @@ c_code :: PwParams -> Code
 c_code pwparams = concat $ map ("":)
   [ c_begin                   pwparams
   , c_zero_one_etc            pwparams
+  , c_append                  pwparams
   , c_convert                 pwparams
   , c_add_sub_mul_etc         pwparams
   , c_add_sub_mul_etc_inplace pwparams
