@@ -25,6 +25,9 @@ module ZK.Algebra.Curves.BN128.G2.Affine
   , msm , msmStd
     -- * Fast-Fourier transform
   , forwardFFT , inverseFFT
+    -- * handling infinities
+  , convertInfinityIO
+  , batchConvertInfinityIO
     -- * Sage
   , sageSetup , printSageSetup
   )
@@ -194,7 +197,7 @@ instance C.Curve G2 where
   type BaseField   G2 = Base
   type ScalarField G2 = Fr
   isOnCurve   = ZK.Algebra.Curves.BN128.G2.Affine.isOnCurve
-  isInifinity = ZK.Algebra.Curves.BN128.G2.Affine.isInfinity
+  isInfinity  = ZK.Algebra.Curves.BN128.G2.Affine.isInfinity
   infinity    = ZK.Algebra.Curves.BN128.G2.Affine.infinity
   curveSubgroupGen = ZK.Algebra.Curves.BN128.G2.Affine.genG2
   scalarMul   = ZK.Algebra.Curves.BN128.G2.Affine.sclFr
@@ -205,6 +208,8 @@ instance C.Curve G2 where
 instance C.AffineCurve G2 where
   coords2    = ZK.Algebra.Curves.BN128.G2.Affine.coords
   mkPoint2   = ZK.Algebra.Curves.BN128.G2.Affine.mkPoint
+  convertInfinityIO = ZK.Algebra.Curves.BN128.G2.Affine.convertInfinityIO
+  batchConvertInfinityIO = ZK.Algebra.Curves.BN128.G2.Affine.batchConvertInfinityIO
 
 --------------------------------------------------------------------------------
 
@@ -221,6 +226,20 @@ sclBig k pt
   | otherwise =       sclBigNonNeg (fromInteger $        k) pt
 
 --------------------------------------------------------------------------------
+
+foreign import ccall unsafe "bn128_G2_affine_convert_infinity_inplace" c_bn128_G2_affine_convert_infinity_inplace :: Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_G2_affine_batch_convert_infinity_inplace" c_bn128_G2_affine_batch_convert_infinity_inplace :: CInt -> Ptr Word64 -> IO ()
+
+convertInfinityIO :: G2 -> IO ()
+convertInfinityIO (MkG2 fptr) = do
+  withForeignPtr fptr $ \ptr -> c_bn128_G2_affine_convert_infinity_inplace ptr
+
+batchConvertInfinityIO :: L.FlatArray G2 -> IO ()
+batchConvertInfinityIO (L.MkFlatArray n fptr) = do
+  withForeignPtr fptr $ \ptr -> c_bn128_G2_affine_batch_convert_infinity_inplace (fromIntegral n) ptr
+
+--------------------------------------------------------------------------------
+
 
 -- | Sage setup code to experiment with this curve
 sageSetup :: [String]

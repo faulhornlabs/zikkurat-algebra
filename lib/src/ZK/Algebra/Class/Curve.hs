@@ -81,7 +81,7 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   -- | check whether a point is on the curve
   isOnCurve   :: a -> Bool
   -- | check for being the point at infinity
-  isInifinity :: a -> Bool
+  isInfinity  :: a -> Bool
   -- | the infinity element
   infinity    :: a
   -- | the subgroup generator
@@ -108,6 +108,10 @@ class Curve a => AffineCurve a where
   coords2  :: a -> (BaseField a, BaseField a)
   -- | making a point from affine coordinates
   mkPoint2 :: (BaseField a, BaseField a) -> a   
+  -- | convert infinitiy from the @(0,0)@ standard to our standard (temporary hack)
+  convertInfinityIO :: a -> IO ()
+  -- | convert infinities from the @(0,0)@ standard to our standard (temporary hack)
+  batchConvertInfinityIO :: FlatArray a -> IO ()
 
 --------------------------------------------------------------------------------
 -- * Projective curves

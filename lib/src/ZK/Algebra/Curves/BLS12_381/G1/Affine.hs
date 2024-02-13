@@ -25,6 +25,9 @@ module ZK.Algebra.Curves.BLS12_381.G1.Affine
   , msm , msmStd
     -- * Fast-Fourier transform
   , forwardFFT , inverseFFT
+    -- * handling infinities
+  , convertInfinityIO
+  , batchConvertInfinityIO
     -- * Sage
   , sageSetup , printSageSetup
   )
@@ -193,7 +196,7 @@ instance C.Curve G1 where
   type BaseField   G1 = Base
   type ScalarField G1 = Fr
   isOnCurve   = ZK.Algebra.Curves.BLS12_381.G1.Affine.isOnCurve
-  isInifinity = ZK.Algebra.Curves.BLS12_381.G1.Affine.isInfinity
+  isInfinity  = ZK.Algebra.Curves.BLS12_381.G1.Affine.isInfinity
   infinity    = ZK.Algebra.Curves.BLS12_381.G1.Affine.infinity
   curveSubgroupGen = ZK.Algebra.Curves.BLS12_381.G1.Affine.genG1
   scalarMul   = ZK.Algebra.Curves.BLS12_381.G1.Affine.sclFr
@@ -204,6 +207,8 @@ instance C.Curve G1 where
 instance C.AffineCurve G1 where
   coords2    = ZK.Algebra.Curves.BLS12_381.G1.Affine.coords
   mkPoint2   = ZK.Algebra.Curves.BLS12_381.G1.Affine.mkPoint
+  convertInfinityIO = ZK.Algebra.Curves.BLS12_381.G1.Affine.convertInfinityIO
+  batchConvertInfinityIO = ZK.Algebra.Curves.BLS12_381.G1.Affine.batchConvertInfinityIO
 
 --------------------------------------------------------------------------------
 
@@ -220,6 +225,20 @@ sclBig k pt
   | otherwise =       sclBigNonNeg (fromInteger $        k) pt
 
 --------------------------------------------------------------------------------
+
+foreign import ccall unsafe "bls12_381_G1_affine_convert_infinity_inplace" c_bls12_381_G1_affine_convert_infinity_inplace :: Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_affine_batch_convert_infinity_inplace" c_bls12_381_G1_affine_batch_convert_infinity_inplace :: CInt -> Ptr Word64 -> IO ()
+
+convertInfinityIO :: G1 -> IO ()
+convertInfinityIO (MkG1 fptr) = do
+  withForeignPtr fptr $ \ptr -> c_bls12_381_G1_affine_convert_infinity_inplace ptr
+
+batchConvertInfinityIO :: L.FlatArray G1 -> IO ()
+batchConvertInfinityIO (L.MkFlatArray n fptr) = do
+  withForeignPtr fptr $ \ptr -> c_bls12_381_G1_affine_batch_convert_infinity_inplace (fromIntegral n) ptr
+
+--------------------------------------------------------------------------------
+
 
 -- | Sage setup code to experiment with this curve
 sageSetup :: [String]

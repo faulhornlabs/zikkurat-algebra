@@ -192,6 +192,9 @@ groupProps :: [GroupProp]
 groupProps = 
   [ GroupProp1 prop_add_left_unit               "add left unit"
   , GroupProp1 prop_add_right_unit              "add right unit"
+  , GroupProp1 prop_neg_unit                    "neg unit"
+  , GroupProp1 prop_sub_left_unit               "sub left unit"
+  , GroupProp1 prop_sub_right_unit              "sub right unit"
   , GroupProp1 prop_add_left_inv                "add left inv"
   , GroupProp1 prop_add_right_inv               "add right inv"
   , GroupProp2 prop_add_commutative             "add comm"
@@ -236,6 +239,15 @@ prop_add_left_unit x = grpUnit `grpAdd` x == x
 
 prop_add_right_unit :: Group a => a -> Bool
 prop_add_right_unit x = x `grpAdd` grpUnit == x
+
+prop_sub_left_unit :: Group a => a -> Bool
+prop_sub_left_unit x = grpUnit `grpSub` x == grpNeg x
+
+prop_sub_right_unit :: Group a => a -> Bool
+prop_sub_right_unit x = x `grpSub` grpUnit == x
+
+prop_neg_unit :: forall a. Group a => a -> Bool
+prop_neg_unit _ = grpNeg (grpUnit :: a) == grpUnit
 
 prop_add_left_inv :: Group a => a -> Bool
 prop_add_left_inv x = (grpNeg x) `grpAdd` x == grpUnit

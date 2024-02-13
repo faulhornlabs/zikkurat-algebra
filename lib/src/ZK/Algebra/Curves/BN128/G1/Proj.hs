@@ -184,7 +184,7 @@ instance C.Curve G1 where
   type BaseField   G1 = Base
   type ScalarField G1 = Fr
   isOnCurve   = ZK.Algebra.Curves.BN128.G1.Proj.isOnCurve
-  isInifinity = ZK.Algebra.Curves.BN128.G1.Proj.isInfinity
+  isInfinity  = ZK.Algebra.Curves.BN128.G1.Proj.isInfinity
   infinity    = ZK.Algebra.Curves.BN128.G1.Proj.infinity
   curveSubgroupGen = ZK.Algebra.Curves.BN128.G1.Proj.genG1
   scalarMul   = ZK.Algebra.Curves.BN128.G1.Proj.sclFr

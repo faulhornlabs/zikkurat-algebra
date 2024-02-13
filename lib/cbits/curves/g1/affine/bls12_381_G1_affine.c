@@ -64,6 +64,27 @@ uint8_t bls12_381_G1_affine_is_infinity ( const uint64_t *src1 ) {
            bls12_381_G1_affine_is_ffff( Y1 ) );
 }
 
+// convert from the more standard convention of encoding infinity as (0,0)
+// to our convention (0xffff...,0xffff...). TODO: maybe change our convention
+// to the more standard one?
+void bls12_381_G1_affine_convert_infinity_inplace( uint64_t *tgt) 
+{ if ( (bls12_381_Fp_mont_is_zero(tgt           ) ) && 
+       (bls12_381_Fp_mont_is_zero(tgt + NLIMBS_P) ) ) {
+    bls12_381_G1_affine_set_infinity(tgt);
+  }
+}
+
+void bls12_381_G1_affine_batch_convert_infinity_inplace( int n, uint64_t *tgt ) 
+{ uint64_t *q = tgt;
+  for(int i=0; i<n; i++) {
+    if ( (bls12_381_Fp_mont_is_zero(q           ) ) && 
+         (bls12_381_Fp_mont_is_zero(q + NLIMBS_P) ) ) {
+      bls12_381_G1_affine_set_infinity(q);
+    }
+    q += 2*NLIMBS_P;
+  }
+}
+
 void bls12_381_G1_affine_set_infinity ( uint64_t *tgt ) {
   bls12_381_G1_affine_set_ffff( X3 );
   bls12_381_G1_affine_set_ffff( Y3 );
@@ -114,7 +135,7 @@ void bls12_381_G1_affine_copy( const uint64_t *src1 , uint64_t *tgt ) {
 // negates an elliptic curve point in affine coordinates
 void bls12_381_G1_affine_neg( const uint64_t *src1, uint64_t *tgt ) {
   if (bls12_381_G1_affine_is_infinity(src1)) {
-    return;
+    memcpy( tgt, src1, 96);
   }
   else {
     memcpy( tgt, src1, 48 );
