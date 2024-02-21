@@ -65,7 +65,8 @@ instance P.PairingCurve 'P.BLS12_381 where
   type ProjG2 'P.BLS12_381 = ProjG2.G2
   type Poly   'P.BLS12_381 = Poly
 
-  pairing _proxy = ZK.Algebra.Curves.BLS12_381.Pairing.pairing
+  lowerSomeCurve _proxy = P.BLS12_381
+  pairing        _proxy = ZK.Algebra.Curves.BLS12_381.Pairing.pairing
 
 --------------------------------------------------------------------------------
 

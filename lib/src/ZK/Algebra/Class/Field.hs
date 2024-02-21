@@ -77,6 +77,16 @@ class (Field a, Field (StandardField a)) => MontgomeryField a where
   batchFromStandardRep :: FlatArray (StandardField a) -> FlatArray a
 
 --------------------------------------------------------------------------------
+-- * Prime fields
+
+class Field f => PrimeField f where
+  -- | Convert to an integer between @0@ and @p-1@
+  asInteger :: f -> Integer
+
+fieldPrime :: PrimeField f => Proxy f -> Integer
+fieldPrime = charPxy 
+
+--------------------------------------------------------------------------------
 -- * Algebraic field extensions
 
 -- | Extension fields
@@ -99,7 +109,7 @@ class (Field f, Field (ExtBase f)) => ExtField f where
   extUnpack :: f -> [ExtBase f]
 
 -- | Extension fields, interpreted as vector spaces over the /prime field/
-class (Field f, Field (PrimeBase f)) => ExtField' f where
+class (Field f, PrimeField (PrimeBase f)) => ExtField' f where
   -- | the underlying prime field
   type PrimeBase f :: Type                               
   -- | embedding of the prime field

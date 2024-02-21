@@ -129,6 +129,9 @@ instance C.Field Fp where
   frobenius      = id
   halve          = divBy2
 
+instance C.PrimeField Fp where
+  asInteger = from
+
 
 
 {-# NOINLINE exportToCDef #-}

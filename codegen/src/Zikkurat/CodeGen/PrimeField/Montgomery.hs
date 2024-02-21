@@ -232,6 +232,9 @@ hsBegin params@(Params{..}) =
   , "  frobenius    = id"
   , "  halve        = divBy2"
   , ""
+  , "instance C.PrimeField " ++ typeName ++ " where"
+  , "  asInteger = from" ++ postfix 
+  , ""
   , "instance C.MontgomeryField " ++ typeName ++ " where"
   , "  type StandardField " ++ typeName ++ " = Std." ++ typeName
   , "  toStandardRep        = toStd"

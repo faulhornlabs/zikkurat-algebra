@@ -226,6 +226,9 @@ hsBegin params@(Params{..}) =
   , "  frobenius      = id"
   , "  halve          = divBy2"
   , ""
+  , "instance C.PrimeField " ++ typeName ++ " where"
+  , "  asInteger = from" ++ postfix 
+  , ""
   ] ++ (case fftDomain of
          Just (siz,gen) ->
            [ "fftDomain :: FFTSubgroup " ++ typeName 

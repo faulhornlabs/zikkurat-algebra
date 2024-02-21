@@ -133,6 +133,9 @@ instance C.Field Fr where
   frobenius      = id
   halve          = divBy2
 
+instance C.PrimeField Fr where
+  asInteger = from
+
 fftDomain :: FFTSubgroup Fr
 fftDomain = MkFFTSubgroup gen (M.Log2 28) where
   gen :: Fr

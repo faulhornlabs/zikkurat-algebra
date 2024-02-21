@@ -131,6 +131,9 @@ instance C.Field Fp where
   frobenius    = id
   halve        = divBy2
 
+instance C.PrimeField Fp where
+  asInteger = from
+
 instance C.MontgomeryField Fp where
   type StandardField Fp = Std.Fp
   toStandardRep        = toStd

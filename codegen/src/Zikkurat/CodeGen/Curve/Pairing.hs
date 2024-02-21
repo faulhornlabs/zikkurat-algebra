@@ -762,7 +762,8 @@ hs_code params@(PairingParams{..}) =
   , "  type ProjG2 'P." ++ hs_curve ++ " = ProjG2.G2"
   , "  type Poly   'P." ++ hs_curve ++ " = Poly"
   , ""
-  , "  pairing _proxy = " ++ hsModule (mk_hs_path params) ++ ".pairing"
+  , "  lowerSomeCurve _proxy = P." ++ hs_curve
+  , "  pairing        _proxy = " ++ hsModule (mk_hs_path params) ++ ".pairing"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""

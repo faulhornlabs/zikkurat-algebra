@@ -26,7 +26,7 @@ import ZK.Algebra.Class.Misc
 data SomeCurve
   = BN128    
   | BLS12_381
-  deriving Show
+  deriving (Eq,Show)
 
 --------------------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ data SomeCurve
 --
 class 
   ( Field           (Fp   c)
-  , ExtField        (Fp2  c)
+  , QuadraticExt    (Fp2  c)
   , ExtField'       (Fp12 c)
   , FFTField        (Fr   c)
   , MontgomeryField (Fp c)
@@ -75,6 +75,7 @@ class
     type ProjG2 c :: Type
     type Poly   c :: Type
 
-    pairing :: Proxy c -> G1 c -> G2 c -> Fp12 c
+    lowerSomeCurve :: Proxy c -> SomeCurve
+    pairing        :: Proxy c -> G1 c -> G2 c -> Fp12 c
 
 --------------------------------------------------------------------------------
