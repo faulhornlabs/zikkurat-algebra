@@ -42,10 +42,11 @@ data SomeCurve
 -- (again, I wish for parametrized modules, importing instances, and stuff like that...)
 --
 class 
-  ( Field           (Fp   c)
+  ( PrimeField      (Fp   c)
   , QuadraticExt    (Fp2  c)
   , ExtField'       (Fp12 c)
-  , FFTField        (Fr   c)
+  , FFTField        (Fr c)
+  , PrimeField      (Fr c)
   , MontgomeryField (Fp c)
   , MontgomeryField (Fr c)
   , AffineCurve     (G1 c)
