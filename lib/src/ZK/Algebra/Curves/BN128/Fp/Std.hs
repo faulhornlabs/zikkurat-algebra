@@ -111,8 +111,8 @@ instance M.Rnd Fp where
   rndIO = rnd
 
 instance C.Ring Fp where
-  ringNamePxy _ = "BN128/Fp (standard repr.)"
-  ringSizePxy _ = prime
+  ringName _ = "BN128/Fp (standard repr.)"
+  ringSize _ = prime
   isZero = ZK.Algebra.Curves.BN128.Fp.Std.isZero
   isOne  = ZK.Algebra.Curves.BN128.Fp.Std.isOne
   zero   = ZK.Algebra.Curves.BN128.Fp.Std.zero
@@ -122,8 +122,8 @@ instance C.Ring Fp where
   -- power x e = pow x (B.to (mod e (prime-1)))
 
 instance C.Field Fp where
-  charPxy      _ = prime
-  dimPxy       _ = 1
+  characteristics _ = prime
+  dimension       _ = 1
   primGenPxy   _ = primGen
   batchInverse   = batchInv
   frobenius      = id

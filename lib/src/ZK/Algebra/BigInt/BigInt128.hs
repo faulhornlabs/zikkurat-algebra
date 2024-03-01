@@ -97,8 +97,8 @@ instance M.Rnd BigInt128 where
   rndIO = rnd
 
 instance C.Ring BigInt128 where
-  ringNamePxy _ = "BigInt128"
-  ringSizePxy _ = 340282366920938463463374607431768211456
+  ringName _ = "BigInt128"
+  ringSize _ = 340282366920938463463374607431768211456
   isZero = ZK.Algebra.BigInt.BigInt128.isZero
   isOne  = ZK.Algebra.BigInt.BigInt128.isOne
   zero   = ZK.Algebra.BigInt.BigInt128.zero

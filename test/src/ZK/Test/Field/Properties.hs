@@ -361,13 +361,13 @@ prop_div_test :: Field a => a -> a -> Bool
 prop_div_test x y = isZero y || (x/y)*y == x
 
 prop_inv_fermat :: forall a. Field a => a -> Bool
-prop_inv_fermat x = (inverse x) == power x (q - 2) where q = fieldSizePxy (Proxy @a)
+prop_inv_fermat x = (inverse x) == power x (q - 2) where q = fieldSize (Proxy @a)
 
 prop_fermat_1 :: forall a. Field a => a -> Bool
-prop_fermat_1 x = power x q == x where q = fieldSizePxy (Proxy @a)
+prop_fermat_1 x = power x q == x where q = fieldSize (Proxy @a)
 
 prop_fermat_2 :: forall a. Field a => a -> Bool
-prop_fermat_2 x = power x (q - 1) == one where q = fieldSizePxy (Proxy @a)
+prop_fermat_2 x = power x (q - 1) == one where q = fieldSize (Proxy @a)
 
 prop_power_neg :: forall a. Field a => a -> Bool
 prop_power_neg x = power x (-1) == inverse x

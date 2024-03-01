@@ -1,7 +1,7 @@
 
 -- | Polymorphic interface for (univariate) polynomials
 
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, TypeFamilies, FlexibleContexts, TypeOperators #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables, TypeApplications, TypeFamilies, FlexibleContexts, TypeOperators #-}
 module ZK.Algebra.Class.Poly where
 
 --------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ import ZK.Algebra.Class.Flat
 import ZK.Algebra.Class.FFT
 
 --------------------------------------------------------------------------------
--- * Univariate polynomials over (finite) fields
+-- * Dense univariate polynomials over (finite) fields
 
 class (Ring p, Field (Coeff p), WrappedArray p, Element p ~ Coeff p) => Univariate p where
   -- | the type of coefficients
@@ -57,6 +57,12 @@ class (Univariate p, FFTField (Coeff p)) => UnivariateFFT p where
   ntt  :: FFTSubgroup (Coeff p) -> p -> FlatArray (Coeff p) 
   -- | Inverse number-theoretical transform (interpolate on a subgroup)
   intt :: FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> p
+
+ntt_ :: forall p. UnivariateFFT p => Proxy p -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> FlatArray (Coeff p)
+ntt_ pxy dom coeffs = ntt dom (mkPolyFlat @p coeffs)
+
+intt_ :: forall p. UnivariateFFT p => Proxy p -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> FlatArray (Coeff p)
+intt_ pxy dom values = coeffsFlatArr @p (intt dom values)
 
 --------------------------------------------------------------------------------
 -- * Some generic functions

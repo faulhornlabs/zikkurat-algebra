@@ -127,6 +127,7 @@ TODO
 - [x] implement curves
 - [x] implement univariate polynomials
 - [x] implement NTT and iNTT
+- [ ] optimize the NTT by precalculating powers of the generator!
 - [x] property-based test framework
 - [ ] unit-test framework
 - [ ] figure out nicer polymorphic API-s

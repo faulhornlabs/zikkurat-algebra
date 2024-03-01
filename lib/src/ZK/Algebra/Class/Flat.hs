@@ -20,6 +20,7 @@ import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Marshal
 
+import System.IO
 import System.IO.Unsafe
 
 --------------------------------------------------------------------------------
@@ -85,6 +86,9 @@ data FlatArray a
 flatArrayLength :: FlatArray a -> Int
 flatArrayLength (MkFlatArray n _) = n
 
+flatArraySizeInBytes :: forall a. Flat a => FlatArray a -> Int
+flatArraySizeInBytes (MkFlatArray n _) = n * sizeInBytes (Proxy @a)
+
 withFlatArray :: FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO b
 withFlatArray (MkFlatArray n fptr) action = do
   withForeignPtr fptr $ \ptr -> action n ptr
@@ -142,6 +146,32 @@ dropFlatArrayIO k (MkFlatArray n fptr1) = do
       let src = plusPtr ptr1 (8*sz*k)
       when (m>0) $ copyBytes ptr2 src (8*sz*m)
   return (MkFlatArray m fptr2)
+
+----------------------------------------
+
+-- | Read a flat array from a raw binary file. The size of the file determines the length of the array.
+readFlatArray :: forall a. Flat a => Proxy a -> FilePath -> IO (FlatArray a)
+readFlatArray pxy fpath = do
+  h <- openBinaryFile fpath ReadMode
+  nbytes <- fromInteger <$> hFileSize h :: IO Int
+  let (len,rem) = divMod nbytes (sizeInBytes pxy)   -- (Proxy @a))
+  if rem /= 0 
+    then do
+      hClose h
+      fail "readFlatArray: the input file has invalid size"
+    else do
+      fptr <- mallocForeignPtrBytes nbytes
+      withForeignPtr fptr $ \ptr -> do
+        hGetBuf h ptr nbytes
+      hClose h
+      return (MkFlatArray len fptr)
+
+-- | Write a flat array into a raw binary file
+writeFlatArray :: Flat a => FilePath -> FlatArray a -> IO ()
+writeFlatArray fpath arr = do
+  h <- openBinaryFile fpath WriteMode
+  withFlatArray arr $ \_ ptr -> hPutBuf h ptr (flatArraySizeInBytes arr)
+  hClose h
 
 --------------------------------------------------------------------------------
 -- * Pack \/ unpack flat arrays

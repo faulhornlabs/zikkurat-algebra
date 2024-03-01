@@ -124,7 +124,7 @@ runSingleCmpTests n cmp pxy1 pxy2 = do
 runAllCmpTests :: (Pure.Field r, Fast.Field f) => Int -> Proxy r -> Proxy f -> IO ()
 runAllCmpTests n pxy1 pxy2 = do
   putStrLn ""
-  putStrLn $ "running comparison against reference tests for " ++ Fast.fieldNamePxy pxy2 
+  putStrLn $ "running comparison against reference tests for " ++ Fast.fieldName pxy2 
   forM_ comparisons $ \cmp -> do
     putStr $ " - " ++ take 10 (fieldCmpText cmp ++ repeat ' ')
     void $ runSingleCmpTests n cmp pxy1 pxy2

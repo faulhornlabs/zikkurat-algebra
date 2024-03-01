@@ -112,8 +112,8 @@ instance M.Rnd Fp2 where
   rndIO = rnd
 
 instance C.Ring Fp2 where
-  ringNamePxy _ = "BLS12_381/Fp2"
-  ringSizePxy _ = C.ringSizePxy (Proxy @Fp) ^ 2
+  ringName _ = "BLS12_381/Fp2"
+  ringSize _ = C.ringSize (Proxy @Fp) ^ 2
   isZero = ZK.Algebra.Curves.BLS12_381.Fp2.Mont.isZero
   isOne  = ZK.Algebra.Curves.BLS12_381.Fp2.Mont.isOne
   zero   = ZK.Algebra.Curves.BLS12_381.Fp2.Mont.zero
@@ -122,8 +122,8 @@ instance C.Ring Fp2 where
   power  = ZK.Algebra.Curves.BLS12_381.Fp2.Mont.pow
 
 instance C.Field Fp2 where
-  charPxy    _ = C.charPxy (Proxy @Fp)
-  dimPxy     _ = C.dimPxy  (Proxy @Fp) * 2
+  characteristics _ = C.characteristics (Proxy @Fp)
+  dimension       _ = C.dimension       (Proxy @Fp) * 2
   primGenPxy _ = primGen
   batchInverse = batchInv
   frobenius    = frob

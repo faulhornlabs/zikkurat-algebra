@@ -1015,8 +1015,8 @@ hsBegin extparams@(ExtParams{..}) =
   , "  rndIO = rnd"
   , ""
   , "instance C.Ring " ++ typeName ++ " where"
-  , "  ringNamePxy _ = \"" ++ extFieldName  ++ "\""
-  , "  ringSizePxy _ = C.ringSizePxy (Proxy @" ++ typeNameBase ++ ") ^ " ++ show extDegree
+  , "  ringName _ = \"" ++ extFieldName  ++ "\""
+  , "  ringSize _ = C.ringSize (Proxy @" ++ typeNameBase ++ ") ^ " ++ show extDegree
   , "  isZero = " ++ hsModule hs_path ++ ".isZero"
   , "  isOne  = " ++ hsModule hs_path ++ ".isOne"
   , "  zero   = " ++ hsModule hs_path ++ ".zero"
@@ -1025,8 +1025,8 @@ hsBegin extparams@(ExtParams{..}) =
   , "  power  = " ++ hsModule hs_path ++ ".pow"
   , ""
   , "instance C.Field " ++ typeName ++ " where"
-  , "  charPxy    _ = C.charPxy (Proxy @" ++ typeNameBase ++ ")"
-  , "  dimPxy     _ = C.dimPxy  (Proxy @" ++ typeNameBase ++ ") * " ++ show extDegree  
+  , "  characteristics _ = C.characteristics (Proxy @" ++ typeNameBase ++ ")"
+  , "  dimension       _ = C.dimension       (Proxy @" ++ typeNameBase ++ ") * " ++ show extDegree  
   , "  primGenPxy _ = primGen"
   , "  batchInverse = batchInv"
   , "  frobenius    = frob"

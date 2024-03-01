@@ -174,8 +174,8 @@ hsBegin (Params{..}) =
   , "  rndIO = rnd"
   , ""
   , "instance C.Ring " ++ typeName ++ " where"
-  , "  ringNamePxy _ = \"" ++ typeName ++ "\""
-  , "  ringSizePxy _ = " ++ show (2^(64*nlimbs)) 
+  , "  ringName _ = \"" ++ typeName ++ "\""
+  , "  ringSize _ = " ++ show (2^(64*nlimbs)) 
   , "  isZero = " ++ hs_module ++ hs_basename ++ ".isZero"
   , "  isOne  = " ++ hs_module ++ hs_basename ++ ".isOne"
   , "  zero   = " ++ hs_module ++ hs_basename ++ ".zero"

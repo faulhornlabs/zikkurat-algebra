@@ -18,9 +18,9 @@ import ZK.Algebra.Class.Misc
 
 class (Eq a, Show a, Rnd a, Num a) => Ring a where
   -- | name of the ring
-  ringNamePxy :: Proxy a -> String            
+  ringName    :: Proxy a -> String            
   -- | size of the ring
-  ringSizePxy :: Proxy a -> Integer           
+  ringSize    :: Proxy a -> Integer           
   -- | check for being equal to zero
   isZero      :: a -> Bool
   -- | check for being equal to one
@@ -34,14 +34,17 @@ class (Eq a, Show a, Rnd a, Num a) => Ring a where
   -- | exponentiation
   power       :: a -> Integer -> a      
 
+power_ :: Ring a => a -> Int -> a
+power_ x e = power x (fromIntegral e)
+
 --------------------------------------------------------------------------------
 -- * Finite fields
 
 class (Flat a, Ring a, Fractional a) => Field a where
   -- | prime characteristic of the field
-  charPxy      :: Proxy a -> Integer     
+  characteristics  :: Proxy a -> Integer     
   -- | dimension of the field (over the prime field)
-  dimPxy       :: Proxy a -> Int         
+  dimension        :: Proxy a -> Int         
   -- | a fixed primitive element (generator of the multiplicative group)
   primGenPxy   :: Proxy a -> a           
   -- | efficient division by 2
@@ -55,11 +58,11 @@ class (Flat a, Ring a, Fractional a) => Field a where
 inverse :: Field a => a -> a      
 inverse = recip
 
-fieldNamePxy :: Field a => Proxy a -> String
-fieldNamePxy = ringNamePxy
+fieldName :: Field a => Proxy a -> String
+fieldName = ringName
 
-fieldSizePxy :: Field a => Proxy a -> Integer
-fieldSizePxy = ringSizePxy
+fieldSize :: Field a => Proxy a -> Integer
+fieldSize = ringSize
 
 primGen :: forall a. Field a => a
 primGen = primGenPxy (Proxy :: Proxy a)
@@ -84,7 +87,7 @@ class Field f => PrimeField f where
   asInteger :: f -> Integer
 
 fieldPrime :: PrimeField f => Proxy f -> Integer
-fieldPrime = charPxy 
+fieldPrime = characteristics
 
 --------------------------------------------------------------------------------
 -- * Algebraic field extensions
@@ -161,7 +164,7 @@ fieldPowerDefault !z !e
   | e >= pm1  = go one z (mod e pm1)
   | otherwise = go one z e
   where
-    pm1 = fieldSizePxy (Proxy :: Proxy f)
+    pm1 = fieldSize (Proxy :: Proxy f)
     go :: f -> f -> Integer -> f
     go !acc !y !e = if e == 0 
       then acc
@@ -171,6 +174,6 @@ fieldPowerDefault !z !e
 
 -- | Naive generic Frobenius automorphism (for testing purposes)
 frobeniusNaive :: forall f. (Field f) => f -> f
-frobeniusNaive x = power x (charPxy (Proxy @f))
+frobeniusNaive x = power x (characteristics (Proxy @f))
 
 --------------------------------------------------------------------------------

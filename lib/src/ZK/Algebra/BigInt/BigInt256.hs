@@ -97,8 +97,8 @@ instance M.Rnd BigInt256 where
   rndIO = rnd
 
 instance C.Ring BigInt256 where
-  ringNamePxy _ = "BigInt256"
-  ringSizePxy _ = 115792089237316195423570985008687907853269984665640564039457584007913129639936
+  ringName _ = "BigInt256"
+  ringSize _ = 115792089237316195423570985008687907853269984665640564039457584007913129639936
   isZero = ZK.Algebra.BigInt.BigInt256.isZero
   isOne  = ZK.Algebra.BigInt.BigInt256.isOne
   zero   = ZK.Algebra.BigInt.BigInt256.zero

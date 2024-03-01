@@ -138,8 +138,8 @@ instance M.Rnd Poly where
   rndIO = rnd
 
 instance F.Ring Poly where
-  ringNamePxy _ = "Fr[x]"
-  ringSizePxy _ = error "this is a polynomial ring, it's not finite"
+  ringName _ = "Fr[x]"
+  ringSize _ = error "this is a polynomial ring, it's not finite"
   isZero    = ZK.Algebra.Curves.BN128.Poly.isZero
   isOne     = ZK.Algebra.Curves.BN128.Poly.isOne
   zero      = ZK.Algebra.Curves.BN128.Poly.zero
