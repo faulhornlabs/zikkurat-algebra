@@ -76,7 +76,8 @@ c_header (PwParams{..}) =
   , "extern void " ++ prefix ++ "mul_sub ( int n, const uint64_t *src1, const uint64_t *src2, const uint64_t *src3, uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "dot_prod ( int n, const uint64_t *src1 , const uint64_t *src2, uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "powers ( int n, const uint64_t *coeffA , const uint64_t *coeffB, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "powers        ( int n, const uint64_t *coeffA , const uint64_t *coeffB, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "mul_by_powers ( int n, const uint64_t *coeffA , const uint64_t *coeffB, const uint64_t *src, uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "scale          ( int n, const uint64_t *coeff, const uint64_t *src2, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "scale_inplace  ( int n, const uint64_t *coeff,       uint64_t *tgt   );"
@@ -107,11 +108,12 @@ c_begin params@(PwParams{..}) =
   , ""
   , "#define ELEM_NWORDS " ++ show elemNWords
   , ""
+  , "#define  SRC(i) ((src ) + (i)*ELEM_NWORDS)"
   , "#define SRC1(i) ((src1) + (i)*ELEM_NWORDS)"
   , "#define SRC2(i) ((src2) + (i)*ELEM_NWORDS)"
   , "#define SRC3(i) ((src3) + (i)*ELEM_NWORDS)"
-  , "#define TGT(i)  (( tgt) + (i)*ELEM_NWORDS)"
-  , "#define TMP(i)  (( tmp) + (i)*ELEM_NWORDS)"
+  , "#define  TGT(i) ((tgt ) + (i)*ELEM_NWORDS)"
+  , "#define  TMP(i) ((tmp ) + (i)*ELEM_NWORDS)"
   , ""
   , "//------------------------------------------------------------------------------"
   , ""
@@ -303,6 +305,17 @@ c_dotprod_etc params@(PwParams{..}) =
   , "  " ++ elem_prefix ++ "mul( TGT(i-1), coeffB, TGT(i) );"
   , "  }"  
   , "}"
+  , ""
+  , "// pointwise multiplication by the vector `[ a*b^i | i<-[0..n-1] ]`"
+  , "void " ++ prefix ++ "mul_by_powers ( int n, const uint64_t *coeffA, const uint64_t *coeffB, const uint64_t *src, uint64_t *tgt ) {"
+  , "  if (n==0) return;"
+  , "  uint64_t x[ELEM_NWORDS];"
+  , "  " ++ elem_prefix ++ "copy( coeffA , x );"
+  , "  for(int i=1; i<n; i++) {"
+  , "  " ++ elem_prefix ++ "mul( SRC(i), x, TGT(i) );"
+  , "  " ++ elem_prefix ++ "mul_inplace( x, coeffB );"
+  , "  }"  
+  , "}"
   ]
 
 --------------------------------------------------------------------------------
@@ -393,7 +406,7 @@ hsBegin (PwParams{..}) =
   , "    -- * Misc"
   , "  , scale"
   , "  , dotProd"
-  , "  , powers" 
+  , "  , powers , mulByPowers" 
   , "    -- * Fused mul-add"
   , "  , mulAdd"
   , "  , mulSub"
@@ -461,16 +474,17 @@ hsBegin (PwParams{..}) =
   , ""
   , "instance V.VectorSpace (FlatArray " ++ typeNameBase ++ ") where"
   , "  -- type Element (FlatArray " ++ typeNameBase ++ ") = " ++ typeNameBase
-  , "  vecSize   = flatArrayLength"
-  , "  vecIndex  = flip peekFlatArray"
-  , "  vecScale  = " ++ hsModule hs_path ++ ".scale"
-  , "  dotProd   = " ++ hsModule hs_path ++ ".dotProd"
-  , "  powers !a !b !n = " ++ hsModule hs_path ++ ".powers n a b"
-  , "  linComb1  = " ++ hsModule hs_path ++ ".linComb1"
-  , "  linComb2  = " ++ hsModule hs_path ++ ".linComb2"
-  , "  vecAppend = " ++ hsModule hs_path ++ ".append"
-  , "  vecCons   = " ++ hsModule hs_path ++ ".cons"
-  , "  vecSnoc   = " ++ hsModule hs_path ++ ".snoc"
+  , "  vecSize     = flatArrayLength"
+  , "  vecIndex    = flip peekFlatArray"
+  , "  vecScale    = " ++ hsModule hs_path ++ ".scale"
+  , "  dotProd     = " ++ hsModule hs_path ++ ".dotProd"
+  , "  powers      = " ++ hsModule hs_path ++ ".powers"
+  , "  mulByPowers = " ++ hsModule hs_path ++ ".mulByPowers"
+  , "  linComb1    = " ++ hsModule hs_path ++ ".linComb1"
+  , "  linComb2    = " ++ hsModule hs_path ++ ".linComb2"
+  , "  vecAppend   = " ++ hsModule hs_path ++ ".append"
+  , "  vecCons     = " ++ hsModule hs_path ++ ".cons"
+  , "  vecSnoc     = " ++ hsModule hs_path ++ ".snoc"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -548,13 +562,14 @@ hsFFI (PwParams{..}) = catCode $
   , mkffi "inv"         $ cfun "inv"          (CTyp [CArgCount, CArgInArrPtr                , CArgOutArrPtr ] CRetVoid)
   , mkffi "div"         $ cfun "div"          (CTyp [CArgCount, CArgInArrPtr , CArgInArrPtr , CArgOutArrPtr ] CRetVoid)
     --
-  , mkffi "dotProd"     $ cfun "dot_prod"     (CTyp [CArgCount, CArgInArrPtr, CArgInArrPtr, CArgOutPtr ] CRetVoid)
-  , mkffi "powers"      $ cfun "powers"       (CTyp [CArgCount, CArgInPtr , CArgInPtr , CArgOutArrPtr ] CRetVoid)
+  , mkffi "dotProd"     $ cfun "dot_prod"      (CTyp [CArgCount, CArgInArrPtr, CArgInArrPtr, CArgOutPtr ] CRetVoid)
+  , mkffi "powers"      $ cfun "powers"        (CTyp [CArgCount, CArgInPtr , CArgInPtr , CArgOutArrPtr ] CRetVoid)
+  , mkffi "mulByPowers" $ cfun "mul_by_powers" (CTyp [CArgCount, CArgInPtr , CArgInPtr , CArgInArrPtr , CArgOutArrPtr ] CRetVoid)
     --
-  , mkffi "mulAdd"      $ cfun "mul_add"      (CTyp [CArgCount, CArgInArrPtr , CArgInArrPtr , CArgInArrPtr , CArgOutArrPtr ] CRetVoid)
-  , mkffi "mulSub"      $ cfun "mul_sub"      (CTyp [CArgCount, CArgInArrPtr , CArgInArrPtr , CArgInArrPtr , CArgOutArrPtr ] CRetVoid)
+  , mkffi "mulAdd"      $ cfun "mul_add"       (CTyp [CArgCount, CArgInArrPtr , CArgInArrPtr , CArgInArrPtr , CArgOutArrPtr ] CRetVoid)
+  , mkffi "mulSub"      $ cfun "mul_sub"       (CTyp [CArgCount, CArgInArrPtr , CArgInArrPtr , CArgInArrPtr , CArgOutArrPtr ] CRetVoid)
     --
-  , mkffi "scale"       $ cfun "scale"        (CTyp [CArgCount, CArgInPtr, CArgInArrPtr, CArgOutArrPtr ] CRetVoid)
+  , mkffi "scale"       $ cfun "scale"         (CTyp [CArgCount, CArgInPtr, CArgInArrPtr, CArgOutArrPtr ] CRetVoid)
   ]
   where
     cfun  cname = CFun (prefix      ++ cname)

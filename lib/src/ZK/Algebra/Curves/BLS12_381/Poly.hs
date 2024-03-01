@@ -41,6 +41,7 @@ module ZK.Algebra.Curves.BLS12_381.Poly
   , divByVanishing, quotByVanishing
     -- * NTT
   , forwardNTT , inverseNTT
+  , shiftedForwardNTT , shiftedInverseNTT
     -- * Random
   , rndPoly , rnd
   )
@@ -396,6 +397,8 @@ quotByVanishing poly1@(XPoly n1 fptr1) (expo_n, MkFr fptr2) = unsafePerformIO $ 
 
 foreign import ccall unsafe "bls12_381_poly_mont_ntt_forward" c_bls12_381_poly_mont_ntt_forward :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 foreign import ccall unsafe "bls12_381_poly_mont_ntt_inverse" c_bls12_381_poly_mont_ntt_inverse :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_poly_mont_ntt_forward_shifted" c_bls12_381_poly_mont_ntt_forward_shifted :: Ptr Word64 -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_poly_mont_ntt_inverse_shifted" c_bls12_381_poly_mont_ntt_inverse_shifted :: Ptr Word64 -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE forwardNTT #-}
 forwardNTT :: FFTSubgroup Fr -> Poly -> FlatArray Fr
@@ -421,6 +424,36 @@ inverseNTT sg (MkFlatArray n fptr2)
             c_bls12_381_poly_mont_ntt_inverse (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
       return (MkPoly (MkFlatArray n fptr3))
 
+-- | Pre-multiplies the coefficients by powers of eta, effectively evaluating @f(eta*x)@ on the subgroup
+{-# NOINLINE shiftedForwardNTT #-}
+shiftedForwardNTT :: FFTSubgroup Fr -> Fr -> Poly -> FlatArray Fr
+shiftedForwardNTT sg (MkFr fptr_eta) (MkPoly (MkFlatArray n fptr2))
+  | fftSubgroupSize sg /= n   = error "forwardNTT: subgroup size differs from the array size"
+  | otherwise                 = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (n*4)
+      withFlat (fftSubgroupGen sg) $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            withForeignPtr fptr_eta $ \ptr_eta -> do
+              c_bls12_381_poly_mont_ntt_forward_shifted ptr_eta (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
+      return (MkFlatArray n fptr3)
+
+-- | Post-multiplies the coefficients by powers of eta, effectively interpolating @f@ such that @f(eta^-1 * omega^k) = y_k@
+{-# NOINLINE shiftedInverseNTT #-}
+shiftedInverseNTT :: FFTSubgroup Fr -> Fr -> FlatArray Fr -> Poly
+shiftedInverseNTT sg (MkFr fptr_eta) (MkFlatArray n fptr2)
+  | fftSubgroupSize sg /= n   = error "inverseNTT: subgroup size differs from the array size"
+  | otherwise                 = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (n*4)
+      withFlat (fftSubgroupGen sg) $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            withForeignPtr fptr_eta $ \ptr_eta -> do
+              c_bls12_381_poly_mont_ntt_inverse_shifted ptr_eta (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
+      return (MkPoly (MkFlatArray n fptr3))
+
 instance P.UnivariateFFT Poly where
   ntt  = forwardNTT
   intt = inverseNTT
+  shiftedNTT  = shiftedForwardNTT
+  shiftedINTT = shiftedInverseNTT

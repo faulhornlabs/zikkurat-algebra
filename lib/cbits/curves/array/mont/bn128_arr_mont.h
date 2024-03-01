@@ -35,7 +35,8 @@ extern void bn128_arr_mont_mul_add ( int n, const uint64_t *src1, const uint64_t
 extern void bn128_arr_mont_mul_sub ( int n, const uint64_t *src1, const uint64_t *src2, const uint64_t *src3, uint64_t *tgt );
 
 extern void bn128_arr_mont_dot_prod ( int n, const uint64_t *src1 , const uint64_t *src2, uint64_t *tgt );
-extern void bn128_arr_mont_powers ( int n, const uint64_t *coeffA , const uint64_t *coeffB, uint64_t *tgt );
+extern void bn128_arr_mont_powers        ( int n, const uint64_t *coeffA , const uint64_t *coeffB, uint64_t *tgt );
+extern void bn128_arr_mont_mul_by_powers ( int n, const uint64_t *coeffA , const uint64_t *coeffB, const uint64_t *src, uint64_t *tgt );
 
 extern void bn128_arr_mont_scale          ( int n, const uint64_t *coeff, const uint64_t *src2, uint64_t *tgt );
 extern void bn128_arr_mont_scale_inplace  ( int n, const uint64_t *coeff,       uint64_t *tgt   );

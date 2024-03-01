@@ -57,6 +57,10 @@ class (Univariate p, FFTField (Coeff p)) => UnivariateFFT p where
   ntt  :: FFTSubgroup (Coeff p) -> p -> FlatArray (Coeff p) 
   -- | Inverse number-theoretical transform (interpolate on a subgroup)
   intt :: FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> p
+  -- | Shifts @f@ by @eta@, evaluating @f(eta*omega^k)@
+  shiftedNTT  :: FFTSubgroup (Coeff p) -> Coeff p -> p -> FlatArray (Coeff p) 
+  -- | Shifts @f@ by @eta^-1@, interpolating @f@ so that @f(eta^-1 * omega^k) = y_k@
+  shiftedINTT :: FFTSubgroup (Coeff p) -> Coeff p -> FlatArray (Coeff p) -> p
 
 ntt_ :: forall p. UnivariateFFT p => Proxy p -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> FlatArray (Coeff p)
 ntt_ pxy dom coeffs = ntt dom (mkPolyFlat @p coeffs)

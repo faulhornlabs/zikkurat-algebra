@@ -18,6 +18,7 @@ import ZK.Algebra.Class.Poly
 import ZK.Algebra.Class.FFT
 import ZK.Algebra.Class.Flat
 import ZK.Algebra.Class.Misc
+-- import ZK.Algebra.Class.Vector
 
 --------------------------------------------------------------------------------
 
@@ -58,6 +59,11 @@ runPolyTests n pxy = do
       xs <- replicateM 7 $ rndIO @(Coeff a)
       return (test (Proxy @a) xs) 
 
+    PolyPropXFFT test name -> doTests n name $ do
+      y  <- rndIO @(Coeff a)
+      xs <- replicateM 9 $ rndIO @(Coeff a)
+      return (test (Proxy @a) y xs) 
+
 --------------------------------------------------------------------------------
 
 doTests :: Int -> String -> IO Bool -> IO Bool
@@ -79,12 +85,13 @@ doTests n name testAction =
 --------------------------------------------------------------------------------
 
 data PolyProp
-  = PolyProp1   (forall a. Univariate    a  => a -> Bool                 ) String
-  | PolyProp2   (forall a. Univariate    a  => a -> a -> Bool            ) String
-  | PolyProp3   (forall a. Univariate    a  => a -> a -> a -> Bool       ) String
-  | PolyPropF1  (forall a. Univariate    a  => Coeff a -> a -> Bool      ) String
-  | PolyPropFF  (forall a. Univariate    a  => Proxy a -> Coeff a -> Coeff a -> Bool) String
-  | PolyPropFFT (forall a. UnivariateFFT a  => Proxy a -> [Coeff a] -> Bool) String
+  = PolyProp1    (forall a. Univariate    a  => a -> Bool                 ) String
+  | PolyProp2    (forall a. Univariate    a  => a -> a -> Bool            ) String
+  | PolyProp3    (forall a. Univariate    a  => a -> a -> a -> Bool       ) String
+  | PolyPropF1   (forall a. Univariate    a  => Coeff a -> a -> Bool      ) String
+  | PolyPropFF   (forall a. Univariate    a  => Proxy a -> Coeff a -> Coeff a -> Bool) String
+  | PolyPropFFT  (forall a. UnivariateFFT a  => Proxy a ->            [Coeff a] -> Bool) String
+  | PolyPropXFFT (forall a. UnivariateFFT a  => Proxy a -> Coeff a -> [Coeff a] -> Bool) String
 
 --------------------------------------------------------------------------------
 
@@ -139,6 +146,11 @@ specificPolyProps =
   , PolyPropFFT prop_ntt_then_intt      "intt . ntt == id"
   , PolyPropFFT prop_intt_then_ntt      "ntt . intt == id"
   , PolyPropFFT prop_ntt_vs_eval        "ntt vs. evalAt"
+  , PolyPropXFFT prop_shifted_ntt_then_shifted_intt  "s_intt . s_ntt == id"
+  , PolyPropXFFT prop_shifted_intt_then_shifted_ntt  "s_ntt . si_ntt == id"
+  , PolyPropXFFT prop_shifted_ntt_then_intt          "intt . s_ntt"
+  , PolyPropXFFT prop_ntt_then_shifted_intt          "s_intt . ntt"
+  , PolyPropXFFT prop_shifted_ntt_vs_eval            "shifted ntt vs. evalAt"
   ]
 
 --------------------------------------------------------------------------------
@@ -389,5 +401,61 @@ prop_ntt_vs_eval _pxy input = (us == vs) where
   poly  = mkPoly cs                                      :: p
   us    = unpackFlatArrayToList $ ntt sg poly            :: [Coeff p]
   vs    = [ evalAt x poly | x <- enumerateSubgroup sg ]  :: [Coeff p]
+
+----------------------------------------
+
+prop_shifted_ntt_then_shifted_intt :: forall p. UnivariateFFT p => Proxy p -> Coeff p -> [Coeff p] -> Bool
+prop_shifted_ntt_then_shifted_intt _pxy eta input = (cs == coeffs poly2) where
+  m  = 6
+  n  = 2^m
+  sg = getFFTSubgroup (Log2 m)
+  cs    = take n $ zipWith (*) (cycle input) someNumbers :: [Coeff p]
+  poly1 = mkPoly cs     :: p
+  varr  = shiftedNTT  sg          eta  poly1 :: FlatArray (Coeff p)
+  poly2 = shiftedINTT sg (inverse eta) varr  :: p
+
+prop_shifted_intt_then_shifted_ntt :: forall p. UnivariateFFT p => Proxy p -> Coeff p -> [Coeff p] -> Bool
+prop_shifted_intt_then_shifted_ntt _pxy eta input = (ys == zs) where
+  m  = 6
+  n  = 2^m
+  sg = getFFTSubgroup (Log2 m)
+  ys    = take n $ zipWith (*) (cycle input) someNumbers          :: [Coeff p]
+  poly  = shiftedINTT sg          eta  (packFlatArrayFromList ys) :: p
+  varr  = shiftedNTT  sg (inverse eta) poly                       :: FlatArray (Coeff p)
+  zs    = unpackFlatArrayToList varr                              :: [Coeff p]
+
+prop_shifted_ntt_then_intt :: forall p. UnivariateFFT p => Proxy p -> Coeff p -> [Coeff p] -> Bool
+prop_shifted_ntt_then_intt _pxy eta input = (cs' == coeffs poly2) where
+  m  = 6
+  n  = 2^m
+  sg = getFFTSubgroup (Log2 m)
+  cs    = take n $ zipWith (*) (cycle input) someNumbers :: [Coeff p]
+  cs'   = [ c * eta^i | (i,c) <- zip [0..] cs ]
+  poly1 = mkPoly cs     :: p
+  varr  = shiftedNTT sg eta poly1 :: FlatArray (Coeff p)
+  poly2 = intt       sg     varr  :: p
+
+prop_ntt_then_shifted_intt :: forall p. UnivariateFFT p => Proxy p -> Coeff p -> [Coeff p] -> Bool
+prop_ntt_then_shifted_intt _pxy eta input = (cs == ds') where
+  m  = 6
+  n  = 2^m
+  sg = getFFTSubgroup (Log2 m)
+  invEta = inverse eta
+  cs    = take n $ zipWith (*) (cycle input) someNumbers :: [Coeff p]
+  poly1 = mkPoly cs     :: p
+  varr  = ntt         sg     poly1 :: FlatArray (Coeff p)
+  poly2 = shiftedINTT sg eta varr  :: p
+  ds    = coeffs poly2
+  ds'   = [ d * invEta^i | (i,d) <- zip [0..] ds ]
+
+prop_shifted_ntt_vs_eval :: forall p. UnivariateFFT p => Proxy p -> Coeff p -> [Coeff p] -> Bool
+prop_shifted_ntt_vs_eval _pxy eta input = (us == vs) where
+  m  = 6
+  n  = 2^m
+  sg = getFFTSubgroup (Log2 m)
+  cs    = take n $ zipWith (*) (cycle input) someNumbers       :: [Coeff p] 
+  poly  = mkPoly cs                                            :: p
+  us    = unpackFlatArrayToList $ shiftedNTT sg eta poly       :: [Coeff p]
+  vs    = [ evalAt (x*eta) poly | x <- enumerateSubgroup sg ]  :: [Coeff p]
 
 --------------------------------------------------------------------------------

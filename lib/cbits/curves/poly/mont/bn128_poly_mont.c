@@ -415,7 +415,7 @@ uint8_t bn128_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int exp
 
 // -----------------------------------------------------------------------------
 
-void bn128_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
+void bn128_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64_t *gpows, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
 
   if (m==0) {
     bn128_Fr_mont_copy( src, tgt );
@@ -430,23 +430,18 @@ void bn128_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64_t *
   }
 
   else {
-  
     int N     = (1<< m   );
     int halfN = (1<<(m-1));
 
-    uint64_t gpow[NLIMBS];
-    bn128_Fr_mont_sqr( gen, gpow );  // gen^2
-    
-    bn128_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src                     , buf + N*NLIMBS , buf                );
-    bn128_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src + src_stride*NLIMBS , buf + N*NLIMBS , buf + halfN*NLIMBS );
+    bn128_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpows , src                     , buf + N*NLIMBS , buf                );
+    bn128_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpows , src + src_stride*NLIMBS , buf + N*NLIMBS , buf + halfN*NLIMBS );
 
-    bn128_Fr_mont_set_one(gpow);
     for(int j=0; j<halfN; j++) {
+      const uint64_t *gpow = gpows + j*src_stride*NLIMBS;
       bn128_Fr_mont_mul ( buf + (j+halfN)*NLIMBS , gpow , tgt +  j       *NLIMBS );  //   g*v[k]
       bn128_Fr_mont_neg ( tgt +  j       *NLIMBS ,        tgt + (j+halfN)*NLIMBS );  // - g*v[k]
       bn128_Fr_mont_add_inplace( tgt +  j       *NLIMBS , buf + j*NLIMBS );          // u[k] + g*v[k]
       bn128_Fr_mont_add_inplace( tgt + (j+halfN)*NLIMBS , buf + j*NLIMBS );          // u[k] - g*v[k]
-      bn128_Fr_mont_mul_inplace( gpow , gen );      
     }
   }
 }
@@ -455,13 +450,43 @@ void bn128_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64_t *
 // `src` and `tgt` should be `N = 2^m` sized arrays of field elements
 // `gen` should be the generator of the multiplicative subgroup sized `N`
 void bn128_poly_mont_ntt_forward(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
-  int N = (1<<m);
+  int N     = (1<<m);
+  int halfN = (N>>1);
+  
+  // precalculate [1,g,g^2,g^3...]
+  uint64_t *gpows = malloc( 8*NLIMBS * halfN );
+  assert( gpows != 0 );
+  uint64_t x[NLIMBS];
+  bn128_Fr_mont_set_one( gpows );
+  bn128_Fr_mont_copy( gen, gpows + NLIMBS );
+  bn128_Fr_mont_copy( gen, x );
+  for(int i=2; i<halfN; i++) {
+    bn128_Fr_mont_mul_inplace(x, gen);
+    bn128_Fr_mont_copy( x , gpows + (i*NLIMBS) );
+  }
+  
   uint64_t *buf = malloc( 8*NLIMBS * (2*N) );
-  assert( buf !=0 );
-  bn128_poly_mont_ntt_forward_noalloc( m, 1, gen, src, buf, tgt);
+  assert( buf != 0 );
+  bn128_poly_mont_ntt_forward_noalloc( m, 1, gpows, src, buf, tgt);
   free(buf);
+  free(gpows);
 }
 
+// it's like `ntt_forward` but we pre-multiply the coefficients with `eta^k`
+// resulting in evaluating f(eta*x) instead of f(x)
+void bn128_poly_mont_ntt_forward_shifted(const uint64_t *eta, int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
+  int N = (1<<m);
+  uint64_t *shifted = malloc( 8*NLIMBS*N );
+  assert( shifted != 0 );
+  uint64_t x[NLIMBS];
+  bn128_Fr_mont_set_one( x );
+  for(int i=0; i<N; i++) {
+    bn128_Fr_mont_mul( src + i*NLIMBS, x, shifted + i*NLIMBS );
+    bn128_Fr_mont_mul_inplace(x, eta);
+  }
+  bn128_poly_mont_ntt_forward( m, gen, shifted, tgt );
+  free(shifted);
+}
 
 
 // -----------------------------------------------------------------------------
@@ -469,7 +494,7 @@ void bn128_poly_mont_ntt_forward(int m, const uint64_t *gen, const uint64_t *src
 // inverse of 2
 const uint64_t bn128_poly_mont_oneHalf[4] = { 0x783c14d81ffffffe, 0xaf982f6f0c8d1edd, 0x8f5f7492fcfd4f45, 0x1f37631a3d9cbfac };
 
-void bn128_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
+void bn128_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64_t *gpows, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
 
   if (m==0) {
     bn128_Fr_mont_copy( src, tgt );
@@ -480,33 +505,25 @@ void bn128_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64_t *
     // N = 2
     bn128_Fr_mont_add( src , src + NLIMBS , tgt                     );   // x + y
     bn128_Fr_mont_sub( src , src + NLIMBS , tgt + tgt_stride*NLIMBS );   // x - y
-    bn128_Fr_mont_mul_inplace( tgt                     , bn128_poly_mont_oneHalf );      // (x + y)/2
-    bn128_Fr_mont_mul_inplace( tgt + tgt_stride*NLIMBS , bn128_poly_mont_oneHalf );      // (x - y)/2
+    bn128_Fr_mont_div_by_2_inplace( tgt                    );      // (x + y)/2
+    bn128_Fr_mont_div_by_2_inplace( tgt + tgt_stride*NLIMBS);      // (x - y)/2
     return;
   }
 
   else {
-  
     int N     = (1<< m   );
     int halfN = (1<<(m-1));
 
-    uint64_t ginv[NLIMBS];
-    bn128_Fr_mont_inv( gen , ginv );  // gen^-1
-
-    uint64_t gpow[NLIMBS];    
-    bn128_Fr_mont_copy(bn128_poly_mont_oneHalf , gpow);  // 1/2
     for(int j=0; j<halfN; j++) {
+      const uint64_t *gpow = gpows + j*tgt_stride*NLIMBS;
       bn128_Fr_mont_add( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + j        *NLIMBS  );    // x + y
       bn128_Fr_mont_sub( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + (j+halfN)*NLIMBS  );    // x - y
-      bn128_Fr_mont_mul_inplace( buf + j        *NLIMBS , bn128_poly_mont_oneHalf  );    // (x + y) /  2
-      bn128_Fr_mont_mul_inplace( buf + (j+halfN)*NLIMBS , gpow     );    // (x - y) / (2*g^k)
-      bn128_Fr_mont_mul_inplace( gpow , ginv );      
+      bn128_Fr_mont_div_by_2_inplace( buf + j        *NLIMBS );           // (x + y) /  2
+      bn128_Fr_mont_mul_inplace(      buf + (j+halfN)*NLIMBS , gpow );    // (x - y) / (2*g^k)
     }
 
-    bn128_Fr_mont_sqr( gen, gpow );  // gen^2
-    bn128_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf                , buf + N*NLIMBS , tgt                     );
-    bn128_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf + halfN*NLIMBS , buf + N*NLIMBS , tgt + tgt_stride*NLIMBS );
-
+    bn128_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpows , buf                , buf + N*NLIMBS , tgt                     );
+    bn128_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpows , buf + halfN*NLIMBS , buf + N*NLIMBS , tgt + tgt_stride*NLIMBS );
   }
 }
 
@@ -515,11 +532,42 @@ void bn128_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64_t *
 // `gen` should be the generator of the multiplicative subgroup sized `N`
 void bn128_poly_mont_ntt_inverse(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
   int N = (1<<m);
+  int halfN = (N>>1);
+  
+  // precalculate [1/2,g^{-1}/2,g^{-2}/2,g^{-3}/2...]
+  uint64_t *gpows = malloc( 8*NLIMBS * halfN );
+  assert( gpows != 0 );
+  uint64_t x[NLIMBS];
+  uint64_t ginv[NLIMBS];
+  bn128_Fr_mont_inv( gen , ginv );                    // gen^-1
+  bn128_Fr_mont_copy(bn128_poly_mont_oneHalf , x);    // = 1/2
+  for(int i=0; i<halfN; i++) {
+    bn128_Fr_mont_copy( x , gpows + (i*NLIMBS) );
+    if (i < halfN-1) bn128_Fr_mont_mul_inplace(x, ginv);
+  }
+  
   uint64_t *buf = malloc( 8*NLIMBS * (2*N) );
   assert( buf !=0 );
-  bn128_poly_mont_ntt_inverse_noalloc( m, 1, gen, src, buf, tgt );
+  bn128_poly_mont_ntt_inverse_noalloc( m, 1, gpows, src, buf, tgt );
   free(buf);
+  free(gpows);
+}
+
+// it's like `ntt_inverse` but we post-multiply the resulting coefficients with `eta^k`
+// resulting in interpolating an f such that f(eta^-1 * omega^k) = y_k
+void bn128_poly_mont_ntt_inverse_shifted(const uint64_t *eta, int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
+  int N = (1<<m);
+  uint64_t *unshifted = malloc( 8*NLIMBS*N );
+  assert( unshifted != 0 );
+  bn128_poly_mont_ntt_inverse( m, gen, src, unshifted );
+  uint64_t x[NLIMBS];
+  bn128_Fr_mont_set_one( x );
+  for(int i=0; i<N; i++) {
+    bn128_Fr_mont_mul( unshifted + i*NLIMBS, x, tgt + i*NLIMBS );
+    bn128_Fr_mont_mul_inplace(x, eta);
+  }
+  free(unshifted);
 }
 
 // -----------------------------------------------------------------------------
- 
+

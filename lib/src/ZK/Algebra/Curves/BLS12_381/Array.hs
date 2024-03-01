@@ -24,7 +24,7 @@ module ZK.Algebra.Curves.BLS12_381.Array
     -- * Misc
   , scale
   , dotProd
-  , powers
+  , powers , mulByPowers
     -- * Fused mul-add
   , mulAdd
   , mulSub
@@ -92,16 +92,17 @@ instance V.PointwiseField (FlatArray Fr) where
 
 instance V.VectorSpace (FlatArray Fr) where
   -- type Element (FlatArray Fr) = Fr
-  vecSize   = flatArrayLength
-  vecIndex  = flip peekFlatArray
-  vecScale  = ZK.Algebra.Curves.BLS12_381.Array.scale
-  dotProd   = ZK.Algebra.Curves.BLS12_381.Array.dotProd
-  powers !a !b !n = ZK.Algebra.Curves.BLS12_381.Array.powers n a b
-  linComb1  = ZK.Algebra.Curves.BLS12_381.Array.linComb1
-  linComb2  = ZK.Algebra.Curves.BLS12_381.Array.linComb2
-  vecAppend = ZK.Algebra.Curves.BLS12_381.Array.append
-  vecCons   = ZK.Algebra.Curves.BLS12_381.Array.cons
-  vecSnoc   = ZK.Algebra.Curves.BLS12_381.Array.snoc
+  vecSize     = flatArrayLength
+  vecIndex    = flip peekFlatArray
+  vecScale    = ZK.Algebra.Curves.BLS12_381.Array.scale
+  dotProd     = ZK.Algebra.Curves.BLS12_381.Array.dotProd
+  powers      = ZK.Algebra.Curves.BLS12_381.Array.powers
+  mulByPowers = ZK.Algebra.Curves.BLS12_381.Array.mulByPowers
+  linComb1    = ZK.Algebra.Curves.BLS12_381.Array.linComb1
+  linComb2    = ZK.Algebra.Curves.BLS12_381.Array.linComb2
+  vecAppend   = ZK.Algebra.Curves.BLS12_381.Array.append
+  vecCons     = ZK.Algebra.Curves.BLS12_381.Array.cons
+  vecSnoc     = ZK.Algebra.Curves.BLS12_381.Array.snoc
 
 --------------------------------------------------------------------------------
 
@@ -327,8 +328,8 @@ dotProd (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
 foreign import ccall unsafe "bls12_381_arr_mont_powers" c_bls12_381_arr_mont_powers :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE powers #-}
-powers :: Int -> Fr -> Fr -> FlatArray Fr
-powers n (MkFr fptr1) (MkFr fptr2) = 
+powers :: Fr -> Fr -> Int -> FlatArray Fr
+powers (MkFr fptr1) (MkFr fptr2) n = 
   unsafePerformIO $ do
     fptr3 <- mallocForeignPtrArray (n*4)
     withForeignPtr fptr1 $ \ptr1 -> do
@@ -336,6 +337,20 @@ powers n (MkFr fptr1) (MkFr fptr2) =
          withForeignPtr fptr3 $ \ptr3 -> do
            c_bls12_381_arr_mont_powers (fromIntegral n) ptr1 ptr2 ptr3
       return (MkFlatArray n fptr3)
+
+foreign import ccall unsafe "bls12_381_arr_mont_mul_by_powers" c_bls12_381_arr_mont_mul_by_powers :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE mulByPowers #-}
+mulByPowers :: Fr -> Fr -> FlatArray Fr -> FlatArray Fr
+mulByPowers(MkFr fptr1) (MkFr fptr2) (MkFlatArray n fptr3) = 
+  unsafePerformIO $ do
+    fptr4 <- mallocForeignPtrArray (n*4)
+    withForeignPtr fptr1 $ \ptr1 -> do
+      withForeignPtr fptr2 $ \ptr2 -> do
+         withForeignPtr fptr3 $ \ptr3 -> do
+           withForeignPtr fptr4 $ \ptr4 -> do
+             c_bls12_381_arr_mont_mul_by_powers (fromIntegral n) ptr1 ptr2 ptr3 ptr4
+      return (MkFlatArray n fptr4)
 
 foreign import ccall unsafe "bls12_381_arr_mont_mul_add" c_bls12_381_arr_mont_mul_add :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 

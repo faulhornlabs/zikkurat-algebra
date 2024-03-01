@@ -282,8 +282,8 @@ ffiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
     [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
     , ""
     , "{-# NOINLINE " ++ hsFunName ++ " #-}"
-    , hsFunName ++ " :: Int -> " ++ hsTyName ++ " -> " ++ hsTyName ++ " -> " ++ flatArrTyName
-    , hsFunName ++ " n (" ++ hsTyCon ++ " fptr1) (" ++ hsTyCon ++ " fptr2) = "
+    , hsFunName ++ " :: " ++ hsTyName ++ " -> " ++ hsTyName ++ " -> Int -> " ++ flatArrTyName
+    , hsFunName ++ " (" ++ hsTyCon ++ " fptr1) (" ++ hsTyCon ++ " fptr2) n = "
     , "  unsafePerformIO $ do"
     , "    fptr3 <- mallocForeignPtrArray (n*" ++ show hsNLimbs ++ ")"
     , "    withForeignPtr fptr1 $ \\ptr1 -> do"
@@ -291,6 +291,23 @@ ffiCall HsTyDesc{..} hsFunName cfunty@(CFun cname ctyp) = case ctyp of
     , "         withForeignPtr fptr3 $ \\ptr3 -> do"
     , "           c_" ++ cname ++ " (fromIntegral n) ptr1 ptr2 ptr3"
     , "      return (MkFlatArray n fptr3)"
+    ]
+
+  -- like mulByPowers
+  CTyp [CArgCount, CArgInPtr, CArgInPtr, CArgInArrPtr, CArgOutArrPtr] CRetVoid -> 
+    [ "foreign import ccall unsafe \"" ++ cname ++ "\" c_" ++ cname ++ " :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+    , ""
+    , "{-# NOINLINE " ++ hsFunName ++ " #-}"
+    , hsFunName ++ " :: " ++ hsTyName ++ " -> " ++ hsTyName ++ " -> " ++ flatArrTyName ++ " -> " ++ flatArrTyName
+    , hsFunName ++ "(" ++ hsTyCon ++ " fptr1) (" ++ hsTyCon ++ " fptr2) (MkFlatArray n fptr3) = "
+    , "  unsafePerformIO $ do"
+    , "    fptr4 <- mallocForeignPtrArray (n*" ++ show hsNLimbs ++ ")"
+    , "    withForeignPtr fptr1 $ \\ptr1 -> do"
+    , "      withForeignPtr fptr2 $ \\ptr2 -> do"
+    , "         withForeignPtr fptr3 $ \\ptr3 -> do"
+    , "           withForeignPtr fptr4 $ \\ptr4 -> do"
+    , "             c_" ++ cname ++ " (fromIntegral n) ptr1 ptr2 ptr3 ptr4"
+    , "      return (MkFlatArray n fptr4)"
     ]
 
   -- like scale

@@ -76,6 +76,8 @@ class (WrappedArray v, Field (Element v), PointwiseField v) => VectorSpace v whe
   dotProd :: v -> v -> Element v
   -- | The array @[ a*b^k | k<-[0..n-1] ]@
   powers :: Element v -> Element v -> Int -> v
+  -- | Pointwise multiplication by the array @[ a*b^k | k<-[0..n-1] ]@
+  mulByPowers :: Element v -> Element v -> v -> v
   -- | Linear combination @a*x + y@
   linComb1 :: (Element v, v) -> v -> v
   -- | Linear combination @a*x + b*y@

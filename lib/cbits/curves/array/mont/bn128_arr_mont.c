@@ -13,11 +13,12 @@
 
 #define ELEM_NWORDS 4
 
+#define  SRC(i) ((src ) + (i)*ELEM_NWORDS)
 #define SRC1(i) ((src1) + (i)*ELEM_NWORDS)
 #define SRC2(i) ((src2) + (i)*ELEM_NWORDS)
 #define SRC3(i) ((src3) + (i)*ELEM_NWORDS)
-#define TGT(i)  (( tgt) + (i)*ELEM_NWORDS)
-#define TMP(i)  (( tmp) + (i)*ELEM_NWORDS)
+#define  TGT(i) ((tgt ) + (i)*ELEM_NWORDS)
+#define  TMP(i) ((tmp ) + (i)*ELEM_NWORDS)
 
 //------------------------------------------------------------------------------
 
@@ -189,6 +190,17 @@ void bn128_arr_mont_powers ( int n, const uint64_t *coeffA, const uint64_t *coef
   bn128_Fr_mont_copy( coeffA, TGT(0) );
   for(int i=1; i<n; i++) {
   bn128_Fr_mont_mul( TGT(i-1), coeffB, TGT(i) );
+  }
+}
+
+// pointwise multiplication by the vector `[ a*b^i | i<-[0..n-1] ]`
+void bn128_arr_mont_mul_by_powers ( int n, const uint64_t *coeffA, const uint64_t *coeffB, const uint64_t *src, uint64_t *tgt ) {
+  if (n==0) return;
+  uint64_t x[ELEM_NWORDS];
+  bn128_Fr_mont_copy( coeffA , x );
+  for(int i=1; i<n; i++) {
+  bn128_Fr_mont_mul( SRC(i), x, TGT(i) );
+  bn128_Fr_mont_mul_inplace( x, coeffB );
   }
 }
 

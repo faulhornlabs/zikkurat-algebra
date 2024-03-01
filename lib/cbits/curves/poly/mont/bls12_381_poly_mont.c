@@ -415,7 +415,7 @@ uint8_t bls12_381_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int
 
 // -----------------------------------------------------------------------------
 
-void bls12_381_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
+void bls12_381_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64_t *gpows, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
 
   if (m==0) {
     bls12_381_Fr_mont_copy( src, tgt );
@@ -430,23 +430,18 @@ void bls12_381_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64
   }
 
   else {
-  
     int N     = (1<< m   );
     int halfN = (1<<(m-1));
 
-    uint64_t gpow[NLIMBS];
-    bls12_381_Fr_mont_sqr( gen, gpow );  // gen^2
-    
-    bls12_381_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src                     , buf + N*NLIMBS , buf                );
-    bls12_381_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpow , src + src_stride*NLIMBS , buf + N*NLIMBS , buf + halfN*NLIMBS );
+    bls12_381_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpows , src                     , buf + N*NLIMBS , buf                );
+    bls12_381_poly_mont_ntt_forward_noalloc( m-1 , src_stride<<1 , gpows , src + src_stride*NLIMBS , buf + N*NLIMBS , buf + halfN*NLIMBS );
 
-    bls12_381_Fr_mont_set_one(gpow);
     for(int j=0; j<halfN; j++) {
+      const uint64_t *gpow = gpows + j*src_stride*NLIMBS;
       bls12_381_Fr_mont_mul ( buf + (j+halfN)*NLIMBS , gpow , tgt +  j       *NLIMBS );  //   g*v[k]
       bls12_381_Fr_mont_neg ( tgt +  j       *NLIMBS ,        tgt + (j+halfN)*NLIMBS );  // - g*v[k]
       bls12_381_Fr_mont_add_inplace( tgt +  j       *NLIMBS , buf + j*NLIMBS );          // u[k] + g*v[k]
       bls12_381_Fr_mont_add_inplace( tgt + (j+halfN)*NLIMBS , buf + j*NLIMBS );          // u[k] - g*v[k]
-      bls12_381_Fr_mont_mul_inplace( gpow , gen );      
     }
   }
 }
@@ -455,13 +450,43 @@ void bls12_381_poly_mont_ntt_forward_noalloc(int m, int src_stride, const uint64
 // `src` and `tgt` should be `N = 2^m` sized arrays of field elements
 // `gen` should be the generator of the multiplicative subgroup sized `N`
 void bls12_381_poly_mont_ntt_forward(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
-  int N = (1<<m);
+  int N     = (1<<m);
+  int halfN = (N>>1);
+  
+  // precalculate [1,g,g^2,g^3...]
+  uint64_t *gpows = malloc( 8*NLIMBS * halfN );
+  assert( gpows != 0 );
+  uint64_t x[NLIMBS];
+  bls12_381_Fr_mont_set_one( gpows );
+  bls12_381_Fr_mont_copy( gen, gpows + NLIMBS );
+  bls12_381_Fr_mont_copy( gen, x );
+  for(int i=2; i<halfN; i++) {
+    bls12_381_Fr_mont_mul_inplace(x, gen);
+    bls12_381_Fr_mont_copy( x , gpows + (i*NLIMBS) );
+  }
+  
   uint64_t *buf = malloc( 8*NLIMBS * (2*N) );
-  assert( buf !=0 );
-  bls12_381_poly_mont_ntt_forward_noalloc( m, 1, gen, src, buf, tgt);
+  assert( buf != 0 );
+  bls12_381_poly_mont_ntt_forward_noalloc( m, 1, gpows, src, buf, tgt);
   free(buf);
+  free(gpows);
 }
 
+// it's like `ntt_forward` but we pre-multiply the coefficients with `eta^k`
+// resulting in evaluating f(eta*x) instead of f(x)
+void bls12_381_poly_mont_ntt_forward_shifted(const uint64_t *eta, int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
+  int N = (1<<m);
+  uint64_t *shifted = malloc( 8*NLIMBS*N );
+  assert( shifted != 0 );
+  uint64_t x[NLIMBS];
+  bls12_381_Fr_mont_set_one( x );
+  for(int i=0; i<N; i++) {
+    bls12_381_Fr_mont_mul( src + i*NLIMBS, x, shifted + i*NLIMBS );
+    bls12_381_Fr_mont_mul_inplace(x, eta);
+  }
+  bls12_381_poly_mont_ntt_forward( m, gen, shifted, tgt );
+  free(shifted);
+}
 
 
 // -----------------------------------------------------------------------------
@@ -469,7 +494,7 @@ void bls12_381_poly_mont_ntt_forward(int m, const uint64_t *gen, const uint64_t 
 // inverse of 2
 const uint64_t bls12_381_poly_mont_oneHalf[4] = { 0x00000000ffffffff, 0xac425bfd0001a401, 0xccc627f7f65e27fa, 0x0c1258acd66282b7 };
 
-void bls12_381_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64_t *gen, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
+void bls12_381_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64_t *gpows, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
 
   if (m==0) {
     bls12_381_Fr_mont_copy( src, tgt );
@@ -480,33 +505,25 @@ void bls12_381_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64
     // N = 2
     bls12_381_Fr_mont_add( src , src + NLIMBS , tgt                     );   // x + y
     bls12_381_Fr_mont_sub( src , src + NLIMBS , tgt + tgt_stride*NLIMBS );   // x - y
-    bls12_381_Fr_mont_mul_inplace( tgt                     , bls12_381_poly_mont_oneHalf );      // (x + y)/2
-    bls12_381_Fr_mont_mul_inplace( tgt + tgt_stride*NLIMBS , bls12_381_poly_mont_oneHalf );      // (x - y)/2
+    bls12_381_Fr_mont_div_by_2_inplace( tgt                    );      // (x + y)/2
+    bls12_381_Fr_mont_div_by_2_inplace( tgt + tgt_stride*NLIMBS);      // (x - y)/2
     return;
   }
 
   else {
-  
     int N     = (1<< m   );
     int halfN = (1<<(m-1));
 
-    uint64_t ginv[NLIMBS];
-    bls12_381_Fr_mont_inv( gen , ginv );  // gen^-1
-
-    uint64_t gpow[NLIMBS];    
-    bls12_381_Fr_mont_copy(bls12_381_poly_mont_oneHalf , gpow);  // 1/2
     for(int j=0; j<halfN; j++) {
+      const uint64_t *gpow = gpows + j*tgt_stride*NLIMBS;
       bls12_381_Fr_mont_add( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + j        *NLIMBS  );    // x + y
       bls12_381_Fr_mont_sub( src +  j* NLIMBS , src + (j+halfN)*NLIMBS , buf + (j+halfN)*NLIMBS  );    // x - y
-      bls12_381_Fr_mont_mul_inplace( buf + j        *NLIMBS , bls12_381_poly_mont_oneHalf  );    // (x + y) /  2
-      bls12_381_Fr_mont_mul_inplace( buf + (j+halfN)*NLIMBS , gpow     );    // (x - y) / (2*g^k)
-      bls12_381_Fr_mont_mul_inplace( gpow , ginv );      
+      bls12_381_Fr_mont_div_by_2_inplace( buf + j        *NLIMBS );           // (x + y) /  2
+      bls12_381_Fr_mont_mul_inplace(      buf + (j+halfN)*NLIMBS , gpow );    // (x - y) / (2*g^k)
     }
 
-    bls12_381_Fr_mont_sqr( gen, gpow );  // gen^2
-    bls12_381_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf                , buf + N*NLIMBS , tgt                     );
-    bls12_381_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpow , buf + halfN*NLIMBS , buf + N*NLIMBS , tgt + tgt_stride*NLIMBS );
-
+    bls12_381_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpows , buf                , buf + N*NLIMBS , tgt                     );
+    bls12_381_poly_mont_ntt_inverse_noalloc( m-1 , tgt_stride<<1 , gpows , buf + halfN*NLIMBS , buf + N*NLIMBS , tgt + tgt_stride*NLIMBS );
   }
 }
 
@@ -515,11 +532,42 @@ void bls12_381_poly_mont_ntt_inverse_noalloc(int m, int tgt_stride, const uint64
 // `gen` should be the generator of the multiplicative subgroup sized `N`
 void bls12_381_poly_mont_ntt_inverse(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
   int N = (1<<m);
+  int halfN = (N>>1);
+  
+  // precalculate [1/2,g^{-1}/2,g^{-2}/2,g^{-3}/2...]
+  uint64_t *gpows = malloc( 8*NLIMBS * halfN );
+  assert( gpows != 0 );
+  uint64_t x[NLIMBS];
+  uint64_t ginv[NLIMBS];
+  bls12_381_Fr_mont_inv( gen , ginv );                    // gen^-1
+  bls12_381_Fr_mont_copy(bls12_381_poly_mont_oneHalf , x);    // = 1/2
+  for(int i=0; i<halfN; i++) {
+    bls12_381_Fr_mont_copy( x , gpows + (i*NLIMBS) );
+    if (i < halfN-1) bls12_381_Fr_mont_mul_inplace(x, ginv);
+  }
+  
   uint64_t *buf = malloc( 8*NLIMBS * (2*N) );
   assert( buf !=0 );
-  bls12_381_poly_mont_ntt_inverse_noalloc( m, 1, gen, src, buf, tgt );
+  bls12_381_poly_mont_ntt_inverse_noalloc( m, 1, gpows, src, buf, tgt );
   free(buf);
+  free(gpows);
+}
+
+// it's like `ntt_inverse` but we post-multiply the resulting coefficients with `eta^k`
+// resulting in interpolating an f such that f(eta^-1 * omega^k) = y_k
+void bls12_381_poly_mont_ntt_inverse_shifted(const uint64_t *eta, int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
+  int N = (1<<m);
+  uint64_t *unshifted = malloc( 8*NLIMBS*N );
+  assert( unshifted != 0 );
+  bls12_381_poly_mont_ntt_inverse( m, gen, src, unshifted );
+  uint64_t x[NLIMBS];
+  bls12_381_Fr_mont_set_one( x );
+  for(int i=0; i<N; i++) {
+    bls12_381_Fr_mont_mul( unshifted + i*NLIMBS, x, tgt + i*NLIMBS );
+    bls12_381_Fr_mont_mul_inplace(x, eta);
+  }
+  free(unshifted);
 }
 
 // -----------------------------------------------------------------------------
- 
+
