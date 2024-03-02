@@ -37,6 +37,7 @@ import ZK.Algebra.Curves.BLS12_381.G1.Affine ( G1 )
 import ZK.Algebra.Curves.BLS12_381.G2.Affine ( G2 )
 
 import qualified ZK.Algebra.Curves.BLS12_381.Fr.Mont   as Fr
+import qualified ZK.Algebra.Curves.BLS12_381.Fr.Std    as StdFr
 import qualified ZK.Algebra.Curves.BLS12_381.Fp.Mont   as Fp
 import qualified ZK.Algebra.Curves.BLS12_381.Fp2.Mont  as Fp2
 import qualified ZK.Algebra.Curves.BLS12_381.Fp6.Mont  as Fp6
@@ -59,6 +60,7 @@ instance P.PairingCurve 'P.BLS12_381 where
   type Fp2    'P.BLS12_381 = Fp2.Fp2
   type Fp12   'P.BLS12_381 = Fp12.Fp12
   type Fr     'P.BLS12_381 = Fr.Fr
+  type StdFr  'P.BLS12_381 = StdFr.Fr
   type G1     'P.BLS12_381 = AffG1.G1
   type G2     'P.BLS12_381 = AffG2.G2
   type ProjG1 'P.BLS12_381 = ProjG1.G1

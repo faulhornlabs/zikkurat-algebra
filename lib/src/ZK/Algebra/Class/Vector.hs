@@ -17,6 +17,17 @@ import ZK.Algebra.Class.Flat
 import ZK.Algebra.Class.FFT
 
 --------------------------------------------------------------------------------
+
+-- | A sparse matrix
+data SparseMatrix a = MkSparseMatrix
+  { _sparseDims    :: !(Int,Int)
+  , _sparseRowIdxs :: !(FlatArray Int)
+  , _sparseColIdxs :: !(FlatArray Int)
+  , _sparseCoeffs  :: !(FlatArray a  )
+  }
+  deriving Show
+
+--------------------------------------------------------------------------------
 -- * Pointwise operations
 
 class PointwiseGroup a where
@@ -82,6 +93,8 @@ class (WrappedArray v, Field (Element v), PointwiseField v) => VectorSpace v whe
   linComb1 :: (Element v, v) -> v -> v
   -- | Linear combination @a*x + b*y@
   linComb2 :: (Element v, v) -> (Element v, v) -> v
+  -- | Sparse matrix multiplication
+  sparseMatrixMul :: SparseMatrix (Element v) -> v -> v
   -- | Append
   vecAppend :: v -> v -> v
   -- | Cons

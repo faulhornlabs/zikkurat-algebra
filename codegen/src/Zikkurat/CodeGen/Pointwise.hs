@@ -320,6 +320,31 @@ c_dotprod_etc params@(PwParams{..}) =
 
 --------------------------------------------------------------------------------
 
+c_matrix_mul_etc :: PwParams -> Code
+c_matrix_mul_etc params@(PwParams{..}) =
+  [ "// sparse matrix multiplication: A*v where"
+  , "//  - A is an N x M sparse matrix, with K nonzero coefficients"
+  , "//  - v is length M dense vector"
+  , "//  - with the result being a length N dense vector"
+  , "// the matrix A is encoded with 3 arrays of length K:"
+  , "//  - row indices"
+  , "//  - column indices"
+  , "//  - coefficients"
+  , "void " ++ prefix ++ "sparse_matrix_mul( int N, int K, const uint64_t *row_idxs, const uint64_t *col_idxs, const uint64_t *coeffs, const uint64_t *src, uint64_t *tgt ) {"
+  , "  memset( tgt, 0, N*8*ELEM_NWORDS );"
+  , "  for(int i=0; i<K; i++) {"
+  , "    int row = row_idxs[i];"
+  , "    int col = col_idxs[i];"
+  , "    uint64_t tmp[ELEM_NWORDS];"
+  , "    " ++ elem_prefix ++ "mul( coeffs + i*ELEM_NWORDS , SRC(col) , tmp );"
+  , "    " ++ elem_prefix ++ "add_inplace( TGT(row) , tmp );"
+  , "  }"  
+  , "}"
+  , ""
+  ]
+
+--------------------------------------------------------------------------------
+
 c_append :: PwParams -> Code
 c_append params@(PwParams{..}) =
   [ "void " ++ prefix ++ "append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
@@ -413,6 +438,8 @@ hsBegin (PwParams{..}) =
   , "    -- * Linear combination"
   , "  , linComb1"
   , "  , linComb2"
+  , "    -- * Matrix multiplication"
+  , "  , sparseMatrixMul"
   , "  )"  
   , "  where"
   , ""
@@ -485,6 +512,7 @@ hsBegin (PwParams{..}) =
   , "  vecAppend   = " ++ hsModule hs_path ++ ".append"
   , "  vecCons     = " ++ hsModule hs_path ++ ".cons"
   , "  vecSnoc     = " ++ hsModule hs_path ++ ".snoc"
+  , "  sparseMatrixMul = " ++ hsModule hs_path ++ ".sparseMatrixMul"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -540,6 +568,30 @@ hsBegin (PwParams{..}) =
   , "              withForeignPtr fptr_o $ \\ptr_o -> do" 
   , "                c_" ++ prefix ++ "Ax_plus_By (fromIntegral n1) ptr_a ptr_b ptr_x ptr_y ptr_o"
   , "      return (MkFlatArray n1 fptr_o)"
+  , ""
+  , "--------------------------------------------------------------------------------"
+  , ""
+  , "-- void " ++ prefix ++ "sparse_matrix_mul( int N, int K, const uint64_t *row_idxs, const uint64_t *col_idxs, const uint64_t *coeffs, const uint64_t *src, uint64_t *tgt ) {"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "sparse_matrix_mul\"  c_" ++ prefix ++ "sparse_matrix_mul :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "{-# NOINLINE sparseMatrixMul_ #-}"
+  , "sparseMatrixMul_ :: Int -> (FlatArray Int, FlatArray Int, FlatArray " ++ typeNameBase ++ ") -> FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase 
+  , "sparseMatrixMul_ n (MkFlatArray k1 fptr_row, MkFlatArray k2 fptr_col, MkFlatArray k3 fptr_cfs) (MkFlatArray m fptr_src)"
+  , "  | k1 /= k2 || k1 /= k3  = error \"sparseMatrixMul_: invalid sparse matrix (incompatible lengths)\""
+  , "  | otherwise             = unsafePerformIO $ do"
+  , "      fptr_out <- mallocForeignPtrArray (n*" ++ show elemNWords ++ ")"
+  , "      withForeignPtr fptr_row $ \\ptr_row -> do"
+  , "        withForeignPtr fptr_col $ \\ptr_col -> do"
+  , "          withForeignPtr fptr_cfs $ \\ptr_cfs -> do"
+  , "            withForeignPtr fptr_src $ \\ptr_src -> do"
+  , "              withForeignPtr fptr_out $ \\ptr_out -> do" 
+  , "                c_" ++ prefix ++ "sparse_matrix_mul (fromIntegral n) (fromIntegral k1) ptr_row ptr_col ptr_cfs ptr_src ptr_out"
+  , "      return (MkFlatArray n fptr_out)"
+  , ""
+  , "sparseMatrixMul :: V.SparseMatrix " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
+  , "sparseMatrixMul (V.MkSparseMatrix (n,m) rowIdxs colIdxs coeffs) vec"
+  , "  | m == L.flatArrayLength vec  = sparseMatrixMul_ n (rowIdxs, colIdxs, coeffs) vec"
+  , "  | otherwise                   = error \"sparseMatrixMul: incompatible matrix/vector dimensions\""
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -626,6 +678,7 @@ c_code pwparams = concat $ map ("":)
   , c_add_sub_mul_etc         pwparams
   , c_add_sub_mul_etc_inplace pwparams
   , c_dotprod_etc             pwparams
+  , c_matrix_mul_etc          pwparams
   , c_scale_lincomb_etc       pwparams
   ]
 

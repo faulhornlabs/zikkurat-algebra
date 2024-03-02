@@ -31,6 +31,8 @@ module ZK.Algebra.Curves.BN128.Array
     -- * Linear combination
   , linComb1
   , linComb2
+    -- * Matrix multiplication
+  , sparseMatrixMul
   )
   where
 
@@ -103,6 +105,7 @@ instance V.VectorSpace (FlatArray Fr) where
   vecAppend   = ZK.Algebra.Curves.BN128.Array.append
   vecCons     = ZK.Algebra.Curves.BN128.Array.cons
   vecSnoc     = ZK.Algebra.Curves.BN128.Array.snoc
+  sparseMatrixMul = ZK.Algebra.Curves.BN128.Array.sparseMatrixMul
 
 --------------------------------------------------------------------------------
 
@@ -158,6 +161,30 @@ linComb2 (MkFr fptr_a, MkFlatArray n1 fptr_x) (MkFr fptr_b, MkFlatArray n2 fptr_
               withForeignPtr fptr_o $ \ptr_o -> do
                 c_bn128_arr_mont_Ax_plus_By (fromIntegral n1) ptr_a ptr_b ptr_x ptr_y ptr_o
       return (MkFlatArray n1 fptr_o)
+
+--------------------------------------------------------------------------------
+
+-- void bn128_arr_mont_sparse_matrix_mul( int N, int K, const uint64_t *row_idxs, const uint64_t *col_idxs, const uint64_t *coeffs, const uint64_t *src, uint64_t *tgt ) {
+foreign import ccall unsafe "bn128_arr_mont_sparse_matrix_mul"  c_bn128_arr_mont_sparse_matrix_mul :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE sparseMatrixMul_ #-}
+sparseMatrixMul_ :: Int -> (FlatArray Int, FlatArray Int, FlatArray Fr) -> FlatArray Fr -> FlatArray Fr
+sparseMatrixMul_ n (MkFlatArray k1 fptr_row, MkFlatArray k2 fptr_col, MkFlatArray k3 fptr_cfs) (MkFlatArray m fptr_src)
+  | k1 /= k2 || k1 /= k3  = error "sparseMatrixMul_: invalid sparse matrix (incompatible lengths)"
+  | otherwise             = unsafePerformIO $ do
+      fptr_out <- mallocForeignPtrArray (n*4)
+      withForeignPtr fptr_row $ \ptr_row -> do
+        withForeignPtr fptr_col $ \ptr_col -> do
+          withForeignPtr fptr_cfs $ \ptr_cfs -> do
+            withForeignPtr fptr_src $ \ptr_src -> do
+              withForeignPtr fptr_out $ \ptr_out -> do
+                c_bn128_arr_mont_sparse_matrix_mul (fromIntegral n) (fromIntegral k1) ptr_row ptr_col ptr_cfs ptr_src ptr_out
+      return (MkFlatArray n fptr_out)
+
+sparseMatrixMul :: V.SparseMatrix Fr -> FlatArray Fr -> FlatArray Fr
+sparseMatrixMul (V.MkSparseMatrix (n,m) rowIdxs colIdxs coeffs) vec
+  | m == L.flatArrayLength vec  = sparseMatrixMul_ n (rowIdxs, colIdxs, coeffs) vec
+  | otherwise                   = error "sparseMatrixMul: incompatible matrix/vector dimensions"
 
 --------------------------------------------------------------------------------
 

@@ -131,6 +131,8 @@ TODO
 - [x] property-based test framework
 - [ ] unit-test framework
 - [ ] figure out nicer polymorphic API-s
+- [ ] refactor flat arrays into a separate library
+- [ ] refactor curve "database" into a separate library
 - [x] vectors of field elements
 - [ ] long division of bigints
 - [x] faster Frobenius automorphism 

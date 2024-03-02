@@ -61,6 +61,7 @@ class
   , ExtField'       (Fp12 c)
   , FFTField        (Fr c)
   , PrimeField      (Fr c)
+  , PrimeField      (StdFr c)
   , MontgomeryField (Fp c)
   , MontgomeryField (Fr c)
   , AffineCurve     (G1 c)
@@ -71,6 +72,7 @@ class
   , VectorSpace     (FlatArray (Fr c))
   , ExtBase         (Fp2  c) ~ Fp c
   , PrimeBase       (Fp12 c) ~ Fp c
+  , StandardField   (Fr c) ~ StdFr c 
   , BaseField       (G1 c) ~ Fp  c
   , BaseField       (G2 c) ~ Fp2 c
   , ScalarField     (G1 c) ~ Fr  c
@@ -84,6 +86,7 @@ class
     type Fp2    c :: Type
     type Fp12   c :: Type
     type Fr     c :: Type
+    type StdFr  c :: Type
     type G1     c :: Type
     type G2     c :: Type
     type ProjG1 c :: Type

@@ -10,6 +10,7 @@ module ZK.Algebra.Class.Flat where
 --------------------------------------------------------------------------------
 
 import Data.Array
+import Data.Int
 import Data.Word
 import Data.Proxy
 import Data.Kind
@@ -19,6 +20,7 @@ import Control.Monad
 import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Marshal
+import Foreign.Storable
 
 import System.IO
 import System.IO.Unsafe
@@ -36,6 +38,33 @@ class Flat a where
   withFlat :: a -> (Ptr Word64 -> IO b) -> IO b
   -- | Create a new instance by copying the data from memory
   makeFlat :: Ptr Word64 -> IO a
+
+-- we assume that we are on a 64 bit machine and `Int = Int64s`
+instance Flat Int where
+  sizeInBytes  _ = 8
+  sizeInQWords _ = 1
+  withFlat x action = alloca $ \ptr -> poke (castPtr ptr) x >> action ptr
+  makeFlat ptr      = peek (castPtr ptr)
+
+instance Flat Word where
+  sizeInBytes  _ = 8
+  sizeInQWords _ = 1
+  withFlat x action = alloca $ \ptr -> poke (castPtr ptr) x >> action ptr
+  makeFlat ptr      = peek (castPtr ptr)
+
+instance Flat Int64 where
+  sizeInBytes  _ = 8
+  sizeInQWords _ = 1
+  withFlat x action = alloca $ \ptr -> poke (castPtr ptr) x >> action ptr
+  makeFlat ptr      = peek (castPtr ptr)
+
+instance Flat Word64 where
+  sizeInBytes  _ = 8
+  sizeInQWords _ = 1
+  withFlat x action = alloca $ \ptr -> poke ptr x >> action ptr
+  makeFlat ptr      = peek ptr
+
+--------------------------------------------------------------------------------
 
 makeFlatGeneric :: (ForeignPtr Word64 -> a) -> Int -> Ptr Word64 -> IO a
 makeFlatGeneric wrap nwords srcPtr = do
@@ -92,6 +121,9 @@ flatArraySizeInBytes (MkFlatArray n _) = n * sizeInBytes (Proxy @a)
 withFlatArray :: FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO b
 withFlatArray (MkFlatArray n fptr) action = do
   withForeignPtr fptr $ \ptr -> action n ptr
+
+unsafeCastFlatArray :: FlatArray a -> FlatArray b
+unsafeCastFlatArray (MkFlatArray n fptr) = MkFlatArray n fptr
 
 -- | Note: currently, this does a copy. Maybe we should refactor @Flat@ so that this not happen? 
 {-# NOINLINE singletonArray #-}

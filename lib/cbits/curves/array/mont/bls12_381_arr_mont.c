@@ -204,6 +204,26 @@ void bls12_381_arr_mont_mul_by_powers ( int n, const uint64_t *coeffA, const uin
   }
 }
 
+// sparse matrix multiplication: A*v where
+//  - A is an N x M sparse matrix, with K nonzero coefficients
+//  - v is length M dense vector
+//  - with the result being a length N dense vector
+// the matrix A is encoded with 3 arrays of length K:
+//  - row indices
+//  - column indices
+//  - coefficients
+void bls12_381_arr_mont_sparse_matrix_mul( int N, int K, const uint64_t *row_idxs, const uint64_t *col_idxs, const uint64_t *coeffs, const uint64_t *src, uint64_t *tgt ) {
+  memset( tgt, 0, N*8*ELEM_NWORDS );
+  for(int i=0; i<K; i++) {
+    int row = row_idxs[i];
+    int col = col_idxs[i];
+    uint64_t tmp[ELEM_NWORDS];
+    bls12_381_Fr_mont_mul( coeffs + i*ELEM_NWORDS , SRC(col) , tmp );
+    bls12_381_Fr_mont_add_inplace( TGT(row) , tmp );
+  }
+}
+
+
 
 void bls12_381_arr_mont_scale ( int n, const uint64_t *coeff, const uint64_t *src2, uint64_t *tgt ) {
   for(int i=0; i<n; i++) bls12_381_Fr_mont_mul( coeff, SRC2(i), TGT(i) ); 
