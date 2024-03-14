@@ -31,22 +31,22 @@ else
   OPT_REINSTALL="--force-reinstalls"
 fi
 
-cd ${ROOT}/pure
-echo "============================="
-echo "building the pure haskell lib"
-echo "============================="
-#echo "current directory = `pwd`"
-cabal ${VX}clean
-cabal ${VX}build                     || error_exit "building the pure lib failed"
-cabal ${VX}haddock ${OPT_HYPERLINK}  || error_exit "pure hlib addock failed"
-cabal ${VX}install --disable-documentation $OPT_REINSTALL || error_exit "installing the codegen failed"
-# #if [ "$CABAL_MAJOR_VER" = "2" ]
-# if [ "$VX" = "v2-" ]
-# then
-#   cabal ${VX}install --disable-documentation --force-reinstalls --overwrite-policy=always || error_exit "installing the codegen failed"
-# else
-#   cabal ${VX}install --disable-documentation --force-reinstalls || error_exit "installing the codegen failed"
-# fi
+# cd ${ROOT}/pure
+# echo "============================="
+# echo "building the pure haskell lib"
+# echo "============================="
+# #echo "current directory = `pwd`"
+# cabal ${VX}clean
+# cabal ${VX}build                     || error_exit "building the pure lib failed"
+# cabal ${VX}haddock ${OPT_HYPERLINK}  || error_exit "pure hlib addock failed"
+# cabal ${VX}install --disable-documentation $OPT_REINSTALL || error_exit "installing the codegen failed"
+# # #if [ "$CABAL_MAJOR_VER" = "2" ]
+# # if [ "$VX" = "v2-" ]
+# # then
+# #   cabal ${VX}install --disable-documentation --force-reinstalls --overwrite-policy=always || error_exit "installing the codegen failed"
+# # else
+# #   cabal ${VX}install --disable-documentation --force-reinstalls || error_exit "installing the codegen failed"
+# # fi
 
 cd ${ROOT}/codegen
 echo "===================="
@@ -55,7 +55,7 @@ echo "===================="
 #echo "current directory = `pwd`"
 cabal ${VX}clean
 cabal ${VX}build                     || error_exit "building the codegen failed"
-cabal ${VX}haddock ${OPT_HYPERLINK}  || error_exit "codegen haddock failed"
+# cabal ${VX}haddock ${OPT_HYPERLINK}  || error_exit "codegen haddock failed"
 cabal ${VX}install --disable-documentation $OPT_REINSTALL || error_exit "installing the codegen failed"
 # # if [ "$CABAL_MAJOR_VER" = "2" ]
 # if [ "$VX" = "v2-" ]

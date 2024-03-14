@@ -3,8 +3,10 @@
 //
 // NOTES:
 //  - generated code, do not edit!
-//  - the point at infinity is represented by the special string 0xffff ..fffff
-//    this is not a valid value for prime fields, so it's OK as long as we always check for it
+//  - the point at infinity is represented by (0,0) if B!=0, and the special string 0xffff ..fffff if B==0.
+//    0xffff...ffff is not a valid value for prime fields, so it's OK as long as we always check for it.
+//    however other libraries use (0,0), which is not a valid curve point as long as B!=0, so we adapt that
+//    because interop is too painful otherwise
 
 #include <string.h>
 #include <stdlib.h>
@@ -40,13 +42,6 @@ const uint64_t bn128_G2_affine_const_3B[8] = { 0x3baa927cb62e0d6a, 0xd71e7c52d1b
 
 //------------------------------------------------------------------------------
 
-void bn128_G2_affine_set_ffff( uint64_t *tgt ) {
-  memset( tgt, 0xff, 64 );
-}
-
-uint8_t bn128_G2_affine_is_ffff( const uint64_t *src ) {
-  return ( (src[0] + 1 == 0) && (src[1] + 1 == 0) && (src[2] + 1 == 0) && (src[3] + 1 == 0) && (src[4] + 1 == 0) && (src[5] + 1 == 0) && (src[6] + 1 == 0) && (src[7] + 1 == 0) );
-}
 
 // checks whether two curve points are equal
 uint8_t bn128_G2_affine_is_equal( const uint64_t *src1, const uint64_t *src2 ) {
@@ -60,34 +55,14 @@ uint8_t bn128_G2_affine_is_same( const uint64_t *src1, const uint64_t *src2 ) {
 }
 
 uint8_t bn128_G2_affine_is_infinity ( const uint64_t *src1 ) {
-  return ( bn128_G2_affine_is_ffff( X1 ) &&
-           bn128_G2_affine_is_ffff( Y1 ) );
+  return ( bn128_Fp2_mont_is_zero( X1 ) &&
+           bn128_Fp2_mont_is_zero( Y1 ) );
 }
 
-// convert from the more standard convention of encoding infinity as (0,0)
-// to our convention (0xffff...,0xffff...). TODO: maybe change our convention
-// to the more standard one?
-void bn128_G2_affine_convert_infinity_inplace( uint64_t *tgt) 
-{ if ( (bn128_Fp2_mont_is_zero(tgt           ) ) && 
-       (bn128_Fp2_mont_is_zero(tgt + NLIMBS_P) ) ) {
-    bn128_G2_affine_set_infinity(tgt);
-  }
-}
-
-void bn128_G2_affine_batch_convert_infinity_inplace( int n, uint64_t *tgt ) 
-{ uint64_t *q = tgt;
-  for(int i=0; i<n; i++) {
-    if ( (bn128_Fp2_mont_is_zero(q           ) ) && 
-         (bn128_Fp2_mont_is_zero(q + NLIMBS_P) ) ) {
-      bn128_G2_affine_set_infinity(q);
-    }
-    q += 2*NLIMBS_P;
-  }
-}
-
+// infinity is represented by (0,0) for curves with B!=0 (like this one), and 0xffff...ffff for curves with B=0
 void bn128_G2_affine_set_infinity ( uint64_t *tgt ) {
-  bn128_G2_affine_set_ffff( X3 );
-  bn128_G2_affine_set_ffff( Y3 );
+  bn128_Fp2_mont_set_zero( X3 );
+  bn128_Fp2_mont_set_zero( Y3 );
 }
 
 // checks the curve equation

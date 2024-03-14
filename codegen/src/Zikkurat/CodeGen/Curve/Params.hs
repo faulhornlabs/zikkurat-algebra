@@ -30,6 +30,13 @@ isCurveBZero ei = case ei of
   Left  c1             -> curveB    c1 == 0
   Right (Curve12 _ c2) -> g2_curveB c2 == (0,0)
 
+xcurveBCoeff :: XCurve -> Integer
+xcurveBCoeff (Left  curve1 ) = curveB          curve1
+xcurveBCoeff (Right curve12) = curveB (_curve1 curve12)
+
+xcurveIsBZero :: XCurve -> Bool
+xcurveIsBZero xcurve = xcurveBCoeff xcurve == 0
+
 --------------------------------------------------------------------------------
 
 data Curve12 = Curve12 

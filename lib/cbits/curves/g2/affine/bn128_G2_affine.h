@@ -7,9 +7,6 @@ extern uint8_t bn128_G2_affine_is_infinity   ( const uint64_t *src );
 extern void    bn128_G2_affine_set_infinity  (       uint64_t *tgt );
 extern uint8_t bn128_G2_affine_is_in_subgroup( const uint64_t *src );
 
-extern void bn128_G2_affine_convert_infinity_inplace( uint64_t *tgt );
-extern void bn128_G2_affine_batch_convert_infinity_inplace( int N, uint64_t *tgt );
-
 extern uint8_t bn128_G2_affine_is_equal( const uint64_t *src1, const uint64_t *src2 );
 extern uint8_t bn128_G2_affine_is_same ( const uint64_t *src1, const uint64_t *src2 );
 

@@ -25,7 +25,7 @@ module ZK.Algebra.Curves.BN128.G1.Affine
   , msm , msmStd
     -- * Fast-Fourier transform
   , forwardFFT , inverseFFT
-    -- * handling infinities
+    -- * handling infinities hack (TODO: do this properly)
   , convertInfinityIO
   , batchConvertInfinityIO
     -- * Sage
@@ -112,7 +112,7 @@ unsafeMkPoint (MkBase fptr1 , MkBase fptr2) = unsafePerformIO $ do
 
 foreign import ccall unsafe "bn128_G1_affine_set_infinity" c_bn128_G1_affine_set_infinity :: Ptr Word64 -> IO ()
 
--- | The point at infinity (represented as the special string @0xffff...ffff@)
+-- | The point at infinity (represented as (0,0) for curves with B/=0, and special string @0xffff...ffff@ for curves with B=0)
 {-# NOINLINE infinity #-}
 infinity :: G1
 infinity = unsafePerformIO $ do
@@ -226,16 +226,11 @@ sclBig k pt
 
 --------------------------------------------------------------------------------
 
-foreign import ccall unsafe "bn128_G1_affine_convert_infinity_inplace" c_bn128_G1_affine_convert_infinity_inplace :: Ptr Word64 -> IO ()
-foreign import ccall unsafe "bn128_G1_affine_batch_convert_infinity_inplace" c_bn128_G1_affine_batch_convert_infinity_inplace :: CInt -> Ptr Word64 -> IO ()
-
 convertInfinityIO :: G1 -> IO ()
-convertInfinityIO (MkG1 fptr) = do
-  withForeignPtr fptr $ \ptr -> c_bn128_G1_affine_convert_infinity_inplace ptr
+convertInfinityIO _ = return ()
 
 batchConvertInfinityIO :: L.FlatArray G1 -> IO ()
-batchConvertInfinityIO (L.MkFlatArray n fptr) = do
-  withForeignPtr fptr $ \ptr -> c_bn128_G1_affine_batch_convert_infinity_inplace (fromIntegral n) ptr
+batchConvertInfinityIO _ = return ()
 
 --------------------------------------------------------------------------------
 

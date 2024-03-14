@@ -21,8 +21,8 @@ import Zikkurat.CodeGen.Curve.Shared
 
 --------------------------------------------------------------------------------
 
-c_header :: CodeGenParams -> Code
-c_header (CodeGenParams{..}) =
+c_header :: XCurve -> CodeGenParams -> Code
+c_header xcurve (CodeGenParams{..}) =
   [ "#include <stdint.h>"
   , ""
   , "extern void " ++ prefix ++ "copy( const uint64_t *src , uint64_t *tgt );"
@@ -32,10 +32,16 @@ c_header (CodeGenParams{..}) =
   , "extern void    " ++ prefix ++ "set_infinity  (       uint64_t *tgt );"
   , "extern uint8_t " ++ prefix ++ "is_in_subgroup( const uint64_t *src );"
   , ""
-  , "extern void " ++ prefix ++ "convert_infinity_inplace( uint64_t *tgt );"
-  , "extern void " ++ prefix ++ "batch_convert_infinity_inplace( int N, uint64_t *tgt );"
-  , "" 
-  , "extern uint8_t " ++ prefix ++ "is_equal( const uint64_t *src1, const uint64_t *src2 );"
+  ] ++ 
+  ( if xcurveIsBZero xcurve
+      then
+        [ "extern void " ++ prefix ++ "convert_infinity_inplace( uint64_t *tgt );"
+        , "extern void " ++ prefix ++ "batch_convert_infinity_inplace( int N, uint64_t *tgt );"
+        , "" 
+        ]
+      else
+        [])++
+  [ "extern uint8_t " ++ prefix ++ "is_equal( const uint64_t *src1, const uint64_t *src2 );"
   , "extern uint8_t " ++ prefix ++ "is_same ( const uint64_t *src1, const uint64_t *src2 );"
   , ""
   , "extern void " ++ prefix ++ "neg        ( const uint64_t *src ,       uint64_t *tgt );"
@@ -149,7 +155,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  , msm , msmStd"
   , "    -- * Fast-Fourier transform"
   , "  , forwardFFT , inverseFFT"
-  , "    -- * handling infinities"
+  , "    -- * handling infinities hack (TODO: do this properly)"
   , "  , convertInfinityIO"
   , "  , batchConvertInfinityIO"
   , "    -- * Sage"
@@ -235,7 +241,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , ""
   , "foreign import ccall unsafe \"" ++ prefix ++ "set_infinity\" c_" ++ prefix ++ "set_infinity :: Ptr Word64 -> IO ()"
   , ""
-  , "-- | The point at infinity (represented as the special string @0xffff...ffff@)"
+  , "-- | The point at infinity (represented as (0,0) for curves with B/=0, and special string @0xffff...ffff@ for curves with B=0)"
   , "{-# NOINLINE infinity #-}"
   , "infinity :: " ++ typeName
   , "infinity = unsafePerformIO $ do"
@@ -349,17 +355,29 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
-  , "foreign import ccall unsafe \"" ++ prefix ++       "convert_infinity_inplace\" c_" ++ prefix ++       "convert_infinity_inplace :: Ptr Word64 -> IO ()"
-  , "foreign import ccall unsafe \"" ++ prefix ++ "batch_convert_infinity_inplace\" c_" ++ prefix ++ "batch_convert_infinity_inplace :: CInt -> Ptr Word64 -> IO ()"
-  , ""
-  , "convertInfinityIO :: " ++ typeName ++ " -> IO ()"
-  , "convertInfinityIO (Mk" ++ typeName ++ " fptr) = do"
-  , "  withForeignPtr fptr $ \\ptr -> c_" ++ prefix ++ "convert_infinity_inplace ptr"
-  , ""
-  , "batchConvertInfinityIO :: L.FlatArray " ++ typeName ++ " -> IO ()"
-  , "batchConvertInfinityIO (L.MkFlatArray n fptr) = do"
-  , "  withForeignPtr fptr $ \\ptr -> c_" ++ prefix ++ "batch_convert_infinity_inplace (fromIntegral n) ptr"
-  , ""
+  ] ++
+  (if xcurveIsBZero xcurve
+    then 
+      [ "foreign import ccall unsafe \"" ++ prefix ++       "convert_infinity_inplace\" c_" ++ prefix ++       "convert_infinity_inplace :: Ptr Word64 -> IO ()"
+      , "foreign import ccall unsafe \"" ++ prefix ++ "batch_convert_infinity_inplace\" c_" ++ prefix ++ "batch_convert_infinity_inplace :: CInt -> Ptr Word64 -> IO ()"
+      , ""
+      , "convertInfinityIO :: " ++ typeName ++ " -> IO ()"
+      , "convertInfinityIO (Mk" ++ typeName ++ " fptr) = do"
+      , "  withForeignPtr fptr $ \\ptr -> c_" ++ prefix ++ "convert_infinity_inplace ptr"
+      , ""
+      , "batchConvertInfinityIO :: L.FlatArray " ++ typeName ++ " -> IO ()"
+      , "batchConvertInfinityIO (L.MkFlatArray n fptr) = do"
+      , "  withForeignPtr fptr $ \\ptr -> c_" ++ prefix ++ "batch_convert_infinity_inplace (fromIntegral n) ptr"
+      ]
+    else
+      [ "convertInfinityIO :: " ++ typeName ++ " -> IO ()"
+      , "convertInfinityIO _ = return ()"
+      , ""
+      , "batchConvertInfinityIO :: L.FlatArray " ++ typeName ++ " -> IO ()"
+      , "batchConvertInfinityIO _ = return ()"
+      ]
+  ) ++
+  [ ""
   , "--------------------------------------------------------------------------------"
   , ""
   ]
@@ -374,8 +392,10 @@ c_begin xcurve cgparams@(CodeGenParams{..}) =
   , "//"
   , "// NOTES:"
   , "//  - generated code, do not edit!"
-  , "//  - the point at infinity is represented by the special string 0xffff ..fffff"
-  , "//    this is not a valid value for prime fields, so it's OK as long as we always check for it"
+  , "//  - the point at infinity is represented by (0,0) if B!=0, and the special string 0xffff ..fffff if B==0."
+  , "//    0xffff...ffff is not a valid value for prime fields, so it's OK as long as we always check for it."
+  , "//    however other libraries use (0,0), which is not a valid curve point as long as B!=0, so we adapt that"
+  , "//    because interop is too painful otherwise"
   , ""
   , "#include <string.h>"
   , "#include <stdlib.h>"
@@ -406,16 +426,22 @@ c_begin xcurve cgparams@(CodeGenParams{..}) =
   [ ""
   , "//------------------------------------------------------------------------------"
   , ""
-  , "void " ++ prefix ++ "set_ffff( uint64_t *tgt ) {"
-  , "  memset( tgt, 0xff, " ++ show (8*nlimbs_p) ++ " );"
-  , "}"
-  , ""
-  , "uint8_t " ++ prefix ++ "is_ffff( const uint64_t *src ) {"
-  , "  return ( " ++ intercalate " && " 
-         [ "(src[" ++ show i ++ "] + 1 == 0)" | i <-[0..nlimbs_p-1] ] ++ " );"
-  , "}"
-  ] 
-
+  ] ++
+  (if xcurveIsBZero xcurve
+    then 
+      [ "void " ++ prefix ++ "set_ffff( uint64_t *tgt ) {"
+      , "  memset( tgt, 0xff, " ++ show (8*nlimbs_p) ++ " );"
+      , "}"
+      , ""
+      , "uint8_t " ++ prefix ++ "is_ffff( const uint64_t *src ) {"
+      , "  return ( " ++ intercalate " && " 
+             [ "(src[" ++ show i ++ "] + 1 == 0)" | i <-[0..nlimbs_p-1] ] ++ " );"
+      , "}"
+      ]
+    else
+      []
+  )
+  
 --------------------------------------------------------------------------------
 
 isOnCurve :: XCurve -> CodeGenParams -> Code
@@ -431,37 +457,54 @@ isOnCurve xcurve (CodeGenParams{..}) =
   , "  return " ++ prefix ++ "is_equal( src1, src2 );"
   , "}"
   , ""
-  , "uint8_t " ++ prefix ++ "is_infinity ( const uint64_t *src1 ) {"
-  , "  return ( " ++ prefix ++ "is_ffff( X1 ) &&"
-  , "           " ++ prefix ++ "is_ffff( Y1 ) );"
-  , "}"
-  , ""
-  , "// convert from the more standard convention of encoding infinity as (0,0)"
-  , "// to our convention (0xffff...,0xffff...). TODO: maybe change our convention"
-  , "// to the more standard one?"
-  , "void " ++ prefix ++ "convert_infinity_inplace( uint64_t *tgt) "
-  , "{ if ( (" ++ prefix_p ++ "is_zero(tgt           ) ) && "
-  , "       (" ++ prefix_p ++ "is_zero(tgt + NLIMBS_P) ) ) {"
-  , "    " ++ prefix ++ "set_infinity(tgt);"
-  , "  }"
-  , "}"
-  , ""
-  , "void " ++ prefix ++ "batch_convert_infinity_inplace( int n, uint64_t *tgt ) "
-  , "{ uint64_t *q = tgt;"
-  , "  for(int i=0; i<n; i++) {"
-  , "    if ( (" ++ prefix_p ++ "is_zero(q           ) ) && "
-  , "         (" ++ prefix_p ++ "is_zero(q + NLIMBS_P) ) ) {"
-  , "      " ++ prefix ++ "set_infinity(q);" 
-  , "    }"
-  , "    q += 2*NLIMBS_P;"
-  , "  }"
-  , "}"
-  , ""
-  , "void " ++ prefix ++ "set_infinity ( uint64_t *tgt ) {"
-  , "  " ++ prefix ++ "set_ffff( X3 );"
-  , "  " ++ prefix ++ "set_ffff( Y3 );"
-  , "}"
-  , ""
+  ] ++
+  (if xcurveIsBZero xcurve
+    then
+      [ "uint8_t " ++ prefix ++ "is_infinity ( const uint64_t *src1 ) {"
+      , "  return ( " ++ prefix ++ "is_ffff( X1 ) &&"
+      , "           " ++ prefix ++ "is_ffff( Y1 ) );"
+      , "}"
+      , ""
+      , "// convert from the more standard convention of encoding infinity as (0,0)"
+      , "// to our convention (0xffff...,0xffff...)."
+      , "void " ++ prefix ++ "convert_infinity_inplace( uint64_t *tgt) "
+      , "{ if ( (" ++ prefix_p ++ "is_zero(tgt           ) ) && "
+      , "       (" ++ prefix_p ++ "is_zero(tgt + NLIMBS_P) ) ) {"
+      , "    " ++ prefix ++ "set_infinity(tgt);"
+      , "  }"
+      , "}"
+      , ""
+      , "void " ++ prefix ++ "batch_convert_infinity_inplace( int n, uint64_t *tgt ) "
+      , "{ uint64_t *q = tgt;"
+      , "  for(int i=0; i<n; i++) {"
+      , "    if ( (" ++ prefix_p ++ "is_zero(q           ) ) && "
+      , "         (" ++ prefix_p ++ "is_zero(q + NLIMBS_P) ) ) {"
+      , "      " ++ prefix ++ "set_infinity(q);" 
+      , "    }"
+      , "    q += 2*NLIMBS_P;"
+      , "  }"
+      , "}"
+      , ""
+      , "// infinity is represented by (0,0) for curves with B!=0, and 0xffff...ffff for curves with B=0 (like this one)"
+      , "void " ++ prefix ++ "set_infinity ( uint64_t *tgt ) {"
+      , "  " ++ prefix ++ "set_ffff( X3 );"
+      , "  " ++ prefix ++ "set_ffff( Y3 );"
+      , "}"
+      ]
+    else
+      [ "uint8_t " ++ prefix ++ "is_infinity ( const uint64_t *src1 ) {"
+      , "  return ( " ++ prefix_p ++ "is_zero( X1 ) &&"
+      , "           " ++ prefix_p ++ "is_zero( Y1 ) );"
+      , "}"
+      , ""
+      , "// infinity is represented by (0,0) for curves with B!=0 (like this one), and 0xffff...ffff for curves with B=0"
+      , "void " ++ prefix ++ "set_infinity ( uint64_t *tgt ) {"
+      , "  " ++ prefix_p ++ "set_zero( X3 );"
+      , "  " ++ prefix_p ++ "set_zero( Y3 );"
+      , "}"
+      ]
+  ) ++ 
+  [ ""
   , "// checks the curve equation"
   , "//   y^2 == x^3 + A*x + B"
   , "uint8_t " ++ prefix ++ "is_on_curve ( const uint64_t *src1 ) {"
@@ -752,7 +795,7 @@ curve_MontAffine_c_codegen tgtdir curve params@(CodeGenParams{..}) = do
   createTgtDirectory fn_c
 
   putStrLn $ "writing `" ++ fn_h ++ "`" 
-  writeFile fn_h $ unlines $ c_header  params
+  writeFile fn_h $ unlines $ c_header curve params
 
   putStrLn $ "writing `" ++ fn_c ++ "`" 
   writeFile fn_c $ unlines $ c_code curve params
