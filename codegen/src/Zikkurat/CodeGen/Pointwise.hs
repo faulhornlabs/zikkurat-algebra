@@ -7,7 +7,7 @@ module Zikkurat.CodeGen.Pointwise where
 --------------------------------------------------------------------------------
 
 import Data.Word
-import Data.List
+import Data.List 
 -- import Text.Printf
 
 import System.FilePath
@@ -54,6 +54,7 @@ c_header (PwParams{..}) =
   , "extern void " ++ prefix ++ "to_std   ( int n, const uint64_t *src , uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "concat( int K , int *ns, const uint64_t **srcs, uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "neg ( int n, const uint64_t *src ,       uint64_t *tgt );"
   , "extern void " ++ prefix ++ "add ( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
@@ -347,11 +348,22 @@ c_matrix_mul_etc params@(PwParams{..}) =
 
 c_append :: PwParams -> Code
 c_append params@(PwParams{..}) =
-  [ "void " ++ prefix ++ "append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  [ "// allocate place for `(n1+n2)` elements!"
+  , "void " ++ prefix ++ "append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
   , "  int N1 = n1 * ELEM_NWORDS;"
   , "  int N2 = n2 * ELEM_NWORDS;"
   , "  memcpy( tgt    , src1 , 8*N1 );"
   , "  memcpy( tgt+N1 , src2 , 8*N2 );"
+  , "}"
+  , ""
+  , "// allocate place for `ns[0]+ns[1]+...+ns[K-1]` elements!"
+  , "void " ++ prefix ++ "concat( int K , int *ns, const uint64_t **srcs, uint64_t *tgt ) {"
+  , "  uint64_t *q = tgt;"
+  , "  for(int k=0; k<K; k++) {"
+  , "    int n = ns[k] * ELEM_NWORDS;"
+  , "    memcpy( q , srcs[k] , 8*n );"
+  , "    q += n;"
+  , "  }"
   , "}"
   ]
 
@@ -423,7 +435,7 @@ hsBegin (PwParams{..}) =
   , "  , fromStd , toStd"
   , "    -- * Concatenation"
   , "  , cons , snoc"
-  , "  , append"
+  , "  , append, concat"
   , "    -- * Pointwise arithmetics"
   , "  , neg , add , sub"  
   , "  , sqr , mul"  
@@ -445,12 +457,12 @@ hsBegin (PwParams{..}) =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
-  , "import Prelude  hiding (div,quot,rem)"
+  , "import Prelude  hiding (div,quot,rem,concat)"
   , "import GHC.Real hiding (div,quot,rem)"
   , ""
   , "import Data.Bits"
   , "import Data.Word"
-  , "import Data.List"
+  , "import Data.List hiding (concat)"
   , "import Data.Array"
   , ""
   , "import Control.Monad"
@@ -499,24 +511,28 @@ hsBegin (PwParams{..}) =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
-  , "instance V.VectorSpace (FlatArray " ++ typeNameBase ++ ") where"
+  , "instance V.Vector (FlatArray " ++ typeNameBase ++ ") where"
   , "  -- type Element (FlatArray " ++ typeNameBase ++ ") = " ++ typeNameBase
   , "  vecSize     = flatArrayLength"
   , "  vecIndex    = flip peekFlatArray"
+  , "  vecAppend   = " ++ hsModule hs_path ++ ".append"
+  , "  vecConcat   = " ++ hsModule hs_path ++ ".concat"
+  , "  vecCons     = " ++ hsModule hs_path ++ ".cons"
+  , "  vecSnoc     = " ++ hsModule hs_path ++ ".snoc"
+  , ""
+  , "instance V.VectorSpace (FlatArray " ++ typeNameBase ++ ") where"
   , "  vecScale    = " ++ hsModule hs_path ++ ".scale"
   , "  dotProd     = " ++ hsModule hs_path ++ ".dotProd"
   , "  powers      = " ++ hsModule hs_path ++ ".powers"
   , "  mulByPowers = " ++ hsModule hs_path ++ ".mulByPowers"
   , "  linComb1    = " ++ hsModule hs_path ++ ".linComb1"
   , "  linComb2    = " ++ hsModule hs_path ++ ".linComb2"
-  , "  vecAppend   = " ++ hsModule hs_path ++ ".append"
-  , "  vecCons     = " ++ hsModule hs_path ++ ".cons"
-  , "  vecSnoc     = " ++ hsModule hs_path ++ ".snoc"
   , "  sparseMatrixMul = " ++ hsModule hs_path ++ ".sparseMatrixMul"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
   , "foreign import ccall unsafe \"" ++ prefix ++ "append\" c_" ++ prefix ++ "append :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "concat\" c_" ++ prefix ++ "concat :: CInt -> Ptr CInt -> Ptr (Ptr Word64) -> Ptr Word64 -> IO ()"
   , ""
   , "{-# NOINLINE append #-}"
   , "append :: FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
@@ -528,6 +544,20 @@ hsBegin (PwParams{..}) =
   , "        c_" ++ prefix ++ "append (fromIntegral n1) (fromIntegral n2) ptr1 ptr2 ptr3"
   , "  return (MkFlatArray (n1+n2) fptr3)"
   , ""
+  , "{-# NOINLINE concat #-}"
+  , "concat :: [FlatArray " ++ typeNameBase ++ "] -> FlatArray " ++ typeNameBase
+  , "concat list = unsafePerformIO $ do"
+  , "  withFlatArrays list $ \\pairs -> do"
+  , "    let ns   = map fst pairs"
+  , "    let ptrs = map snd pairs"
+  , "    let nsum = sum ns"
+  , "    fptr3 <- mallocForeignPtrArray (nsum * " ++ show elemNWords ++ ")"
+  , "    withArray (map (fromIntegral :: Int -> CInt) ns) $ \\ns_ptr -> do "
+  , "      withArray ptrs $ \\ptrs_ptr -> do"
+  , "        withForeignPtr fptr3 $ \\tgt_ptr -> do"
+  , "          c_" ++ prefix ++ "concat (fromIntegral $ length list) ns_ptr ptrs_ptr tgt_ptr"
+  , "    return (MkFlatArray nsum fptr3)"
+  , "" 
   , "cons :: " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
   , "cons x arr = append (singletonArray x) arr"
   , ""

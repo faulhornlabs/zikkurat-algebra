@@ -57,30 +57,36 @@ class PointwiseRing a => PointwiseField a where
 --------------------------------------------------------------------------------
 -- * 1 dimensional vectors 
 
-{-
-class Vector v where
+class WrappedArray v => Vector v where
   -- | Dimension of the vector
   vecSize :: v -> Int
   -- | The k-th element
   vecIndex :: Int -> v -> Element v
   -- | Append
   vecAppend :: v -> v -> v
+  -- | Concat
+  vecConcat :: [v] -> v
   -- | Cons
   vecCons :: Element v -> v -> v
   -- | Snoc
   vecSnoc :: v -> Element v -> v 
+{-
   -- | constant vector
   constVector :: Int -> Element v -> v
   -- | eg. @basisVector' 0 1 k@ 
   basisVector' :: Element v -> Element v -> Int -> v
 -}
 
+{-
+basisVector :: VectorSpace v => Int -> v
+basisVector = basisVector' 0 1
+-}
+
+--------------------------------------------------------------------------------
+-- * Vector spaces
+
 -- | Finite dimensional vector spaces
-class (WrappedArray v, Field (Element v), PointwiseField v) => VectorSpace v where
-  -- | Dimension of the vector
-  vecSize :: v -> Int
-  -- | The k-th element
-  vecIndex :: Int -> v -> Element v
+class (Vector v, Field (Element v), PointwiseField v) => VectorSpace v where
   -- | Scaling by an element
   vecScale :: Element v -> v -> v
   -- | Dot product
@@ -95,16 +101,5 @@ class (WrappedArray v, Field (Element v), PointwiseField v) => VectorSpace v whe
   linComb2 :: (Element v, v) -> (Element v, v) -> v
   -- | Sparse matrix multiplication
   sparseMatrixMul :: SparseMatrix (Element v) -> v -> v
-  -- | Append
-  vecAppend :: v -> v -> v
-  -- | Cons
-  vecCons :: Element v -> v -> v
-  -- | Snoc
-  vecSnoc :: v -> Element v -> v 
-
-{-
-basisVector :: VectorSpace v => Int -> v
-basisVector = basisVector' 0 1
--}
 
 --------------------------------------------------------------------------------

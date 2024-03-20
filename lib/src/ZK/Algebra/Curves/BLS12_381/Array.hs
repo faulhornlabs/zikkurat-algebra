@@ -16,7 +16,7 @@ module ZK.Algebra.Curves.BLS12_381.Array
   , fromStd , toStd
     -- * Concatenation
   , cons , snoc
-  , append
+  , append, concat
     -- * Pointwise arithmetics
   , neg , add , sub
   , sqr , mul
@@ -38,12 +38,12 @@ module ZK.Algebra.Curves.BLS12_381.Array
 
 --------------------------------------------------------------------------------
 
-import Prelude  hiding (div,quot,rem)
+import Prelude  hiding (div,quot,rem,concat)
 import GHC.Real hiding (div,quot,rem)
 
 import Data.Bits
 import Data.Word
-import Data.List
+import Data.List hiding (concat)
 import Data.Array
 
 import Control.Monad
@@ -92,24 +92,28 @@ instance V.PointwiseField (FlatArray Fr) where
 
 --------------------------------------------------------------------------------
 
-instance V.VectorSpace (FlatArray Fr) where
+instance V.Vector (FlatArray Fr) where
   -- type Element (FlatArray Fr) = Fr
   vecSize     = flatArrayLength
   vecIndex    = flip peekFlatArray
+  vecAppend   = ZK.Algebra.Curves.BLS12_381.Array.append
+  vecConcat   = ZK.Algebra.Curves.BLS12_381.Array.concat
+  vecCons     = ZK.Algebra.Curves.BLS12_381.Array.cons
+  vecSnoc     = ZK.Algebra.Curves.BLS12_381.Array.snoc
+
+instance V.VectorSpace (FlatArray Fr) where
   vecScale    = ZK.Algebra.Curves.BLS12_381.Array.scale
   dotProd     = ZK.Algebra.Curves.BLS12_381.Array.dotProd
   powers      = ZK.Algebra.Curves.BLS12_381.Array.powers
   mulByPowers = ZK.Algebra.Curves.BLS12_381.Array.mulByPowers
   linComb1    = ZK.Algebra.Curves.BLS12_381.Array.linComb1
   linComb2    = ZK.Algebra.Curves.BLS12_381.Array.linComb2
-  vecAppend   = ZK.Algebra.Curves.BLS12_381.Array.append
-  vecCons     = ZK.Algebra.Curves.BLS12_381.Array.cons
-  vecSnoc     = ZK.Algebra.Curves.BLS12_381.Array.snoc
   sparseMatrixMul = ZK.Algebra.Curves.BLS12_381.Array.sparseMatrixMul
 
 --------------------------------------------------------------------------------
 
 foreign import ccall unsafe "bls12_381_arr_mont_append" c_bls12_381_arr_mont_append :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_arr_mont_concat" c_bls12_381_arr_mont_concat :: CInt -> Ptr CInt -> Ptr (Ptr Word64) -> Ptr Word64 -> IO ()
 
 {-# NOINLINE append #-}
 append :: FlatArray Fr -> FlatArray Fr -> FlatArray Fr
@@ -120,6 +124,20 @@ append (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2) = unsafePerformIO $ do
       withForeignPtr fptr3 $ \ptr3 -> do
         c_bls12_381_arr_mont_append (fromIntegral n1) (fromIntegral n2) ptr1 ptr2 ptr3
   return (MkFlatArray (n1+n2) fptr3)
+
+{-# NOINLINE concat #-}
+concat :: [FlatArray Fr] -> FlatArray Fr
+concat list = unsafePerformIO $ do
+  withFlatArrays list $ \pairs -> do
+    let ns   = map fst pairs
+    let ptrs = map snd pairs
+    let nsum = sum ns
+    fptr3 <- mallocForeignPtrArray (nsum * 4)
+    withArray (map (fromIntegral :: Int -> CInt) ns) $ \ns_ptr -> do 
+      withArray ptrs $ \ptrs_ptr -> do
+        withForeignPtr fptr3 $ \tgt_ptr -> do
+          c_bls12_381_arr_mont_concat (fromIntegral $ length list) ns_ptr ptrs_ptr tgt_ptr
+    return (MkFlatArray nsum fptr3)
 
 cons :: Fr -> FlatArray Fr -> FlatArray Fr
 cons x arr = append (singletonArray x) arr

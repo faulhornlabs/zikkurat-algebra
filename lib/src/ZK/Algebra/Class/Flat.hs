@@ -122,6 +122,13 @@ withFlatArray :: FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO b
 withFlatArray (MkFlatArray n fptr) action = do
   withForeignPtr fptr $ \ptr -> action n ptr
 
+withFlatArrays :: [FlatArray a] -> ([(Int, Ptr Word64)] -> IO b) -> IO b
+withFlatArrays list action = go list >>= action where
+  go []                          = return []
+  go (MkFlatArray n fptr : rest) = withForeignPtr fptr $ \ptr -> do
+    args' <- go rest
+    return ((n,ptr) : args')
+
 unsafeCastFlatArray :: FlatArray a -> FlatArray b
 unsafeCastFlatArray (MkFlatArray n fptr) = MkFlatArray n fptr
 
