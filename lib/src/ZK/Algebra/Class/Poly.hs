@@ -61,12 +61,17 @@ class (Univariate p, FFTField (Coeff p)) => UnivariateFFT p where
   shiftedNTT  :: FFTSubgroup (Coeff p) -> Coeff p -> p -> FlatArray (Coeff p) 
   -- | Shifts @f@ by @eta^-1@, interpolating @f@ so that @f(eta^-1 * omega^k) = y_k@
   shiftedINTT :: FFTSubgroup (Coeff p) -> Coeff p -> FlatArray (Coeff p) -> p
+  -- | Evaluate on a larger subgroup than the polynomial is defined on
+  asymmNTT :: FFTSubgroup (Coeff p) -> p -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p) 
 
 ntt_ :: forall p. UnivariateFFT p => Proxy p -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> FlatArray (Coeff p)
 ntt_ pxy dom coeffs = ntt dom (mkPolyFlat @p coeffs)
 
 intt_ :: forall p. UnivariateFFT p => Proxy p -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> FlatArray (Coeff p)
 intt_ pxy dom values = coeffsFlatArr @p (intt dom values)
+
+asymmNTT_ :: forall p. UnivariateFFT p => Proxy p -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p)
+asymmNTT_ pxy dom coeffs dom2 = asymmNTT dom (mkPolyFlat @p coeffs) dom2
 
 --------------------------------------------------------------------------------
 -- * Some generic functions

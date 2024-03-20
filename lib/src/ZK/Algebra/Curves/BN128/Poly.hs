@@ -42,6 +42,7 @@ module ZK.Algebra.Curves.BN128.Poly
     -- * NTT
   , forwardNTT , inverseNTT
   , shiftedForwardNTT , shiftedInverseNTT
+  , asymmForwardNTT
     -- * Random
   , rndPoly , rnd
   )
@@ -400,6 +401,8 @@ foreign import ccall unsafe "bn128_poly_mont_ntt_inverse" c_bn128_poly_mont_ntt_
 foreign import ccall unsafe "bn128_poly_mont_ntt_forward_shifted" c_bn128_poly_mont_ntt_forward_shifted :: Ptr Word64 -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 foreign import ccall unsafe "bn128_poly_mont_ntt_inverse_shifted" c_bn128_poly_mont_ntt_inverse_shifted :: Ptr Word64 -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
+foreign import ccall unsafe "bn128_poly_mont_ntt_forward_asymmetric" c_bn128_poly_mont_ntt_forward_asymmetric :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
 {-# NOINLINE forwardNTT #-}
 forwardNTT :: FFTSubgroup Fr -> Poly -> FlatArray Fr
 forwardNTT sg (MkPoly (MkFlatArray n fptr2))
@@ -428,7 +431,7 @@ inverseNTT sg (MkFlatArray n fptr2)
 {-# NOINLINE shiftedForwardNTT #-}
 shiftedForwardNTT :: FFTSubgroup Fr -> Fr -> Poly -> FlatArray Fr
 shiftedForwardNTT sg (MkFr fptr_eta) (MkPoly (MkFlatArray n fptr2))
-  | fftSubgroupSize sg /= n   = error "forwardNTT: subgroup size differs from the array size"
+  | fftSubgroupSize sg /= n   = error "shiftedForwardNTT: subgroup size differs from the array size"
   | otherwise                 = unsafePerformIO $ do
       fptr3 <- mallocForeignPtrArray (n*4)
       withFlat (fftSubgroupGen sg) $ \ptr1 -> do
@@ -442,7 +445,7 @@ shiftedForwardNTT sg (MkFr fptr_eta) (MkPoly (MkFlatArray n fptr2))
 {-# NOINLINE shiftedInverseNTT #-}
 shiftedInverseNTT :: FFTSubgroup Fr -> Fr -> FlatArray Fr -> Poly
 shiftedInverseNTT sg (MkFr fptr_eta) (MkFlatArray n fptr2)
-  | fftSubgroupSize sg /= n   = error "inverseNTT: subgroup size differs from the array size"
+  | fftSubgroupSize sg /= n   = error "shiftedInverseNTT: subgroup size differs from the array size"
   | otherwise                 = unsafePerformIO $ do
       fptr3 <- mallocForeignPtrArray (n*4)
       withFlat (fftSubgroupGen sg) $ \ptr1 -> do
@@ -452,8 +455,29 @@ shiftedInverseNTT sg (MkFr fptr_eta) (MkFlatArray n fptr2)
               c_bn128_poly_mont_ntt_inverse_shifted ptr_eta (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
       return (MkPoly (MkFlatArray n fptr3))
 
+-- | Evaluates a polynomial f on a larger subgroup than it's defined on
+{-# NOINLINE asymmForwardNTT #-}
+asymmForwardNTT :: FFTSubgroup Fr -> Poly -> FFTSubgroup Fr -> FlatArray Fr
+asymmForwardNTT sg_src (MkPoly (MkFlatArray n fptr2)) sg_tgt
+  | fftSubgroupSize sg_src /= n   = error "asymmForwardNTT: subgroup size differs from the array size"
+  | m < n                         = error "asymmForwardNTT: target subgroup size should be at least the source subgroup src"
+  | otherwise                     = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (m*4)
+      withFlat (fftSubgroupGen sg_src) $ \ptr_sg1 -> do
+        withFlat (fftSubgroupGen sg_tgt) $ \ptr_sg2 -> do
+          withForeignPtr fptr2 $ \ptr2 -> do
+            withForeignPtr fptr3 $ \ptr3 -> do
+              c_bn128_poly_mont_ntt_forward_asymmetric
+                (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg_src)
+                (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg_tgt)
+                ptr_sg1 ptr_sg2 ptr2 ptr3
+      return (MkFlatArray m fptr3)
+  where
+    m = fftSubgroupSize sg_tgt
+
 instance P.UnivariateFFT Poly where
-  ntt  = forwardNTT
-  intt = inverseNTT
+  ntt         = forwardNTT
+  intt        = inverseNTT
   shiftedNTT  = shiftedForwardNTT
   shiftedINTT = shiftedInverseNTT
+  asymmNTT    = asymmForwardNTT

@@ -146,6 +146,7 @@ specificPolyProps =
   , PolyPropFFT prop_ntt_then_intt      "intt . ntt == id"
   , PolyPropFFT prop_intt_then_ntt      "ntt . intt == id"
   , PolyPropFFT prop_ntt_vs_eval        "ntt vs. evalAt"
+  , PolyPropFFT prop_asymm_ntt_vs_eval  "asymm ntt vs. evalAt"
   , PolyPropXFFT prop_shifted_ntt_then_shifted_intt  "s_intt . s_ntt == id"
   , PolyPropXFFT prop_shifted_intt_then_shifted_ntt  "s_ntt . si_ntt == id"
   , PolyPropXFFT prop_shifted_ntt_then_intt          "intt . s_ntt"
@@ -401,6 +402,19 @@ prop_ntt_vs_eval _pxy input = (us == vs) where
   poly  = mkPoly cs                                      :: p
   us    = unpackFlatArrayToList $ ntt sg poly            :: [Coeff p]
   vs    = [ evalAt x poly | x <- enumerateSubgroup sg ]  :: [Coeff p]
+
+prop_asymm_ntt_vs_eval :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
+prop_asymm_ntt_vs_eval _pxy input = (us == vs) where
+  m_src  = 4
+  m_tgt  = 6
+  n_src  = 2^m_src
+  n_tgt  = 2^m_tgt
+  sg_src = getFFTSubgroup (Log2 m_src)
+  sg_tgt = getFFTSubgroup (Log2 m_tgt)
+  cs    = take n_src $ zipWith (*) (cycle input) someNumbers   :: [Coeff p] 
+  poly  = mkPoly cs                                            :: p
+  us    = unpackFlatArrayToList $ asymmNTT sg_src poly sg_tgt  :: [Coeff p]
+  vs    = [ evalAt x poly | x <- enumerateSubgroup sg_tgt ]    :: [Coeff p]
 
 ----------------------------------------
 

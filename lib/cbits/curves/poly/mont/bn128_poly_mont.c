@@ -488,6 +488,74 @@ void bn128_poly_mont_ntt_forward_shifted(const uint64_t *eta, int m, const uint6
   free(shifted);
 }
 
+// it's like `ntt_forward` but asymmetric, evaluating on a larger target subgroup
+void bn128_poly_mont_ntt_forward_asymmetric(int m_src, int m_tgt, const uint64_t *gen_src, const uint64_t *gen_tgt, const uint64_t *src, uint64_t *tgt) {
+  assert( m_tgt >= m_src );
+  int N_src = (1 << m_src);
+  int N_tgt = (1 << m_tgt);
+  int halfN_src = (N_src >> 1);
+  int K = (1 << (m_tgt - m_src));
+  
+  // precalculate [1,g,g^2,g^3...]
+  uint64_t *gpows = malloc( 8*NLIMBS * halfN_src );
+  assert( gpows != 0 );
+  uint64_t x[NLIMBS];
+  bn128_Fr_mont_set_one( gpows );
+  bn128_Fr_mont_copy( gen_src, gpows + NLIMBS );
+  bn128_Fr_mont_copy( gen_src, x );
+  for(int i=2; i<halfN_src; i++) {
+    bn128_Fr_mont_mul_inplace(x, gen_src);
+    bn128_Fr_mont_copy( x , gpows + (i*NLIMBS) );
+  }
+  
+  uint64_t *shifted = malloc( 8*NLIMBS * N_src );
+  assert( shifted != 0 );
+  
+  uint64_t *buf = malloc( 8*NLIMBS * (2*N_src) );
+  assert( buf != 0 );
+  
+  // temporary target buffer (we could replace this by adding `tgt_stride`)
+  uint64_t *tgt_small = malloc( 8*NLIMBS * N_src );
+  assert( tgt_small != 0 );
+  
+  // eta will be the shift
+  uint64_t eta[NLIMBS];
+  bn128_Fr_mont_set_one( eta );
+  
+  for(int k=0; k<K; k++) {
+    if (k==0) {
+      memcpy( shifted, src, N_src * NLIMBS * 8 );
+    }
+    else {
+      bn128_Fr_mont_mul_inplace( eta , gen_tgt );
+      
+      uint64_t x[NLIMBS];
+      bn128_Fr_mont_set_one( x );
+      for(int i=0; i<N_src; i++) {
+        bn128_Fr_mont_mul( src + i*NLIMBS, x, shifted + i*NLIMBS );
+        bn128_Fr_mont_mul_inplace(x, eta);
+      }
+    }
+    
+    bn128_poly_mont_ntt_forward_noalloc( m_src, 1, gpows, shifted, buf, tgt_small);
+    
+    uint64_t *p = tgt_small;
+    uint64_t *q = tgt + k*NLIMBS;
+    int tgt_stride = NLIMBS*K;
+    for(int i=0; i<N_src; i++) {
+      memcpy( q, p, NLIMBS*8 );
+      p += NLIMBS;
+      q += tgt_stride;
+    }
+    
+  }
+  
+  free(tgt_small);
+  free(buf);
+  free(gpows);
+  free(shifted);
+}
+
 
 // -----------------------------------------------------------------------------
  
