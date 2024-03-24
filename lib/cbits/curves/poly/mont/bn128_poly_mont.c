@@ -639,3 +639,113 @@ void bn128_poly_mont_ntt_inverse_shifted(const uint64_t *eta, int m, const uint6
 
 // -----------------------------------------------------------------------------
 
+
+
+// -----------------------------------------------------------------------------
+// RADIX-4 version of forward NTT
+
+// helper function computing (+-A+-B+-C+-D)
+void bn128_Fr_mont_signed_sum_4( int signbits, const uint64_t *A, const uint64_t *B, const uint64_t *C, const uint64_t *D, uint64_t *tgt) {
+  if (signbits & 0x01) bn128_Fr_mont_neg ( A , tgt );
+                  else bn128_Fr_mont_copy( A , tgt );
+  if (signbits & 0x02) bn128_Fr_mont_sub_inplace( tgt , B );
+                  else bn128_Fr_mont_add_inplace( tgt , B );
+  if (signbits & 0x04) bn128_Fr_mont_sub_inplace( tgt , C );
+                  else bn128_Fr_mont_add_inplace( tgt , C );
+  if (signbits & 0x08) bn128_Fr_mont_sub_inplace( tgt , D );
+                  else bn128_Fr_mont_add_inplace( tgt , D );
+}
+
+void bn128_poly_mont_ntt_forward_radix4_noalloc(int m, int src_stride, const uint64_t *complex_i, const uint64_t *gpows, const uint64_t *src, uint64_t *buf, uint64_t *tgt) {
+
+  if (m==0) {
+    bn128_Fr_mont_copy( src, tgt );
+    return;
+  }
+
+  if (m==1) {
+    // N = 2
+    // omega = -1
+    bn128_Fr_mont_add( src , src + src_stride*NLIMBS , tgt          );    // x + y
+    bn128_Fr_mont_sub( src , src + src_stride*NLIMBS , tgt + NLIMBS );    // x - y
+    return;
+  }
+
+  if (m==2) {
+    // N = 4
+    // omega = i := sqrt(-1)
+    // tgt[0] = + a +   b + c +   d
+    // tgt[1] = + a + i*b - c - i*d
+    // tgt[2] = + a -   b + c -   d
+    // tgt[3] = + a - i*b - c + i*d
+    const uint64_t *A = src;
+    const uint64_t *B = src + src_stride  *NLIMBS;
+    const uint64_t *C = src + src_stride*2*NLIMBS;
+    const uint64_t *D = src + src_stride*3*NLIMBS;
+    uint64_t iB[NLIMBS];
+    uint64_t iD[NLIMBS];
+    bn128_Fr_mont_mul( B , complex_i , iB );
+    bn128_Fr_mont_mul( D , complex_i , iD );
+    bn128_Fr_mont_signed_sum_4( 0b0000 , A ,  B , C ,  D  , tgt            );    // + a +   b + c +   d
+    bn128_Fr_mont_signed_sum_4( 0b1100 , A , iB , C , iD  , tgt +   NLIMBS );    // + a + i*b - c - i*d
+    bn128_Fr_mont_signed_sum_4( 0b1010 , A ,  B , C ,  D  , tgt + 2*NLIMBS );    // + a -   b + c -   d
+    bn128_Fr_mont_signed_sum_4( 0b0110 , A , iB , C , iD  , tgt + 3*NLIMBS );    // + a - i*b - c + i*d
+    return;
+  }
+
+  else {
+    int N      = (1<< m   );
+    int quartN = (1<<(m-2));
+    
+    bn128_poly_mont_ntt_forward_radix4_noalloc( m-2 , src_stride<<2 , complex_i , gpows , src                       , buf + N*NLIMBS , buf                   );
+    bn128_poly_mont_ntt_forward_radix4_noalloc( m-2 , src_stride<<2 , complex_i , gpows , src + src_stride  *NLIMBS , buf + N*NLIMBS , buf + quartN  *NLIMBS );
+    bn128_poly_mont_ntt_forward_radix4_noalloc( m-2 , src_stride<<2 , complex_i , gpows , src + src_stride*2*NLIMBS , buf + N*NLIMBS , buf + quartN*2*NLIMBS );
+    bn128_poly_mont_ntt_forward_radix4_noalloc( m-2 , src_stride<<2 , complex_i , gpows , src + src_stride*3*NLIMBS , buf + N*NLIMBS , buf + quartN*3*NLIMBS );
+    
+    for(int j=0; j<quartN; j++) {
+      const uint64_t *A;
+      uint64_t  B[NLIMBS];
+      uint64_t  C[NLIMBS];
+      uint64_t  D[NLIMBS];
+      uint64_t  iB[NLIMBS];
+      uint64_t  iD[NLIMBS];
+      A =                    buf +  j          *NLIMBS;
+      bn128_Fr_mont_mul( buf + (j+  quartN)*NLIMBS , gpows +   j*src_stride*NLIMBS , B );  
+      bn128_Fr_mont_mul( buf + (j+2*quartN)*NLIMBS , gpows + 2*j*src_stride*NLIMBS , C );  
+      bn128_Fr_mont_mul( buf + (j+3*quartN)*NLIMBS , gpows + 3*j*src_stride*NLIMBS , D );  
+      bn128_Fr_mont_mul( B , complex_i , iB );
+      bn128_Fr_mont_mul( D , complex_i , iD );
+      bn128_Fr_mont_signed_sum_4( 0b0000 , A ,  B , C ,  D , tgt + (j         )*NLIMBS );    // + A +   B + C +   D
+      bn128_Fr_mont_signed_sum_4( 0b1100 , A , iB , C , iD , tgt + (j+  quartN)*NLIMBS );    // + A + i*B - C - i*D
+      bn128_Fr_mont_signed_sum_4( 0b1010 , A ,  B , C ,  D , tgt + (j+2*quartN)*NLIMBS );    // + A -   B + C -   D
+      bn128_Fr_mont_signed_sum_4( 0b0110 , A , iB , C , iD , tgt + (j+3*quartN)*NLIMBS );    // + A - i*B - C + i*D
+    }
+  }
+}
+
+// forward number-theoretical transform (evaluation of a polynomial)
+// `src` and `tgt` should be `N = 2^m` sized arrays of field elements
+// `gen` should be the generator of the multiplicative subgroup sized `N`
+void bn128_poly_mont_ntt_forward_radix4(int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt) {
+  int N       = (1<<m);
+  int halfN   = (N>>1);
+  int quartN  = (N>>2);
+  
+  // precalculate [1,g,g^2,g^3...g^(N-1)]
+  uint64_t *gpows = malloc( 8*NLIMBS * N );
+  assert( gpows != 0 );
+  uint64_t x[NLIMBS];
+  bn128_Fr_mont_set_one( x );
+  for(int i=0; i<halfN; i++) {
+    bn128_Fr_mont_copy( x , gpows + ( i       *NLIMBS) );
+    bn128_Fr_mont_neg ( x , gpows + ((i+halfN)*NLIMBS) );
+    bn128_Fr_mont_mul_inplace(x, gen);
+  }
+  uint64_t *complex_i = gpows + quartN*NLIMBS;
+  
+  uint64_t *buf = malloc( 8*NLIMBS * (2*N) );
+  assert( buf != 0 );
+  bn128_poly_mont_ntt_forward_radix4_noalloc( m, 1, complex_i, gpows, src, buf, tgt);
+  free(buf);
+  free(gpows);
+}

@@ -43,6 +43,7 @@ module ZK.Algebra.Curves.BN128.Poly
   , forwardNTT , inverseNTT
   , shiftedForwardNTT , shiftedInverseNTT
   , asymmForwardNTT
+  , forwardNTT_radix4
     -- * Random
   , rndPoly , rnd
   )
@@ -400,8 +401,9 @@ foreign import ccall unsafe "bn128_poly_mont_ntt_forward" c_bn128_poly_mont_ntt_
 foreign import ccall unsafe "bn128_poly_mont_ntt_inverse" c_bn128_poly_mont_ntt_inverse :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 foreign import ccall unsafe "bn128_poly_mont_ntt_forward_shifted" c_bn128_poly_mont_ntt_forward_shifted :: Ptr Word64 -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 foreign import ccall unsafe "bn128_poly_mont_ntt_inverse_shifted" c_bn128_poly_mont_ntt_inverse_shifted :: Ptr Word64 -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
-
 foreign import ccall unsafe "bn128_poly_mont_ntt_forward_asymmetric" c_bn128_poly_mont_ntt_forward_asymmetric :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+foreign import ccall unsafe "bn128_poly_mont_ntt_forward_radix4" c_bn128_poly_mont_ntt_forward_radix4 :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE forwardNTT #-}
 forwardNTT :: FFTSubgroup Fr -> Poly -> FlatArray Fr
@@ -413,6 +415,18 @@ forwardNTT sg (MkPoly (MkFlatArray n fptr2))
         withForeignPtr fptr2 $ \ptr2 -> do
           withForeignPtr fptr3 $ \ptr3 -> do
             c_bn128_poly_mont_ntt_forward (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
+      return (MkFlatArray n fptr3)
+
+{-# NOINLINE forwardNTT_radix4 #-}
+forwardNTT_radix4 :: FFTSubgroup Fr -> Poly -> FlatArray Fr
+forwardNTT_radix4 sg (MkPoly (MkFlatArray n fptr2))
+  | fftSubgroupSize sg /= n   = error "forwardNTT: subgroup size differs from the array size"
+  | otherwise                 = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (n*4)
+      withFlat (fftSubgroupGen sg) $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_bn128_poly_mont_ntt_forward_radix4 (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
       return (MkFlatArray n fptr3)
 
 {-# NOINLINE inverseNTT #-}
