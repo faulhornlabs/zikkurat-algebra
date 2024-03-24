@@ -42,8 +42,14 @@ extern void bls12_381_G2_proj_scl_windowed( const uint64_t *kst , const uint64_t
 
 extern void bls12_381_G2_proj_MSM_std_coeff_proj_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
 extern void bls12_381_G2_proj_MSM_mont_coeff_proj_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
-extern void bls12_381_G2_proj_MSM_std_coeff_affine_out (int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
-extern void bls12_381_G2_proj_MSM_mont_coeff_affine_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bls12_381_G2_proj_MSM_binary_coeff_proj_out(int npoints, const uint8_t  *expos, const uint64_t *grps, uint64_t *tgt);
+extern void bls12_381_G2_proj_MSM_std_coeff_affine_out   (int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bls12_381_G2_proj_MSM_mont_coeff_affine_out  (int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+extern void bls12_381_G2_proj_MSM_binary_coeff_affine_out(int npoints, const uint8_t  *expos, const uint64_t *grps, uint64_t *tgt);
+
 extern void bls12_381_G2_proj_MSM_std_coeff_projc_out_slow_reference(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs);
+
+extern void bls12_381_G2_proj_multi_MSM_binary_coeff_proj_out(int nrows, int npoints, const uint8_t **expos, const uint64_t *grps, uint64_t *tgt);
+extern void bls12_381_G2_proj_multi_MSM_binary_coeff_affine_out(int nrows, int npoints, const uint8_t **expos, const uint64_t *grps, uint64_t *tgt);
 extern void bls12_381_G2_proj_fft_forward( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt );
 extern void bls12_381_G2_proj_fft_inverse( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt );

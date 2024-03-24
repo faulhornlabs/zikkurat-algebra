@@ -641,7 +641,8 @@ void bn128_G1_jac_MSM_std_coeff_jac_out_variable(int npoints, const uint64_t *ex
 //  - standard coefficients (1 field element per point)
 //  - affine Montgomery points (2 field elements per point)
 // output:
-//  - weighted projective Montgomery point
+//  - projective (jac) Montgomery point
+//
 void bn128_G1_jac_MSM_std_coeff_jac_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
 
   // guess optimal window size
@@ -674,7 +675,8 @@ void bn128_G1_jac_MSM_std_coeff_jac_out_slow_reference(int npoints, const uint64
 //  - Montgomery coefficients (1 field element per point)
 //  - affine Montgomery points (2 field elements per point)
 // output:
-//  - weighted projective Montgomery point
+//  - projective (jac) Montgomery point
+//
 void bn128_G1_jac_MSM_mont_coeff_jac_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
   uint64_t *std_expos = malloc(8*expo_nlimbs*npoints);
   assert( std_expos != 0);
@@ -699,6 +701,7 @@ void bn128_G1_jac_MSM_mont_coeff_jac_out(int npoints, const uint64_t *expos, con
 //  - affine Montgomery points (2 field elements per point)
 // output:
 //  - affine Montgomery point
+//
 void bn128_G1_jac_MSM_std_coeff_affine_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
   uint64_t tmp[3*NLIMBS_P];
   bn128_G1_jac_MSM_std_coeff_jac_out(npoints, expos, grps, tmp, expo_nlimbs);
@@ -711,10 +714,120 @@ void bn128_G1_jac_MSM_std_coeff_affine_out(int npoints, const uint64_t *expos, c
 //  - affine Montgomery points (2 field elements per point)
 // output:
 //  - affine Montgomery point
+//
 void bn128_G1_jac_MSM_mont_coeff_affine_out(int npoints, const uint64_t *expos, const uint64_t *grps, uint64_t *tgt, int expo_nlimbs) {
   uint64_t tmp[3*NLIMBS_P];
   bn128_G1_jac_MSM_mont_coeff_jac_out(npoints, expos, grps, tmp, expo_nlimbs);
   bn128_G1_jac_to_affine(tmp, tgt);
+}
+
+//------------------------------------------------------------------------------
+
+// binary MSM (coefficients are all 0 or 1)
+// inputs:
+//  - 8 bit coefficients (assumed to be 0 or 1)
+//  - affine Montgomery points (2 field elements per point)
+// output:
+//  - projective (jac) Montgomery point
+//
+void bn128_G1_jac_MSM_binary_coeff_jac_out(int npoints, const uint8_t *expos, const uint64_t *grps, uint64_t *tgt) {
+  bn128_G1_jac_set_infinity( tgt );
+  for(int i=0; i<npoints; i++) { 
+    if (expos[i]) {
+      // add to the running sum
+      bn128_G1_jac_madd_inplace( tgt , grps  + i*2*NLIMBS_P );
+    }
+  }
+}
+
+void bn128_G1_jac_MSM_binary_coeff_affine_out(int npoints, const uint8_t *expos, const uint64_t *grps, uint64_t *tgt) {
+  uint64_t tmp[3*NLIMBS_P];
+  bn128_G1_jac_MSM_binary_coeff_jac_out(npoints, expos, grps, tmp);
+  bn128_G1_jac_to_affine(tmp, tgt);
+}
+
+//--------------------------------------------------
+
+#define MIN(a,b)       ( ((a)<=(b)) ? (a) : (b) )
+#define MAX(a,b)       ( ((a)>=(b)) ? (a) : (b) )
+#define PRECALC(i)     ( precalc     + (i)*3*NLIMBS_P )
+#define PRECALC_AFF(i) ( precalc_aff + (i)*2*NLIMBS_P )
+
+// multiple binary MSMs (coefficients are all 0 or 1)
+// given an NxM matrix of boolean coefficients, we comput the MSM of each row
+// with the same vector of points. This can be more efficient than calculating them
+// individually by a factor of 1.1-2x-2.5x, especially when N is large, starting from say N=32
+//
+// inputs: 
+//  - N rows of 8 bit coefficients, each having length M (assumed to be 0 or 1),
+//  - affine Montgomery points (2 field elements per point)
+// output:
+//  - N points, projective (jac) Montgomery representation
+//
+void bn128_G1_jac_multi_MSM_binary_coeff_jac_out(int nrows, int npoints, const uint8_t **coeffs, const uint64_t *grps, uint64_t *tgt) {
+  
+  // estimate the optimal windows size
+  // based on the cost (number of addition):
+  //   (M/c) * [ 2^(c-2) + N*(2^c-1)/(2^c) ]
+  int c = round( 1.22 * log(nrows) - 0.5 );
+  if (c< 1) { c=1;  }
+  if (c>15) { c=15; }
+  
+  for(int i=0; i<nrows; i++) { 
+    bn128_G1_jac_set_infinity( tgt + i*3*NLIMBS_P );
+  }
+  
+  uint64_t *precalc = (uint64_t*) malloc( (1<<c) * 8*3*NLIMBS_P );
+  assert( precalc != 0 );
+  bn128_G1_jac_set_infinity( precalc );
+  
+  int nwindows = (npoints + c-1) / c;
+  const uint64_t *gptr = grps;
+  for(int k=0; k<nwindows; k++) {
+  
+    int A = k*c;
+    int B = MIN( A+c, npoints );
+    int C = B-A;
+    
+    // precalculate this window
+    for(int j=0; j<C; j++) {
+      if (j==0) {
+        bn128_G1_jac_from_affine( gptr , PRECALC(1) );
+      }
+      else {
+        int m = (1<<j);
+        for(int i=0; i<m; i++) {
+          bn128_G1_jac_madd_jac_aff( PRECALC(i) , gptr , PRECALC(i+m) );
+        }
+      }
+      gptr += 2*NLIMBS_P;
+    }
+    
+    for(int i=0; i<nrows; i++) {
+      int idx = 0;
+      for(int j=0; j<C; j++) {
+        if (coeffs[i][A+j]) { idx |= (1 << j); }
+      }
+      if (idx > 0) {
+        // add to the running sum
+        bn128_G1_jac_add_inplace( tgt + i*3*NLIMBS_P , PRECALC(idx) );
+      }
+    }
+    
+  }
+  
+  free(precalc);
+}
+
+// affine output version
+void bn128_G1_jac_multi_MSM_binary_coeff_affine_out(int nrows, int npoints, const uint8_t **coeffs, const uint64_t *grps, uint64_t *tgt) {
+  uint64_t *tmp = (uint64_t*) malloc( nrows * 8*3*NLIMBS_P );
+  assert( tmp != 0 );
+  bn128_G1_jac_multi_MSM_binary_coeff_jac_out( nrows, npoints, coeffs, grps, tmp);
+  for(int i=0; i<nrows; i++) {
+    bn128_G1_jac_to_affine( tmp + i*3*NLIMBS_P, tgt + i*2*NLIMBS_P );
+  }
+  free(tmp);
 }
 
 //------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 -- Examples are: fixed size bigints, field elements, elliptic curve points
 --
 
-{-# LANGUAGE ScopedTypeVariables, TypeApplications, TypeFamilies, FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables, TypeApplications, TypeFamilies, FlexibleContexts, GeneralizedNewtypeDeriving #-}
 module ZK.Algebra.Class.Flat where
 
 --------------------------------------------------------------------------------
@@ -63,6 +63,26 @@ instance Flat Word64 where
   sizeInQWords _ = 1
   withFlat x action = alloca $ \ptr -> poke ptr x >> action ptr
   makeFlat ptr      = peek ptr
+
+--------------------------------------------------------------------------------
+
+-- | temporary hack; TODO: fix this
+newtype Bit 
+  = Bit Word8
+  deriving (Eq,Ord,Show,Storable)
+
+boolToBit :: Bool -> Bit
+boolToBit b = Bit (if b then 1 else 0)
+
+bitToBool :: Bit -> Bool
+bitToBool (Bit b) = (b /= 0)
+
+-- | This is hack, but can be useful. TODO: figure out something to fix this
+instance Flat Bit where
+  sizeInBytes  _ = 1
+  sizeInQWords _ = error "Flat/Bool/sizeInQWords: Bool is encoded as a single byte"
+  withFlat (Bit x) action = alloca $ \ptr -> poke ptr x >> action (castPtr ptr)
+  makeFlat ptr      = peek (castPtr ptr)
 
 --------------------------------------------------------------------------------
 

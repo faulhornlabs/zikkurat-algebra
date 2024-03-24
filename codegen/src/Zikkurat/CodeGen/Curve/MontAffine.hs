@@ -153,6 +153,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  , rnd" ++ typeName
   , "    -- * Multi-scalar-multiplication"
   , "  , msm , msmStd"
+  , "  , msmBinary , binaryMultiMSM"
   , "    -- * Fast-Fourier transform"
   , "  , forwardFFT , inverseFFT"
   , "    -- * handling infinities hack (TODO: do this properly)"
@@ -270,12 +271,22 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "--------------------------------------------------------------------------------"
   , ""
   , "-- | Multi-Scalar Multiplication (MSM), with the coefficients in Montgomery representation"
-  , "msm :: L.FlatArray Fr -> L.FlatArray " ++ hsModule hs_path_affine ++ "." ++ typeName ++ " -> " ++ typeName
+  , "msm :: L.FlatArray Fr -> L.FlatArray " {- ++ hsModule hs_path_affine ++ "." -}  ++ typeName ++ " -> " ++ typeName
   , "msm cs gs = Proj.toAffine $ Proj.msm cs gs"
   , ""
   , "-- | Multi-Scalar Multiplication (MSM), with the coefficients in standard representation"
-  , "msmStd :: L.FlatArray " ++ hsModule hs_path_r_std ++ ".Fr -> L.FlatArray " ++ hsModule hs_path_affine ++ "." ++ typeName ++ " -> " ++ typeName
+  , "msmStd :: L.FlatArray " ++ hsModule hs_path_r_std ++ ".Fr -> L.FlatArray " {- ++ hsModule hs_path_affine ++ "." -} ++ typeName ++ " -> " ++ typeName
   , "msmStd cs gs = Proj.toAffine $ Proj.msmStd cs gs"
+  , ""
+  , "-- | Multi-Scalar Multiplication (MSM), with the coefficients being single bit"
+  , "msmBinary :: L.FlatArray L.Bit -> L.FlatArray " {- ++ hsModule hs_path_affine ++ "." -} ++ typeName ++ " -> " ++ typeName
+  , "msmBinary cs gs = Proj.toAffine $ Proj.msmBinary cs gs"
+  , ""
+  , "-- | Multiple MSM-s (of the same size), with the coefficients being single bit"
+  , "binaryMultiMSM :: [L.FlatArray L.Bit] -> L.FlatArray " {- ++ hsModule hs_path_affine ++ "." -} ++ typeName ++ " -> L.FlatArray " ++ typeName
+  , "binaryMultiMSM cs gs = Proj.binaryMultiMSM_ cs gs"
+  , ""
+  , "----------------------------------------"
   , ""
   , "-- | Forward FFT for groups (converting @[L_k(tau)]@ points to @[tau^i]@ points)"
   , "forwardFFT :: FFTSubgroup Fr -> L.FlatArray " ++ typeName ++ " -> L.FlatArray " ++ typeName
@@ -329,7 +340,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  infinity    = " ++ hsModule hs_path_affine ++ ".infinity"
   , "  curveSubgroupGen = " ++ hsModule hs_path_affine ++ ".gen" ++ typeName
   , "  scalarMul   = " ++ hsModule hs_path_affine ++ ".sclFr"
-  , "  msm         = " ++ hsModule hs_path_affine ++ ".msm"
+  , "  msm             = " ++ hsModule hs_path_affine ++ ".msm"
   , "  curveFFT    = " ++ hsModule hs_path_affine ++ ".forwardFFT"
   , "  curveIFFT   = " ++ hsModule hs_path_affine ++ ".inverseFFT"
   , ""
@@ -338,6 +349,8 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  mkPoint2   = " ++ hsModule hs_path_affine ++ ".mkPoint"
   , "  convertInfinityIO = " ++ hsModule hs_path_affine ++ ".convertInfinityIO"
   , "  batchConvertInfinityIO = " ++ hsModule hs_path_affine ++ ".batchConvertInfinityIO"
+  , "  binaryMSM_       = " ++ hsModule hs_path_affine ++ ".msmBinary"
+  , "  binaryMultiMSM_  = " ++ hsModule hs_path_affine ++ ".binaryMultiMSM"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""

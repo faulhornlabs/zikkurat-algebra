@@ -27,6 +27,7 @@ module ZK.Algebra.Curves.BLS12_381.G1.Proj
   , rndG1 , rndG1_naive
     -- * Multi-scalar multiplication
   , msm , msmStd , msmProj
+  , msmBinary , binaryMultiMSM , binaryMultiMSM_
     -- * Fast-Fourier transform
   , forwardFFT , inverseFFT
     -- * Sage
@@ -65,6 +66,8 @@ import qualified ZK.Algebra.Class.Field as F
 import qualified ZK.Algebra.Class.Curve as C
 import qualified ZK.Algebra.Class.Misc  as M
 import           ZK.Algebra.Class.FFT
+
+import ZK.Algebra.Helpers
 
 --------------------------------------------------------------------------------
 
@@ -202,6 +205,8 @@ instance C.ProjCurve G1 where
   mkPoint3   = ZK.Algebra.Curves.BLS12_381.G1.Proj.mkPoint
   mixedAdd   = ZK.Algebra.Curves.BLS12_381.G1.Proj.madd
   affMSM     = ZK.Algebra.Curves.BLS12_381.G1.Proj.msm
+  binaryMSM       = ZK.Algebra.Curves.BLS12_381.G1.Proj.msmBinary
+  binaryMultiMSM  = ZK.Algebra.Curves.BLS12_381.G1.Proj.binaryMultiMSM
   
 --------------------------------------------------------------------------------
 
@@ -227,6 +232,10 @@ msmProj cs gs = msm cs (batchToAffine gs)
 
 foreign import ccall unsafe "bls12_381_G1_proj_MSM_std_coeff_proj_out" c_bls12_381_G1_proj_MSM_std_coeff_proj_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
 foreign import ccall unsafe "bls12_381_G1_proj_MSM_mont_coeff_proj_out" c_bls12_381_G1_proj_MSM_mont_coeff_proj_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
+foreign import ccall unsafe "bls12_381_G1_proj_MSM_binary_coeff_proj_out" c_bls12_381_G1_proj_MSM_binary_coeff_proj_out :: CInt -> Ptr Word8  -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+foreign import ccall unsafe "bls12_381_G1_proj_multi_MSM_binary_coeff_proj_out" c_bls12_381_G1_proj_multi_MSM_binary_coeff_proj_out :: CInt -> CInt -> Ptr (Ptr Word8) -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bls12_381_G1_proj_multi_MSM_binary_coeff_affine_out" c_bls12_381_G1_proj_multi_MSM_binary_coeff_affine_out :: CInt -> CInt -> Ptr (Ptr Word8) -> Ptr Word64 -> Ptr Word64 -> IO ()
 
 {-# NOINLINE msm #-}
 -- | Multi-Scalar Multiplication (MSM), with the coefficients in Montgomery representation,
@@ -253,7 +262,7 @@ msm (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
 -- 
 msmStd :: FlatArray ZK.Algebra.Curves.BLS12_381.Fr.Std.Fr -> FlatArray ZK.Algebra.Curves.BLS12_381.G1.Affine.G1 -> G1
 msmStd (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
-  | n1 /= n2   = error "msm: incompatible array dimensions"
+  | n1 /= n2   = error "msmStd: incompatible array dimensions"
   | otherwise  = unsafePerformIO $ do
       fptr3 <- mallocForeignPtrArray 18
       withForeignPtr fptr1 $ \ptr1 -> do
@@ -261,6 +270,77 @@ msmStd (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
           withForeignPtr fptr3 $ \ptr3 -> do
             c_bls12_381_G1_proj_MSM_std_coeff_proj_out (fromIntegral n1) ptr1 ptr2 ptr3 4
       return (MkG1 fptr3)
+
+{-# NOINLINE msmBinary #-}
+-- | Multi-Scalar Multiplication (MSM), with binary coefficients,
+-- and the curve points in affine coordinates
+-- 
+-- > msmBinary :: FlatArray Bit -> FlatArray Affine.G1 -> G1
+-- 
+msmBinary :: FlatArray L.Bit -> FlatArray ZK.Algebra.Curves.BLS12_381.G1.Affine.G1 -> G1
+msmBinary (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "msmBinary: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray 18
+      withForeignPtr fptr1 $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_bls12_381_G1_proj_MSM_binary_coeff_proj_out (fromIntegral n1) (castPtr ptr1) ptr2 ptr3
+      return (MkG1 fptr3)
+
+{-# NOINLINE binaryMultiMSM #-}
+-- | Multiple binary MSM-s with binary coefficients,
+-- and the curve points in affine coordinates
+-- 
+-- > binaryMultiMSM :: [FlatArray Bit] -> FlatArray Affine.G1 -> FlatArray G1
+-- 
+-- This can be more efficient (up to 2x or more), based on the number of coefficient arrays - 
+-- the suggested minimum is 32 - than calling 'msmBinary' multiple times
+-- 
+-- Note: it is assumed that all the coefficient arrays have the same length!
+binaryMultiMSM :: [FlatArray L.Bit] -> FlatArray ZK.Algebra.Curves.BLS12_381.G1.Affine.G1 -> FlatArray G1
+binaryMultiMSM flatarrs (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "binaryMultiMSM: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (narrs * 18)
+      L.withFlatArrays flatarrs $ \list -> do
+        let ptrs = map (castPtr . snd) list :: [Ptr Word8]
+        withArray ptrs $ \ptr_ptrs -> do
+          withForeignPtr fptr2 $ \ptr2 -> do
+            withForeignPtr fptr3 $ \ptr3 -> do
+              c_bls12_381_G1_proj_multi_MSM_binary_coeff_proj_out (fromIntegral narrs) (fromIntegral n1) ptr_ptrs ptr2 ptr3
+      return (MkFlatArray narrs fptr3)
+  where
+    narrs = length flatarrs
+    ns    = map L.flatArrayLength flatarrs
+    n1    = case maybeAllIsEqual ns of
+      Just m  -> m
+      Nothing -> error "binaryMultiMSM: incompatible coefficient array dimensions"
+
+{-# NOINLINE binaryMultiMSM_ #-}
+-- | Multiple binary MSM-s with binary coefficients, with affine output
+-- and the curve points in affine coordinates
+-- 
+-- > binaryMultiMSM_ :: [FlatArray Bit] -> FlatArray Affine.G1 -> FlatArray Affine.G1
+-- 
+binaryMultiMSM_ :: [FlatArray L.Bit] -> FlatArray ZK.Algebra.Curves.BLS12_381.G1.Affine.G1 -> FlatArray ZK.Algebra.Curves.BLS12_381.G1.Affine.G1
+binaryMultiMSM_ flatarrs (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "binaryMultiMSM: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (narrs * 12)
+      L.withFlatArrays flatarrs $ \list -> do
+        let ptrs = map (castPtr . snd) list :: [Ptr Word8]
+        withArray ptrs $ \ptr_ptrs -> do
+          withForeignPtr fptr2 $ \ptr2 -> do
+            withForeignPtr fptr3 $ \ptr3 -> do
+              c_bls12_381_G1_proj_multi_MSM_binary_coeff_affine_out (fromIntegral narrs) (fromIntegral n1) ptr_ptrs ptr2 ptr3
+      return (MkFlatArray narrs fptr3)
+  where
+    narrs = length flatarrs
+    ns    = map L.flatArrayLength flatarrs
+    n1    = case maybeAllIsEqual ns of
+      Just m  -> m
+      Nothing -> error "binaryMultiMSM_: incompatible coefficient array dimensions"
 
 
 

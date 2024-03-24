@@ -10,6 +10,14 @@ import Data.List
 import Text.Printf
 
 --------------------------------------------------------------------------------
+
+maybeAllIsEqual :: Eq a => [a] -> Maybe a
+maybeAllIsEqual []     = Nothing
+maybeAllIsEqual (x:xs) = go x xs where
+  go !x []     = Just x
+  go !x (y:ys) = if x == y then go x ys else Nothing
+
+--------------------------------------------------------------------------------
 -- * Integers
 
 -- | Modulo but first just does two comparison, and only calls `mod` if necessary

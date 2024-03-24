@@ -23,6 +23,7 @@ module ZK.Algebra.Curves.BLS12_381.G2.Affine
   , rndG2
     -- * Multi-scalar-multiplication
   , msm , msmStd
+  , msmBinary , binaryMultiMSM
     -- * Fast-Fourier transform
   , forwardFFT , inverseFFT
     -- * handling infinities hack (TODO: do this properly)
@@ -142,12 +143,22 @@ rndG2 = Proj.toAffine <$> Proj.rndG2
 --------------------------------------------------------------------------------
 
 -- | Multi-Scalar Multiplication (MSM), with the coefficients in Montgomery representation
-msm :: L.FlatArray Fr -> L.FlatArray ZK.Algebra.Curves.BLS12_381.G2.Affine.G2 -> G2
+msm :: L.FlatArray Fr -> L.FlatArray G2 -> G2
 msm cs gs = Proj.toAffine $ Proj.msm cs gs
 
 -- | Multi-Scalar Multiplication (MSM), with the coefficients in standard representation
-msmStd :: L.FlatArray ZK.Algebra.Curves.BLS12_381.Fr.Std.Fr -> L.FlatArray ZK.Algebra.Curves.BLS12_381.G2.Affine.G2 -> G2
+msmStd :: L.FlatArray ZK.Algebra.Curves.BLS12_381.Fr.Std.Fr -> L.FlatArray G2 -> G2
 msmStd cs gs = Proj.toAffine $ Proj.msmStd cs gs
+
+-- | Multi-Scalar Multiplication (MSM), with the coefficients being single bit
+msmBinary :: L.FlatArray L.Bit -> L.FlatArray G2 -> G2
+msmBinary cs gs = Proj.toAffine $ Proj.msmBinary cs gs
+
+-- | Multiple MSM-s (of the same size), with the coefficients being single bit
+binaryMultiMSM :: [L.FlatArray L.Bit] -> L.FlatArray G2 -> L.FlatArray G2
+binaryMultiMSM cs gs = Proj.binaryMultiMSM_ cs gs
+
+----------------------------------------
 
 -- | Forward FFT for groups (converting @[L_k(tau)]@ points to @[tau^i]@ points)
 forwardFFT :: FFTSubgroup Fr -> L.FlatArray G2 -> L.FlatArray G2
@@ -201,7 +212,7 @@ instance C.Curve G2 where
   infinity    = ZK.Algebra.Curves.BLS12_381.G2.Affine.infinity
   curveSubgroupGen = ZK.Algebra.Curves.BLS12_381.G2.Affine.genG2
   scalarMul   = ZK.Algebra.Curves.BLS12_381.G2.Affine.sclFr
-  msm         = ZK.Algebra.Curves.BLS12_381.G2.Affine.msm
+  msm             = ZK.Algebra.Curves.BLS12_381.G2.Affine.msm
   curveFFT    = ZK.Algebra.Curves.BLS12_381.G2.Affine.forwardFFT
   curveIFFT   = ZK.Algebra.Curves.BLS12_381.G2.Affine.inverseFFT
 
@@ -210,6 +221,8 @@ instance C.AffineCurve G2 where
   mkPoint2   = ZK.Algebra.Curves.BLS12_381.G2.Affine.mkPoint
   convertInfinityIO = ZK.Algebra.Curves.BLS12_381.G2.Affine.convertInfinityIO
   batchConvertInfinityIO = ZK.Algebra.Curves.BLS12_381.G2.Affine.batchConvertInfinityIO
+  binaryMSM_       = ZK.Algebra.Curves.BLS12_381.G2.Affine.msmBinary
+  binaryMultiMSM_  = ZK.Algebra.Curves.BLS12_381.G2.Affine.binaryMultiMSM
 
 --------------------------------------------------------------------------------
 

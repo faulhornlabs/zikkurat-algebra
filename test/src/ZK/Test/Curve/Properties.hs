@@ -160,10 +160,10 @@ data GroupProp
   | GroupPropII1 (forall a. Group a  => Int -> Int -> a -> Bool   ) String
 
 data CurveProp
-  = CurveProp1  (forall a. Curve a  => a -> Bool          ) String
-  | CurveProp2  (forall a. Curve a  => a -> a -> Bool     ) String
-  | CurveProp3  (forall a. Curve a  => a -> a -> a -> Bool) String
-  | CurvePropI1 (forall a. Curve a  => Int -> a -> Bool   ) String
+  = CurveProp1    (forall a. Curve a  => a -> Bool          ) String
+  | CurveProp2    (forall a. Curve a  => a -> a -> Bool     ) String
+  | CurveProp3    (forall a. Curve a  => a -> a -> a -> Bool) String
+  | CurvePropI1   (forall a. Curve a  => Int -> a -> Bool   ) String
 
 data ProjCurveProp
   = ProjCurveProp1  (forall a. ProjCurve a  => a -> Bool            ) String

@@ -63,7 +63,7 @@ class (Univariate p, FFTField (Coeff p)) => UnivariateFFT p where
   shiftedINTT :: FFTSubgroup (Coeff p) -> Coeff p -> FlatArray (Coeff p) -> p
   -- | Evaluate on a larger subgroup than the polynomial is defined on
   asymmNTT :: FFTSubgroup (Coeff p) -> p -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p) 
-
+  
 ntt_ :: forall p. UnivariateFFT p => Proxy p -> FFTSubgroup (Coeff p) -> FlatArray (Coeff p) -> FlatArray (Coeff p)
 ntt_ pxy dom coeffs = ntt dom (mkPolyFlat @p coeffs)
 

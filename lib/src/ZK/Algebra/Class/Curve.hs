@@ -88,7 +88,7 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   curveSubgroupGen :: a
   -- | scalar multiplication
   scalarMul   :: ScalarField a -> a -> a
-  -- | multi-scalar multiplication  
+  -- | multi-scalar multiplication (MSM)  
   msm :: FlatArray (ScalarField a) -> FlatArray a -> a
   -- | curve forward FFT
   curveFFT :: FFTSubgroup (ScalarField a) -> FlatArray a -> FlatArray a
@@ -112,6 +112,10 @@ class Curve a => AffineCurve a where
   convertInfinityIO :: a -> IO ()
   -- | convert infinities from the @(0,0)@ standard to our standard (temporary hack)
   batchConvertInfinityIO :: FlatArray a -> IO ()
+  -- | multi-scalar multiplication (MSM) with binary coeffiecents  
+  binaryMSM_ :: FlatArray Bit -> FlatArray a -> a
+  -- | multi-MSM with binary coeffiecents  
+  binaryMultiMSM_ :: [FlatArray Bit] -> FlatArray a -> FlatArray a
 
 --------------------------------------------------------------------------------
 -- * Projective curves
@@ -135,5 +139,9 @@ class (Curve a, AffineCurve (AffinePoint a)) => ProjCurve a where
   mixedAdd :: a -> AffinePoint a -> a
   -- | multi-scalar multiplication
   affMSM :: FlatArray (ScalarField a) -> FlatArray (AffinePoint a) -> a
+  -- | multi-scalar multiplication (MSM) with binary coeffiecents  
+  binaryMSM :: FlatArray Bit -> FlatArray (AffinePoint a) -> a
+  -- | multi-MSM with binary coeffiecents  
+  binaryMultiMSM :: [FlatArray Bit] -> FlatArray (AffinePoint a) -> FlatArray a
 
 --------------------------------------------------------------------------------
