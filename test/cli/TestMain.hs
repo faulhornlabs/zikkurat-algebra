@@ -43,6 +43,7 @@ help = do
   putStrLn " - proj_curve_g2"
   putStrLn " - pairings"
   putStrLn " - poly"
+  putStrLn " - compare"
   putStrLn ""
 
 --------------------------------------------------------------------------------

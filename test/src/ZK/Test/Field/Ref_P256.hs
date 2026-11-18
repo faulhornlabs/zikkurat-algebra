@@ -11,8 +11,8 @@ import qualified ZK.Algebra.Pure.Instances.P256 as Pure_P256
 import ZK.Algebra.Curves.P256.Fr.Mont (Fr) 
 import ZK.Algebra.Curves.P256.Fp.Mont (Fp) 
 
-import qualified ZK.Algebra.Curves.BN128.Fr.Mont as Fast_P256
-import qualified ZK.Algebra.Curves.BN128.Fp.Mont as Fast_P256
+import qualified ZK.Algebra.Curves.P256.Fr.Mont as Fast_P256
+import qualified ZK.Algebra.Curves.P256.Fp.Mont as Fast_P256
 
 import ZK.Test.Field.AgainstRef (runAllCmpTests)
 
