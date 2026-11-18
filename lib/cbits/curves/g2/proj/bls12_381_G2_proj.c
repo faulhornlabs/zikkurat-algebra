@@ -120,12 +120,11 @@ void bls12_381_G2_proj_from_affine( const uint64_t *src1 , uint64_t *tgt ) {
 }
 
 // converts to affine coordinates
-// remark: the point at infinity will result in the special string `0xffff...ffff`
+// remark: the point at infinity will result either in the special string `0xffff...ffff`
+// or the special string `0x0000...0000`, based on whether B == 0 or not
 void bls12_381_G2_proj_to_affine( const uint64_t *src1 , uint64_t *tgt ) {
   if (bls12_381_Fp2_mont_is_zero( Z1 )) {
-    // in the affine coordinate system, the point at infinity is represented by a hack
-    // consisting all 0xff bytes (note that that's an invalid value for prime fields)
-    memset( tgt, 0xff, 192 );
+    bls12_381_G2_affine_set_infinity(tgt);
   }
   else {
     uint64_t zinv[12];

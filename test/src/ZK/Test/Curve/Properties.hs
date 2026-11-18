@@ -417,6 +417,8 @@ projCurveOnlyProps :: [ProjCurveProp]
 projCurveOnlyProps = 
   [ ProjCurveProp1   prop_to_from_affine            "fromAffine . toAffine"  
   , ProjCurvePropA   prop_from_to_affine            "toAffine . fromAffine"  
+  , ProjCurveProp1   prop_inf_from_affine           "fromAff(inf) == prjInf"  
+  , ProjCurvePropA   prop_inf_to_affine             "toAff(prjInf) == inf"  
   , ProjCurveProp3   prop_batch_to_from_affine      "batch from/to affine"
   , ProjCurveProp3A  prop_batch_from_to_affine      "batch to/from affine"
   , ProjCurveProp1   prop_is_on_curve_toAffine      "oncurve(toAffine(x))"  
@@ -440,6 +442,12 @@ prop_to_from_affine x = (fromAffine (toAffine x)) == x
 
 prop_from_to_affine :: forall a. ProjCurve a => Proxy a -> AffinePoint a -> Bool
 prop_from_to_affine _ x = toAffine (fromAffine @a x) == x
+
+prop_inf_from_affine :: forall a. ProjCurve a => a -> Bool
+prop_inf_from_affine x = fromAffine @a (infinity @(AffinePoint a)) == infinity
+
+prop_inf_to_affine :: forall a. ProjCurve a => Proxy a -> AffinePoint a -> Bool
+prop_inf_to_affine _ x = toAffine @a (infinity @a) == infinity
 
 prop_batch_to_from_affine :: forall a. ProjCurve a => a -> a -> a -> Bool
 prop_batch_to_from_affine x y z = lhs == rhs where

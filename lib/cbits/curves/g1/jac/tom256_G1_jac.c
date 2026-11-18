@@ -123,11 +123,10 @@ void tom256_G1_jac_from_affine( const uint64_t *src1 , uint64_t *tgt ) {
 
 // converts to affine coordinates
 // remark: the point at infinity will result in the special string `0xffff...ffff`
+// or the special string `0x0000...0000`, based on whether B == 0 or not
 void tom256_G1_jac_to_affine( const uint64_t *src1 , uint64_t *tgt ) {
   if (tom256_Fp_mont_is_zero( Z1 )) {
-    // in the affine coordinate system, the point at infinity is represented by a hack
-    // consisting all 0xff bytes (note that that's an invalid value for prime fields)
-    memset( tgt, 0xff, 64 );
+    tom256_G1_affine_set_infinity( tgt );
   }
   else {
     uint64_t zinv [4];
