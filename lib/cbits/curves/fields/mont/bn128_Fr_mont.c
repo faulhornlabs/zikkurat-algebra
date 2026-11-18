@@ -26,6 +26,14 @@ uint8_t bn128_Fr_mont_bigint256_add_prime_inplace( uint64_t *tgt ) {
   return bigint256_add_inplace( tgt, bn128_Fr_mont_prime);
 }
 
+// the constant `2^256 - p
+const uint64_t bn128_Fr_mont_neg_of_prime[4] = { 0xbc1e0a6c0fffffff, 0xd7cc17b786468f6e, 0x47afba497e7ea7a2, 0xcf9bb18d1ece5fd6 };
+
+// adds (2^256 - prime) to a bigint, inplace
+uint8_t bn128_Fr_mont_bigint256_add_neg_of_prime_inplace( uint64_t *tgt ) {
+  return bigint256_add_inplace( tgt, bn128_Fr_mont_neg_of_prime);
+}
+
 // the constant `p + 1`
 const uint64_t bn128_Fr_mont_p_plus_1[4] = { 0x43e1f593f0000002, 0x2833e84879b97091, 0xb85045b68181585d, 0x30644e72e131a029 };
 
@@ -165,7 +173,12 @@ void bn128_Fr_mont_REDC_unsafe( uint64_t *T, uint64_t *tgt ) {
     }
   }
   memcpy( tgt, T+4, 32);
-  bn128_Fr_mont_bigint256_sub_prime_if_above_inplace(tgt);
+  if (T[8] > 0) {
+    bn128_Fr_mont_bigint256_add_neg_of_prime_inplace(tgt);
+  }
+  else {
+    bn128_Fr_mont_bigint256_sub_prime_if_above_inplace(tgt);
+  }
 }
 
 void bn128_Fr_mont_REDC( const uint64_t *src, uint64_t *tgt ) {

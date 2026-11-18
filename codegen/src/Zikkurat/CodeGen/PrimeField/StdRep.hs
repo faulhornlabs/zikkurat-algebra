@@ -356,6 +356,16 @@ addPrime Params{..} =
   , "  return " ++ bigint_ ++ "add_inplace( tgt, " ++ prefix ++ "prime);"
   , "}"
   , ""
+{-
+  , "// the constant `2^256 - p"
+  , mkConst nlimbs (prefix ++ "neg_of_prime") (2^(64*nlimbs) - thePrime)
+  , ""
+  , "// adds (2^256 - prime) to a bigint, inplace"
+  , "uint8_t " ++ prefix ++ "" ++ bigint_ ++ "add_neg_of_prime_inplace( uint64_t *tgt ) {"
+  , "  return " ++ bigint_ ++ "add_inplace( tgt, " ++ prefix ++ "neg_of_prime);"
+  , "}"
+  , ""
+-}
   , "// the constant `p + 1`"
   , mkConst nlimbs (prefix ++ "p_plus_1") (thePrime + 1)
   , ""

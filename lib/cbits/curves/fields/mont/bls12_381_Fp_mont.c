@@ -26,6 +26,14 @@ uint8_t bls12_381_Fp_mont_bigint384_add_prime_inplace( uint64_t *tgt ) {
   return bigint384_add_inplace( tgt, bls12_381_Fp_mont_prime);
 }
 
+// the constant `2^256 - p
+const uint64_t bls12_381_Fp_mont_neg_of_prime[6] = { 0x4601000000005555, 0xe15400014eac0000, 0x98cf2d5f094f09db, 0x9b88b47b0c7aed40, 0xb4e45849bcb45328, 0xe5feee15c6801965 };
+
+// adds (2^256 - prime) to a bigint, inplace
+uint8_t bls12_381_Fp_mont_bigint384_add_neg_of_prime_inplace( uint64_t *tgt ) {
+  return bigint384_add_inplace( tgt, bls12_381_Fp_mont_neg_of_prime);
+}
+
 // the constant `p + 1`
 const uint64_t bls12_381_Fp_mont_p_plus_1[6] = { 0xb9feffffffffaaac, 0x1eabfffeb153ffff, 0x6730d2a0f6b0f624, 0x64774b84f38512bf, 0x4b1ba7b6434bacd7, 0x1a0111ea397fe69a };
 
@@ -179,7 +187,12 @@ void bls12_381_Fp_mont_REDC_unsafe( uint64_t *T, uint64_t *tgt ) {
     }
   }
   memcpy( tgt, T+6, 48);
-  bls12_381_Fp_mont_bigint384_sub_prime_if_above_inplace(tgt);
+  if (T[12] > 0) {
+    bls12_381_Fp_mont_bigint384_add_neg_of_prime_inplace(tgt);
+  }
+  else {
+    bls12_381_Fp_mont_bigint384_sub_prime_if_above_inplace(tgt);
+  }
 }
 
 void bls12_381_Fp_mont_REDC( const uint64_t *src, uint64_t *tgt ) {

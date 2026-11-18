@@ -118,7 +118,7 @@ runProjCurveOnlyTests n pxy = do
       k <- randomRIO (-1000,1000)
       x <- rndIO @a
       return (test k x) 
-
+      
     ProjCurveProp3 test name -> doTests n name $ do
       x <- rndIO @a
       y <- rndIO @a
