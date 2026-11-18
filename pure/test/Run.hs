@@ -20,6 +20,8 @@ import Field.Properties ( runRingTests  , runFieldTests )
 import qualified ZK.Algebra.Pure.Instances.BN254     as BN254
 import qualified ZK.Algebra.Pure.Instances.BLS12_381 as BLS12_381
 import qualified ZK.Algebra.Pure.Instances.BLS12_377 as BLS12_377
+import qualified ZK.Algebra.Pure.Instances.P256      as P256
+import qualified ZK.Algebra.Pure.Instances.Tom256    as Tom256
 
 --------------------------------------------------------------------------------
 
@@ -61,6 +63,8 @@ runTestsFields n = do
   runTests_BN254     n
   runTests_BLS12_381 n
   runTests_BLS12_377 n
+  runTests_P256      n
+  runTests_Tom256    n
 
   testExit
 
@@ -136,5 +140,31 @@ runTests_BLS12_377 n = do
 
   testExit
   
+----------------------------------------
+
+runTests_P256 :: Int -> IO ()
+runTests_P256 n = do
+
+  printHeader "running tests for P256/Fr"
+  runFieldTests theOKFlag n (Proxy @P256.Fr)
+
+  printHeader "running tests for P256/Fp"
+  runFieldTests theOKFlag n (Proxy @P256.Fp)
+
+  testExit
+
+----------------------------------------
+
+runTests_Tom256 :: Int -> IO ()
+runTests_Tom256 n = do
+
+  printHeader "running tests for Tom256/Fr"
+  runFieldTests theOKFlag n (Proxy @Tom256.Fr)
+
+  printHeader "running tests for Tom256/Fp"
+  runFieldTests theOKFlag n (Proxy @Tom256.Fp)
+
+  testExit
+
 ----------------------------------------
 

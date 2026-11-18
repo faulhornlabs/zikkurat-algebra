@@ -29,6 +29,10 @@
 #define Y3 (tgt + 6)
 #define Z3 (tgt + 12)
 
+// the constants A and B of the equation
+const uint64_t bls12_381_G1_jac_const_A[6] = { 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
+const uint64_t bls12_381_G1_jac_const_B[6] = { 0xaa270000000cfff3, 0x53cc0032fc34000a, 0x478fe97a6b0a807f, 0xb1d37ebee6ba24d7, 0x8ec9733bbf78ab2f, 0x09d645513d83de7e };
+
 // the generator of the subgroup G1
 const uint64_t bls12_381_G1_jac_gen_G1[18] = { 0x5cb38790fd530c16, 0x7817fc679976fff5, 0x154f95c7143ba1c1, 0xf0ae6acdf3d0e747, 0xedce6ecc21dbf440, 0x120177419e0bfb75, 0xbaac93d50ce72271, 0x8c22631a7918fd8e, 0xdd595f13570725ce, 0x51ac582950405194, 0x0e1c8c3fad0059c0, 0x0bbc3efc5008a26a, 0x760900000002fffd, 0xebf4000bc40c0002, 0x5f48985753c758ba, 0x77ce585370525745, 0x5c071a97a256ec6d, 0x15f65ec3fa80e493 };
 
@@ -46,7 +50,7 @@ void bls12_381_G1_jac_scale_by_A_inplace( uint64_t *tgt ) {
   memset( tgt, 0, 48 );
 }
 
-// scale a field element by B = 4
+// scale a field element by B = 0
 void bls12_381_G1_jac_scale_by_B(const uint64_t *src, uint64_t *tgt ) {
   uint64_t tmp[6];
   bls12_381_Fp_mont_add( src, src, tmp );

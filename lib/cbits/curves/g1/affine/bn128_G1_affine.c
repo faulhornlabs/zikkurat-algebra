@@ -43,6 +43,28 @@ const uint64_t bn128_G1_affine_const_3B[4] = { 0xf60647ce410d7ff7, 0x2f3d6f4dd31
 //------------------------------------------------------------------------------
 
 
+// scale a field element by A = 0
+void bn128_G1_affine_scale_by_A(const uint64_t *src, uint64_t *tgt ) {
+  memset( tgt, 0, 32 );
+}
+
+void bn128_G1_affine_scale_by_A_inplace( uint64_t *tgt ) {
+  memset( tgt, 0, 32 );
+}
+
+// scale a field element by B = 0
+void bn128_G1_affine_scale_by_B(const uint64_t *src, uint64_t *tgt ) {
+  uint64_t tmp[4];
+  bn128_Fp_mont_add( src, src, tmp );
+  bn128_Fp_mont_add( src, tmp, tgt );
+}
+
+void bn128_G1_affine_scale_by_B_inplace( uint64_t *tgt ) {
+  uint64_t tmp[4];
+  bn128_Fp_mont_add( tgt, tgt, tmp );
+  bn128_Fp_mont_add_inplace( tgt, tmp );
+}
+
 // checks whether two curve points are equal
 uint8_t bn128_G1_affine_is_equal( const uint64_t *src1, const uint64_t *src2 ) {
   return ( bn128_Fp_mont_is_equal( X1, X2 ) &&

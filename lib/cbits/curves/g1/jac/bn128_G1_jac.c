@@ -29,6 +29,10 @@
 #define Y3 (tgt + 4)
 #define Z3 (tgt + 8)
 
+// the constants A and B of the equation
+const uint64_t bn128_G1_jac_const_A[4] = { 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
+const uint64_t bn128_G1_jac_const_B[4] = { 0x7a17caa950ad28d7, 0x1f6ac17ae15521b9, 0x334bea4e696bd284, 0x2a1f6744ce179d8e };
+
 // the generator of the subgroup G1
 const uint64_t bn128_G1_jac_gen_G1[12] = { 0xd35d438dc58f0d9d, 0x0a78eb28f5c70b3d, 0x666ea36f7879462c, 0x0e0a77c19a07df2f, 0xa6ba871b8b1e1b3a, 0x14f1d651eb8e167b, 0xccdd46def0f28c58, 0x1c14ef83340fbe5e, 0xd35d438dc58f0d9d, 0x0a78eb28f5c70b3d, 0x666ea36f7879462c, 0x0e0a77c19a07df2f };
 
@@ -46,7 +50,7 @@ void bn128_G1_jac_scale_by_A_inplace( uint64_t *tgt ) {
   memset( tgt, 0, 32 );
 }
 
-// scale a field element by B = 3
+// scale a field element by B = 0
 void bn128_G1_jac_scale_by_B(const uint64_t *src, uint64_t *tgt ) {
   uint64_t tmp[4];
   bn128_Fp_mont_add( src, src, tmp );

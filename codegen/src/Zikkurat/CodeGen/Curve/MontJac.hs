@@ -20,6 +20,8 @@ import Zikkurat.CodeGen.Curve.Params
 import Zikkurat.CodeGen.Curve.CurveFFI
 import Zikkurat.CodeGen.Curve.MSM
 import Zikkurat.CodeGen.Curve.FFT
+import Zikkurat.CodeGen.Curve.ScaleByConst
+import Zikkurat.CodeGen.Curve.Shared
 
 --------------------------------------------------------------------------------
 
@@ -388,6 +390,12 @@ c_begin curve@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   , "#define Y3 (tgt + " ++ show (  nlimbs_p) ++ ")"
   , "#define Z3 (tgt + " ++ show (2*nlimbs_p) ++ ")"
   , ""
+  ] ++
+  (case {- xcurve -} (Left curve) of 
+    Left  curve1  -> c_constants_AB_curve1 False curve1  cgparams
+    Right curve12 -> c_constants_AB_curve2 False curve12 cgparams
+  ) ++
+  [ ""
   , "// the generator of the subgroup G1"
   , mkConstArr nlimbs_p (prefix ++ "gen_G1") (map toMontgomery [ fst subgroupGen, snd subgroupGen , 1 ])
   , ""
@@ -401,6 +409,17 @@ c_begin curve@(Curve1{..}) cgparams@(CodeGenParams{..}) =
 
 --------------------------------------------------------------------------------
 
+scale_by_A :: Curve1 -> CodeGenParams -> Code
+scale_by_A curve1@(Curve1{..}) cgenparams@(CodeGenParams{..}) = 
+  scale_by_constant curve1 cgenparams "A" curveA
+
+scale_by_B :: Curve1 -> CodeGenParams -> Code
+scale_by_B curve1@(Curve1{..}) cgenparams@(CodeGenParams{..}) = 
+  scale_by_constant curve1 cgenparams "B" curveB
+
+-----------------------------
+
+{-
 scale_by_A ::  Curve1 -> CodeGenParams -> Code
 scale_by_A (Curve1{..}) (CodeGenParams{..}) = case curveA of
 
@@ -431,6 +450,37 @@ scale_by_A (Curve1{..}) (CodeGenParams{..}) = case curveA of
        , ""
        , "void " ++ prefix ++ "scale_by_A_inplace( uint64_t *tgt ) {"
        , "  " ++ prefix_p ++ "add_inplace( tgt, tgt );"
+       , "}"
+       ]
+
+  3 -> [ "// scale a field element by A = " ++ show curveB
+       , "void " ++ prefix ++ "scale_by_A(const uint64_t *src, uint64_t *tgt ) {"
+       , "  uint64_t tmp[" ++ show nlimbs_p ++ "];"
+       , "  " ++ prefix_p ++ "add( src, src, tmp );"
+       , "  " ++ prefix_p ++ "add( src, tmp, tgt );"
+       , "}"
+       , ""
+       , "void " ++ prefix ++ "scale_by_A_inplace( uint64_t *tgt ) {"
+       , "  uint64_t tmp[" ++ show nlimbs_p ++ "];"
+       , "  " ++ prefix_p ++ "add( tgt, tgt, tmp );"
+       , "  " ++ prefix_p ++ "add_inplace( tgt, tmp );"
+       , "}"
+       ]
+
+  -- for P256 and Tom256 we have A == -3
+  -3 -> [ "// scale a field element by A = " ++ show curveB
+       , "void " ++ prefix ++ "scale_by_A(const uint64_t *src, uint64_t *tgt ) {"
+       , "  uint64_t tmp[" ++ show nlimbs_p ++ "];"
+       , "  " ++ prefix_p ++ "add( src, src, tmp );"
+       , "  " ++ prefix_p ++ "add( src, tmp, tgt );"
+       , "  " ++ prefix_p ++ "neg_inplace( tgt );"
+       , "}"
+       , ""
+       , "void " ++ prefix ++ "scale_by_A_inplace( uint64_t *tgt ) {"
+       , "  uint64_t tmp[" ++ show nlimbs_p ++ "];"
+       , "  " ++ prefix_p ++ "add( tgt, tgt, tmp );"
+       , "  " ++ prefix_p ++ "add_inplace( tgt, tmp );"
+       , "  " ++ prefix_p ++ "neg_inplace( tgt );"
        , "}"
        ]
 
@@ -516,6 +566,7 @@ scale_by_B (Curve1{..}) (CodeGenParams{..}) = case curveB of
        , "  " ++ prefix_p ++ "scl_inplace( tgt, " ++ show curveB ++ " );"
        , "}"
        ]
+-}
 
 --------------------------------------------------------------------------------
 

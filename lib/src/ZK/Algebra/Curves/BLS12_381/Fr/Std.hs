@@ -20,7 +20,7 @@ module ZK.Algebra.Curves.BLS12_381.Fr.Std
   , isValid , isZero , isOne , isEqual
     -- * Field operations
   , neg , add , sub
-  , sqr , mul
+  , sqr , mul , scl
   , inv , div , divBy2 , batchInv
     -- * Exponentiation
   , pow , pow_
@@ -336,6 +336,17 @@ mul (MkFr fptr1) (MkFr fptr2) = unsafePerformIO $ do
       withForeignPtr fptr3 $ \ptr3 -> do
         c_bls12_381_Fr_std_mul ptr1 ptr2 ptr3
   return (MkFr fptr3)
+
+foreign import ccall unsafe "bls12_381_Fr_std_scl" c_bls12_381_Fr_std_scl :: Ptr Word64 -> Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE scl #-}
+scl :: Fr -> Word64 -> Fr
+scl (MkFr fptr1) x = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 4
+  cret <- withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bls12_381_Fr_std_scl ptr1 x ptr2
+  return (MkFr fptr2)
 
 foreign import ccall unsafe "bls12_381_Fr_std_inv" c_bls12_381_Fr_std_inv :: Ptr Word64 -> Ptr Word64 -> IO ()
 

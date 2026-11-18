@@ -54,6 +54,8 @@ Library
                         ZK.Algebra.Pure.Instances.BN254
                         ZK.Algebra.Pure.Instances.BLS12_381
                         ZK.Algebra.Pure.Instances.BLS12_377
+                        ZK.Algebra.Pure.Instances.P256
+                        ZK.Algebra.Pure.Instances.Tom256
                         ZK.Algebra.Pure.Instances.AllFields
 
   Other-Modules:        ZK.Algebra.Pure.Field.Raw.Generic

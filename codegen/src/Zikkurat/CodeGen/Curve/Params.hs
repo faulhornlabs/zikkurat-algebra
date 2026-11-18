@@ -1,4 +1,6 @@
 
+-- | Curve parameters
+
 {-# LANGUAGE RecordWildCards #-}
 module Zikkurat.CodeGen.Curve.Params where
 
@@ -222,5 +224,37 @@ bls12_381_curve2 = Curve2
     gen_x1 = 352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160 
     gen_yu = 927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582  -- *u 
     gen_y1 = 1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905
+
+--------------------------------------------------------------------------------
+
+-- https://std.neuromancer.sk/nist/P-256
+p256_curve1 :: Curve1
+p256_curve1 = Curve1
+  { curveName     = "P256"
+  , curveFp       = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
+  , curveFr       = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551
+  , curveA        = -3 -- 0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc  -- = -3
+  , curveB        = 0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b
+  , cofactor      = 1
+  , subgroupGen   = ( 0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296
+                    , 0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5 
+                    )
+  , glvBetaLambda = Nothing
+  }
+
+----------------------------------------
+
+-- https://std.neuromancer.sk/other/Tom-256
+tom256_curve1 :: Curve1
+tom256_curve1 = Curve1
+  { curveName     = "Tom256"
+  , curveFp       = 0xffffffff0000000100000000000000017e72b42b30e7317793135661b1c4b117
+  , curveFr       = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
+  , curveA        = -3  -- 0xffffffff0000000100000000000000017e72b42b30e7317793135661b1c4b114
+  , curveB        = 0xb441071b12f4a0366fb552f8e21ed4ac36b06aceeb354224863e60f20219fc56
+  , cofactor      = 1
+  , subgroupGen   = (0x03, 0x5a6dd32df58708e64e97345cbe66600decd9d538a351bb3c30b4954925b1f02d)
+  , glvBetaLambda = Nothing
+  }
 
 --------------------------------------------------------------------------------

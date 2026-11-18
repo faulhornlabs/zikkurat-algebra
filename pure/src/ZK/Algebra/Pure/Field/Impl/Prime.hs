@@ -1,7 +1,7 @@
 
 -- | Prime field implementations
 
-{-# LANGUAGE KindSignatures, ScopedTypeVariables, TypeFamilies #-}
+{-# LANGUAGE KindSignatures, DataKinds, ScopedTypeVariables, TypeFamilies #-}
 module ZK.Algebra.Pure.Field.Impl.Prime where
 
 --------------------------------------------------------------------------------

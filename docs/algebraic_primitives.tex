@@ -350,7 +350,11 @@ $\gcd(R,p)=1$ (automatic here), $R=2^{64k}$ (in the multi-precision version), an
 an inverse $q\in[0,2^{64})$ such that $pq + 1 \equiv 0\mod 2^{64}$ (this can be precalculated).
 In practice we also need $R>p$; so a very natural choice is $R=2^{64\ell}$.
 More general versions of the algorithm exist, but this is the one which looks
-relevant here.
+relevant here.\\
+
+Montgomery reduction can be seen as a dual to Barrett reduction.
+See this nice blogpost for an explanation and for some improvements:
+\url{https://hackmd.io/@Ingonyama/Barret-Montgomery}
 
 %-------------------------------------------------------------------------------
 

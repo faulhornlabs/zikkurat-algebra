@@ -11,7 +11,7 @@ License-files:        LICENSE-MIT
                       LICENSE-APACHE-2.0
 
 Author:               Balazs Komuves
-Copyright:            (c) 2023-2024 Faulhorn Labs
+Copyright:            (c) 2023-2026 Faulhorn Labs
 Maintainer:           balazs.komuves (at) faulhornlabs (dot) com
 
 Stability:            Experimental
@@ -54,12 +54,20 @@ source-repository head
 
 --------------------------------------------------------------------------------
 
-Flag BN128 
+Flag BN128
   Description: Enable the BN128 elliptic curve
   Default:     True
 
 Flag BLS12_381
   Description: Enable the BLS12-381 elliptic curve
+  Default:     True
+
+Flag P256
+  Description: Enable the P-256 elliptic curve
+  Default:     True
+
+Flag Tom256
+  Description: Enable the Tom256 elliptic curve
   Default:     True
 
 --------------------------------------------------------------------------------
@@ -94,6 +102,8 @@ Library
                         ZK.Algebra.BigInt.BigInt704
                         ZK.Algebra.BigInt.BigInt768
                         ZK.Algebra.BigInt.Platform
+
+----------------------------------------
 
   if flag(BN128)
     Exposed-Modules:    ZK.Algebra.Curves.BN128
@@ -133,6 +143,32 @@ Library
                         ZK.Algebra.Curves.BLS12_381.Pairing
                         ZK.Algebra.Reference.Pairing.BLS12_381
 
+  if flag(P256)
+    Exposed-Modules:    ZK.Algebra.Curves.P256
+                        ZK.Algebra.Curves.P256.Fp.Std
+                        ZK.Algebra.Curves.P256.Fp.Mont
+                        ZK.Algebra.Curves.P256.Fr.Std
+                        ZK.Algebra.Curves.P256.Fr.Mont
+                        ZK.Algebra.Curves.P256.G1.Affine
+                        ZK.Algebra.Curves.P256.G1.Proj
+                        ZK.Algebra.Curves.P256.G1.Jac
+                        ZK.Algebra.Curves.P256.Poly
+                        ZK.Algebra.Curves.P256.Array
+
+  if flag(Tom256)
+    Exposed-Modules:    ZK.Algebra.Curves.Tom256
+                        ZK.Algebra.Curves.Tom256.Fp.Std
+                        ZK.Algebra.Curves.Tom256.Fp.Mont
+                        ZK.Algebra.Curves.Tom256.Fr.Std
+                        ZK.Algebra.Curves.Tom256.Fr.Mont
+                        ZK.Algebra.Curves.Tom256.G1.Affine
+                        ZK.Algebra.Curves.Tom256.G1.Proj
+                        ZK.Algebra.Curves.Tom256.G1.Jac
+                        ZK.Algebra.Curves.Tom256.Poly
+                        ZK.Algebra.Curves.Tom256.Array
+
+----------------------------------------
+
   c-sources:            cbits/platform.c
                         cbits/bigint/bigint128.c
                         cbits/bigint/bigint192.c
@@ -145,6 +181,8 @@ Library
                         cbits/bigint/bigint640.c
                         cbits/bigint/bigint704.c
                         cbits/bigint/bigint768.c
+
+----------------------------------------
 
   if flag(BN128)
 
@@ -181,6 +219,32 @@ Library
                         cbits/curves/poly/mont/bls12_381_poly_mont.c
                         cbits/curves/array/mont/bls12_381_arr_mont.c
                         cbits/curves/pairing/bls12_381_pairing.c
+
+  if flag(P256)
+
+    c-sources:          cbits/curves/fields/std/p256_Fp_std.c
+                        cbits/curves/fields/std/p256_Fr_std.c
+                        cbits/curves/fields/mont/p256_Fp_mont.c
+                        cbits/curves/fields/mont/p256_Fr_mont.c
+                        cbits/curves/g1/affine/p256_G1_affine.c
+                        cbits/curves/g1/proj/p256_G1_proj.c
+                        cbits/curves/g1/jac/p256_G1_jac.c
+                        cbits/curves/poly/mont/p256_poly_mont.c
+                        cbits/curves/array/mont/p256_arr_mont.c
+
+  if flag(Tom256)
+
+    c-sources:          cbits/curves/fields/std/tom256_Fp_std.c
+                        cbits/curves/fields/std/tom256_Fr_std.c
+                        cbits/curves/fields/mont/tom256_Fp_mont.c
+                        cbits/curves/fields/mont/tom256_Fr_mont.c
+                        cbits/curves/g1/affine/tom256_G1_affine.c
+                        cbits/curves/g1/proj/tom256_G1_proj.c
+                        cbits/curves/g1/jac/tom256_G1_jac.c
+                        cbits/curves/poly/mont/tom256_poly_mont.c
+                        cbits/curves/array/mont/tom256_arr_mont.c
+
+----------------------------------------
 
   Default-Language:     Haskell2010
   Default-Extensions:   CPP, BangPatterns

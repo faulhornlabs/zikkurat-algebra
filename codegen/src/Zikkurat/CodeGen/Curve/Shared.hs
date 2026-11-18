@@ -35,6 +35,29 @@ x_groupname xcurve= case xcurve of
 
 --------------------------------------------------------------------------------
 
+c_constants_AB_curve1 :: Bool -> Curve1 -> CodeGenParams -> Code
+c_constants_AB_curve1 is_proj (Curve1{..}) cgparams@(CodeGenParams{..}) =
+  [ "// the constants A and B of the equation"
+  , mkConst nlimbs_p (prefix ++ "const_A" ) (toMontgomery curveA)
+  , mkConst nlimbs_p (prefix ++ "const_B" ) (toMontgomery curveB)
+  ]
+  where
+    toMontgomery x = mod ( 2^(64*nlimbs_p) * x ) curveFp
+
+c_constants_AB_curve2 :: Bool -> Curve12 -> CodeGenParams -> Code
+c_constants_AB_curve2 is_proj (Curve12 curve1 curve2@(Curve2{..})) cgparams@(CodeGenParams{..}) =
+  [ "// the constants A and B of the equation"
+  , mkConstFp2 nlimbs_p (prefix ++ "const_A")  (toMontgomeryFp2 g2_curveA)
+  , mkConstFp2 nlimbs_p (prefix ++ "const_B")  (toMontgomeryFp2 g2_curveB)
+  ]
+  where
+    p = curveFp curve1
+    nlimbs_p_orig  = div nlimbs_p 2       -- ugly hacks galore... nlimbs_p is for Fp2...
+    toMontgomery x = mod ( 2^(64*nlimbs_p_orig) * x ) p
+    toMontgomeryFp2 (x,y) = (toMontgomery x, toMontgomery y)
+
+----------------------------------------
+
 c_begin_curve1 :: Bool -> Curve1 -> CodeGenParams -> Code
 c_begin_curve1 is_proj (Curve1{..}) cgparams@(CodeGenParams{..}) =
   [ "// the generator of the subgroup G1"

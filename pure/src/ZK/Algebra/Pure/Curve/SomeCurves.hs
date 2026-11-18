@@ -16,6 +16,7 @@ data ACurve
   = BN254     | BabyJubJub | Bandersnatch | Grumpkin 
   | BLS12_381 | JubJub
   | BLS12_377 
+  | P256      | Tom256
   | Pallas    | Vesta
   | Secp256k1 | Secq256k1
   | Curve25519
@@ -46,6 +47,8 @@ class LowerCurve (c :: ACurve) where
 instance LowerCurve BN254        where loweredCurve _ = BN254
 instance LowerCurve BLS12_381    where loweredCurve _ = BLS12_381
 instance LowerCurve BLS12_377    where loweredCurve _ = BLS12_377
+instance LowerCurve P256         where loweredCurve _ = P256
+instance LowerCurve Tom256       where loweredCurve _ = Tom256
 instance LowerCurve Pallas       where loweredCurve _ = Pallas
 instance LowerCurve Vesta        where loweredCurve _ = Vesta
 instance LowerCurve JubJub       where loweredCurve _ = JubJub
@@ -72,6 +75,18 @@ curvePrimes curve which = case curve of
   BLS12_377 -> case which of
     BaseField    -> 0x01ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001
     ScalarField  -> 0x12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001
+
+  -- https://csrc.nist.gov/pubs/sp/800/186/final
+  -- https://std.neuromancer.sk/nist/P-256
+  P256 -> case which of
+    BaseField    -> 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
+    ScalarField  -> 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551
+
+  -- https://std.neuromancer.sk/other/Tom-256
+  -- https://eprint.iacr.org/2021/1183.pdf
+  Tom256 -> case which of
+    BaseField    -> 0xffffffff0000000100000000000000017e72b42b30e7317793135661b1c4b117
+    ScalarField  -> 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
 
   JubJub -> case which of
     BaseField    -> 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001

@@ -137,6 +137,10 @@ primefield_list =
   , ( "BN128/Fr"     , PrimGen 5 , Just domain_BN128     , ["ZK","Algebra","Curves", "BN128"    , "Fr", "^^^" ] , ["curves", "fields", ",,,", "bn128_Fr_,,,"    ] , "Fr" , bn128_scalar_r     )
   , ( "BLS12-381/Fp" , PrimGen 2 , Nothing               , ["ZK","Algebra","Curves", "BLS12_381", "Fp", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_Fp_,,,"] , "Fp" , bls12_381_base_p   ) 
   , ( "BLS12-381/Fr" , PrimGen 7 , Just domain_BLS12_381 , ["ZK","Algebra","Curves", "BLS12_381", "Fr", "^^^" ] , ["curves", "fields", ",,,", "bls12_381_Fr_,,,"] , "Fr" , bls12_381_scalar_r )
+  , ( "P256/Fp"      , PrimGen 6 , Nothing               , ["ZK","Algebra","Curves", "P256",      "Fp", "^^^" ] , ["curves", "fields", ",,,", "p256_Fp_,,,"     ] , "Fp" , p256_base_p        ) 
+  , ( "P256/Fr"      , PrimGen 7 , Nothing               , ["ZK","Algebra","Curves", "P256",      "Fr", "^^^" ] , ["curves", "fields", ",,,", "p256_Fr_,,,"     ] , "Fr" , p256_scalar_r      )
+  , ( "Tom256/Fp"    , PrimGen 6 , Nothing               , ["ZK","Algebra","Curves", "Tom256",    "Fp", "^^^" ] , ["curves", "fields", ",,,", "tom256_Fp_,,,"   ] , "Fp" , tom256_base_p      ) 
+  , ( "Tom256/Fr"    , PrimGen 6 , Nothing               , ["ZK","Algebra","Curves", "Tom256",    "Fr", "^^^" ] , ["curves", "fields", ",,,", "tom256_Fr_,,,"   ] , "Fr" , tom256_scalar_r    )
   ]
 
 -- fft domains
@@ -288,6 +292,7 @@ bn128_polyParams = Poly.PolyParams
   , Poly.typeName   = "Poly" 
   , Poly.typeName_r = "Fr"
   , Poly.prime_r    = bn128_scalar_r   
+  , Poly.has_fft    = True
   }
 
 bn128_pwParams :: PwParams 
@@ -384,6 +389,7 @@ bls12_381_polyParams = Poly.PolyParams
   , Poly.typeName   = "Poly" 
   , Poly.typeName_r = "Fr"
   , Poly.prime_r    = bls12_381_scalar_r
+  , Poly.has_fft    = True
   }
 
 bls12_381_pwParams :: PwParams 
@@ -405,6 +411,142 @@ bls12_381_reexport = RE.ReExportParams
   { RE.hsPath       = Path ["ZK","Algebra","Curves","BLS12_381"]
   , RE.moduleName   = "BLS12_381"
   , RE.moduleList   = RE.reexports_standardPairingCurve
+  }
+
+--------------------------------------------------------------------------------
+-- P-256 elliptic curve
+
+p256_cgParams_G :: CodeGenParams
+p256_cgParams_G = CodeGenParams
+  { prefix         = error "p256 / prefix"                                      -- prefix for C names
+  , prefix_affine  = "p256_G1_affine_"                                          -- prefix for C names
+  , prefix_proj    = "p256_G1_proj_"                                            -- prefix for C names
+  , prefix_jac     = "p256_G1_jac_"                                             -- prefix for C names
+  , prefix_p       = "p256_Fp_mont_"                                            -- prefix for C names for Fp
+  , prefix_r       = "p256_Fr_mont_"                                            -- prefix for C names for Fq
+  , point_repr     = error "p256 / point_repr"                                  -- one of "affine", "proj" or "jac"
+  , nlimbs_p       = 4                                                          -- number of 64-bit limbs in p
+  , nlimbs_r       = 4                                                          -- number of 64-bit limbs in r
+  , hs_path_p      = Path ["ZK","Algebra","Curves","P256","Fp","Mont"]          -- path of the Haskell module for Fp
+  , hs_path_fp2    = error "p256 / hs_path_fp2"
+  , hs_path_r      = Path ["ZK","Algebra","Curves","P256","Fr","Mont"]          -- path of the Haskell module for Fr
+  , hs_path_r_std  = Path ["ZK","Algebra","Curves","P256","Fr","Std"]           -- path of the Haskell module for Fr (standard repr)
+  , hs_path_big_p  = Path ["ZK","Algebra","BigInt","BigInt256"]                  
+  , c_path         = error "p256 / c_path"
+  , c_path_affine  = Path ["curves","g1","affine","p256_G1_affine"]               -- path of the C file
+  , c_path_proj    = Path ["curves","g1","proj"  ,"p256_G1_proj"]                 -- path of the C file
+  , c_path_jac     = Path ["curves","g1","jac"   ,"p256_G1_jac"]                  -- path of the C file
+  , hs_path        = error "p256 / hs_path"
+  , hs_path_affine = Path ["ZK","Algebra","Curves","P256","G1","Affine"]         -- path of the Haskell module
+  , hs_path_proj   = Path ["ZK","Algebra","Curves","P256","G1","Proj"]           -- path of the Haskell module
+  , hs_path_jac    = Path ["ZK","Algebra","Curves","P256","G1","Jac"]            -- path of the Haskell module
+  , c_basename_p   = "p256_Fp_mont"                                             -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_r   = "p256_Fr_mont"                                             -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , typeName       = "G1"                                                       -- the name of the haskell type for curve points
+  }
+
+p256_polyParams :: PolyParams
+p256_polyParams = Poly.PolyParams 
+  { Poly.prefix     = "p256_poly_mont_"   
+  , Poly.prefix_r   = "p256_Fr_mont_"
+  , Poly.nlimbs     = 4 
+  , Poly.c_path     = Path ["curves","poly"  , "mont", "p256_poly_mont" ]
+  , Poly.c_path_r   = Path ["curves","fields", "mont", "p256_Fr_mont" ]
+  , Poly.hs_path    = Path ["ZK","Algebra","Curves","P256","Poly"]
+  , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","P256","Fr","Mont"] 
+  , Poly.typeName   = "Poly" 
+  , Poly.typeName_r = "Fr"
+  , Poly.prime_r    = p256_scalar_r   
+  , Poly.has_fft    = False
+  }
+
+p256_pwParams :: PwParams 
+p256_pwParams = PW.PwParams 
+  { PW.prefix           = "p256_arr_mont_"
+  , PW.elem_prefix      = "p256_Fr_mont_"
+  , PW.elemNWords       = 4
+  , PW.c_path           = Path ["curves","array" , "mont", "p256_arr_mont" ]
+  , PW.c_path_base      = Path ["curves","fields", "mont", "p256_Fr_mont" ]
+  , PW.hs_path          = Path ["ZK", "Algebra", "Curves", "P256", "Array" ]
+  , PW.hs_path_base     = Path ["ZK", "Algebra", "Curves", "P256", "Fr", "Mont"] 
+  , PW.hs_path_base_std = Path ["ZK", "Algebra", "Curves", "P256", "Fr", "Std"] 
+  , PW.typeNameBase     = "Fr"
+  , PW.typeNameBaseStd  = "Std.Fr"
+  }
+
+p256_reexport :: RE.ReExportParams
+p256_reexport = RE.ReExportParams 
+  { RE.hsPath       = Path ["ZK","Algebra","Curves","P256"]
+  , RE.moduleName   = "P256"
+  , RE.moduleList   = RE.reexports_standardNonPairingCurve
+  }
+
+--------------------------------------------------------------------------------
+-- Tom-256 elliptic curve
+
+tom256_cgParams_G :: CodeGenParams
+tom256_cgParams_G = CodeGenParams
+  { prefix         = error "tom256 / prefix"                                      -- prefix for C names
+  , prefix_affine  = "tom256_G1_affine_"                                          -- prefix for C names
+  , prefix_proj    = "tom256_G1_proj_"                                            -- prefix for C names
+  , prefix_jac     = "tom256_G1_jac_"                                             -- prefix for C names
+  , prefix_p       = "tom256_Fp_mont_"                                            -- prefix for C names for Fp
+  , prefix_r       = "tom256_Fr_mont_"                                            -- prefix for C names for Fq
+  , point_repr     = error "tom256 / point_repr"                                  -- one of "affine", "proj" or "jac"
+  , nlimbs_p       = 4                                                          -- number of 64-bit limbs in p
+  , nlimbs_r       = 4                                                          -- number of 64-bit limbs in r
+  , hs_path_p      = Path ["ZK","Algebra","Curves","Tom256","Fp","Mont"]          -- path of the Haskell module for Fp
+  , hs_path_fp2    = error "tom256 / hs_path_fp2"
+  , hs_path_r      = Path ["ZK","Algebra","Curves","Tom256","Fr","Mont"]          -- path of the Haskell module for Fr
+  , hs_path_r_std  = Path ["ZK","Algebra","Curves","Tom256","Fr","Std"]           -- path of the Haskell module for Fr (standard repr)
+  , hs_path_big_p  = Path ["ZK","Algebra","BigInt","BigInt256"]                  
+  , c_path         = error "tom256 / c_path"
+  , c_path_affine  = Path ["curves","g1","affine","tom256_G1_affine"]             -- path of the C file
+  , c_path_proj    = Path ["curves","g1","proj"  ,"tom256_G1_proj"]               -- path of the C file
+  , c_path_jac     = Path ["curves","g1","jac"   ,"tom256_G1_jac"]                -- path of the C file
+  , hs_path        = error "tom256 / hs_path"
+  , hs_path_affine = Path ["ZK","Algebra","Curves","Tom256","G1","Affine"]        -- path of the Haskell module
+  , hs_path_proj   = Path ["ZK","Algebra","Curves","Tom256","G1","Proj"]          -- path of the Haskell module
+  , hs_path_jac    = Path ["ZK","Algebra","Curves","Tom256","G1","Jac"]           -- path of the Haskell module
+  , c_basename_p   = "tom256_Fp_mont"                                             -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , c_basename_r   = "tom256_Fr_mont"                                             -- name of the @.c@ / @.h@ file for Fr (without extension)
+  , typeName       = "G1"                                                         -- the name of the haskell type for curve points
+  }
+
+tom256_polyParams :: PolyParams
+tom256_polyParams = Poly.PolyParams 
+  { Poly.prefix     = "tom256_poly_mont_"   
+  , Poly.prefix_r   = "tom256_Fr_mont_"
+  , Poly.nlimbs     = 4 
+  , Poly.c_path     = Path ["curves","poly"  , "mont", "tom256_poly_mont" ]
+  , Poly.c_path_r   = Path ["curves","fields", "mont", "tom256_Fr_mont" ]
+  , Poly.hs_path    = Path ["ZK","Algebra","Curves","Tom256","Poly"]
+  , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","Tom256","Fr","Mont"] 
+  , Poly.typeName   = "Poly" 
+  , Poly.typeName_r = "Fr"
+  , Poly.prime_r    = tom256_scalar_r   
+  , Poly.has_fft    = False
+  }
+
+tom256_pwParams :: PwParams 
+tom256_pwParams = PW.PwParams 
+  { PW.prefix           = "tom256_arr_mont_"
+  , PW.elem_prefix      = "tom256_Fr_mont_"
+  , PW.elemNWords       = 4
+  , PW.c_path           = Path ["curves","array" , "mont", "tom256_arr_mont" ]
+  , PW.c_path_base      = Path ["curves","fields", "mont", "tom256_Fr_mont" ]
+  , PW.hs_path          = Path ["ZK", "Algebra", "Curves", "Tom256", "Array" ]
+  , PW.hs_path_base     = Path ["ZK", "Algebra", "Curves", "Tom256", "Fr", "Mont"] 
+  , PW.hs_path_base_std = Path ["ZK", "Algebra", "Curves", "Tom256", "Fr", "Std"] 
+  , PW.typeNameBase     = "Fr"
+  , PW.typeNameBaseStd  = "Std.Fr"
+  }
+
+tom256_reexport :: RE.ReExportParams
+tom256_reexport = RE.ReExportParams 
+  { RE.hsPath       = Path ["ZK","Algebra","Curves","Tom256"]
+  , RE.moduleName   = "Tom256"
+  , RE.moduleList   = RE.reexports_standardNonPairingCurve
   }
 
 --------------------------------------------------------------------------------
@@ -437,6 +579,8 @@ generate_reexports :: HsOrC -> FilePath -> IO ()
 generate_reexports hsOrC tgtdir = do
   let list = [ bn128_reexport
              , bls12_381_reexport
+             , p256_reexport
+             , tom256_reexport
              ]
   forM_ list $ \params -> do
     case hsOrC of 
@@ -453,10 +597,18 @@ bn128_cgParams_G12 = Right (bn128_cgParams_G1, bn128_cgParams_G2)
 bls12_381_cgParams_G12 :: XCodeGenParams
 bls12_381_cgParams_G12 = Right (bls12_381_cgParams_G1, bls12_381_cgParams_G2)
 
+p256_cgParams_GX :: XCodeGenParams
+p256_cgParams_GX = Left (p256_cgParams_G)
+
+tom256_cgParams_GX :: XCodeGenParams
+tom256_cgParams_GX = Left (tom256_cgParams_G)
+
 curveList :: [(XCurve,XCodeGenParams,PolyParams,PwParams)]
 curveList = 
   [ ( Right bn128_curve12     , bn128_cgParams_G12     , bn128_polyParams     , bn128_pwParams     )
   , ( Right bls12_381_curve12 , bls12_381_cgParams_G12 , bls12_381_polyParams , bls12_381_pwParams )
+  , ( Left  p256_curve1       , p256_cgParams_GX       , p256_polyParams      , p256_pwParams      )
+  , ( Left  tom256_curve1     , tom256_cgParams_GX     , tom256_polyParams    , tom256_pwParams    )
   ]
 
 generate_curves_proj :: HsOrC -> FilePath -> IO ()

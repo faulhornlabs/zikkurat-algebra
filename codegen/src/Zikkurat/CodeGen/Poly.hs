@@ -29,6 +29,7 @@ data PolyParams = PolyParams
   , typeName    :: String       -- ^ name of the polynomial type
   , typeName_r  :: String       -- ^ name of the field type 
   , prime_r     :: Integer
+  , has_fft     :: Bool
   }
   deriving Show
 
@@ -62,7 +63,9 @@ c_header (PolyParams{..}) =
   , "extern void    " ++ prefix ++ "div_by_vanishing ( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot, int nrem, uint64_t *rem );"
   , "extern uint8_t " ++ prefix ++ "quot_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot );"
   , ""
-  , "extern void " ++ prefix ++ "ntt_forward( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);"
+  ] ++
+  (if has_fft then
+  [ "extern void " ++ prefix ++ "ntt_forward( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);"
   , "extern void " ++ prefix ++ "ntt_inverse( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);"
   , ""
   , "extern void " ++ prefix ++ "ntt_forward_shifted( const uint64_t *eta, int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);"
@@ -70,6 +73,7 @@ c_header (PolyParams{..}) =
   , ""
   , "extern void " ++ prefix ++ "ntt_forward_asymmetric(int m_src, int m_tgt, const uint64_t *gen_src, const uint64_t *gen_tgt, const uint64_t *src, uint64_t *tgt);"
   ]
+  else [])
 
 --------------------------------------------------------------------------------
 
@@ -141,12 +145,16 @@ hsBegin (PolyParams{..}) =
   , "    -- * Polynomial division"
   , "  , longDiv , quot , rem"
   , "  , divByVanishing, quotByVanishing"
-  , "    -- * NTT"
+  ] ++
+  (if has_fft then
+  [ "    -- * NTT"
   , "  , forwardNTT , inverseNTT"
   , "  , shiftedForwardNTT , shiftedInverseNTT"
   , "  , asymmForwardNTT"
   , "  , forwardNTT_radix4"
-  , "    -- * Random"
+  ] 
+  else []) ++
+  [ "    -- * Random"
   , "  , rndPoly , rnd"
   , "  )"  
   , "  where"
@@ -1406,24 +1414,30 @@ hsNTT (PolyParams{..}) =
 --------------------------------------------------------------------------------
 
 c_code :: PolyParams -> Code
-c_code params = concat $ map ("":)
+c_code params@(PolyParams{..}) = concat $ map ("":) $ 
   [ cBegin        params
   , cPolyBasics   params
   , cPolyDiv      params
   , cDivVanishing params
-  , cForwardNTT   params
+  ] ++
+  (if has_fft then
+  [ cForwardNTT   params
   , cInverseNTT   params
   , cForwardNTT_radix4  params
   ]
+  else [])
 
 hs_code :: PolyParams -> Code
-hs_code params@(PolyParams{..}) = concat $ map ("":)
+hs_code params@(PolyParams{..}) = concat $ map ("":) $
   [ hsBegin        params
   , hsPolyBasics   params
   , hsPolyDiv      params
   , hsDivVanishing params
-  , hsNTT          params
+  ] ++
+  (if has_fft then
+  [ hsNTT          params
   ]
+  else [])
 
 --------------------------------------------------------------------------------
 

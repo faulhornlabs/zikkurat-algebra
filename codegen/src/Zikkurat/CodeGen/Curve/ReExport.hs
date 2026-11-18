@@ -57,6 +57,17 @@ reexports_standardPairingCurve =
                                 [Keep "pairing"]
   ]
 
+reexports_standardNonPairingCurve :: [ExportedModule]
+reexports_standardNonPairingCurve =
+  [ exportedModule_ "Fp.Mont"   [Keep "Fp"]   
+  , exportedModule_ "Fr.Mont"   [Keep "Fr"] 
+  , exportedModule_ "Fr.Std"    [Rename "Fr" "StdFr"] 
+  , exportedModule_ "G1.Affine" [Rename "G1" "GAffine"] 
+  , exportedModule_ "G1.Proj"   [Rename "G1" "GProj"] 
+  , exportedModule_ "Poly"      [Keep "Poly"] 
+  , exportedModule_ "Array"     []
+  ]
+
 --------------------------------------------------------------------------------
 
 hs_code :: ReExportParams -> Code

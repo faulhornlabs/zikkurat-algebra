@@ -187,6 +187,21 @@ void bls12_381_Fr_std_mul_inplace( uint64_t *tgt, const uint64_t *src2 ) {
   bls12_381_Fr_std_reduce_modp( prod, tgt );
 }
 
+// scales a field element by a word64
+void bls12_381_Fr_std_scl( const uint64_t *src1, uint64_t word2, uint64_t *tgt ) {
+  uint64_t prod[8];
+  for(int i=5; i<8; i++) { prod[i] = 0; }
+  bigint256_scale( word2, src1, prod );
+  bls12_381_Fr_std_reduce_modp( prod, tgt );
+}
+
+void bls12_381_Fr_std_scl_inplace( uint64_t *tgt, uint64_t word2 ) {
+  uint64_t prod[8];
+  for(int i=5; i<8; i++) { prod[i] = 0; }
+  bigint256_scale( word2, tgt, prod );
+  bls12_381_Fr_std_reduce_modp( prod, tgt );
+}
+
 // table of `ceil(2^64 * (2^(64*m) mod p) / p)`
 static const uint64_t bls12_381_Fr_std_qps_table[8] = { 0x0000000000000001, 0x0000000000000001, 0x0000000000000001, 0x0000000000000003, 0x355094edfede377d, 0x38b5dcb707e08ed4, 0x65043eb4be4bad72, 0x42737a020c0d6394 };
 

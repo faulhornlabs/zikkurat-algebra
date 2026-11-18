@@ -14,6 +14,7 @@ extern void bls12_381_Fr_std_add( const uint64_t *src1, const uint64_t *src2, ui
 extern void bls12_381_Fr_std_sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 extern void bls12_381_Fr_std_sqr( const uint64_t *src , uint64_t *tgt );
 extern void bls12_381_Fr_std_mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
+extern void bls12_381_Fr_std_scl( const uint64_t *src1, uint64_t src2, uint64_t *tgt );
 extern void bls12_381_Fr_std_inv( const uint64_t *src1, uint64_t *tgt );
 extern void bls12_381_Fr_std_div( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 
@@ -22,6 +23,7 @@ extern void bls12_381_Fr_std_add_inplace( uint64_t *tgt, const uint64_t *src2 );
 extern void bls12_381_Fr_std_sub_inplace( uint64_t *tgt, const uint64_t *src2 );
 extern void bls12_381_Fr_std_sqr_inplace( uint64_t *tgt );
 extern void bls12_381_Fr_std_mul_inplace( uint64_t *tgt, const uint64_t *src2 );
+extern void bls12_381_Fr_std_scl_inplace( uint64_t *tgt, uint64_t src2 );
 extern void bls12_381_Fr_std_inv_inplace( uint64_t *tgt );
 extern void bls12_381_Fr_std_div_inplace( uint64_t *tgt, const uint64_t *src2 );
 

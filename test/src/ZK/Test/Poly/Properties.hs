@@ -22,13 +22,49 @@ import ZK.Algebra.Class.Misc
 
 --------------------------------------------------------------------------------
 
-allRingProps :: [PolyProp]
-allRingProps = genericRingProps ++ specificPolyProps
+allRingProps :: Bool -> [PolyProp]
+allRingProps hasFFT = genericRingProps ++ specificPolyProps hasFFT
 
+--------------------
+
+-- excludes the FFT tests
+runPolyTestsNoFFT :: forall a. Univariate a => Int -> Proxy a -> IO ()
+runPolyTestsNoFFT n pxy = do
+
+  forM_ (allRingProps False) $ \prop -> case prop of
+  
+    PolyProp1 test name -> doTests n name $ do
+      p <- rndIO @a
+      return (test p) 
+
+    PolyProp2 test name -> doTests n name $ do
+      p <- rndIO @a
+      q <- rndIO @a
+      return (test p q) 
+
+    PolyProp3 test name -> doTests n name $ do
+      p <- rndIO @a
+      q <- rndIO @a
+      r <- rndIO @a
+      return (test p q r) 
+
+    PolyPropF1 test name -> doTests n name $ do
+      c <- rndIO @(Coeff a)
+      p <- rndIO @a
+      return (test c p) 
+
+    PolyPropFF test name -> doTests n name $ do
+      x <- rndIO @(Coeff a)
+      y <- rndIO @(Coeff a)
+      return (test (Proxy @a) x y) 
+
+--------------------
+
+-- includes the FFT tests
 runPolyTests :: forall a. UnivariateFFT a => Int -> Proxy a -> IO ()
 runPolyTests n pxy = do
 
-  forM_ allRingProps $ \prop -> case prop of
+  forM_ (allRingProps True) $ \prop -> case prop of
   
     PolyProp1 test name -> doTests n name $ do
       p <- rndIO @a
@@ -122,8 +158,8 @@ genericRingProps =
   , PolyProp3 prop_sub_mul_right_distributive  "sub+mul right distr"
   ]
 
-specificPolyProps :: [PolyProp]
-specificPolyProps = 
+specificPolyProps :: Bool -> [PolyProp]
+specificPolyProps hasFFT = 
   [ PolyProp1  prop_degree_vs_ref       "degree vs. reference"
   , PolyProp1  prop_neg_vs_ref          "neg vs. reference" 
   , PolyProp2  prop_add_vs_ref          "add vs. reference" 
@@ -143,7 +179,9 @@ specificPolyProps =
   , PolyPropF1 prop_longdiv_kp_plus_13  "(k*p+13) `div` p"
   , PolyPropF1 prop_divByVanishing      "divByVanishing"
   , PolyPropF1 prop_quotByVanishing     "quotByVanishing"
-  , PolyPropFFT prop_ntt_then_intt      "intt . ntt == id"
+  ]
+  ++ (if not hasFFT then [] else 
+  [ PolyPropFFT prop_ntt_then_intt      "intt . ntt == id"
   , PolyPropFFT prop_intt_then_ntt      "ntt . intt == id"
   , PolyPropFFT prop_ntt_vs_eval        "ntt vs. evalAt"
   , PolyPropFFT prop_ntt_vs_eval_allsizes "ntt vs. evalAt 2^[0..5]"
@@ -153,7 +191,7 @@ specificPolyProps =
   , PolyPropXFFT prop_shifted_ntt_then_intt          "intt . s_ntt"
   , PolyPropXFFT prop_ntt_then_shifted_intt          "s_intt . ntt"
   , PolyPropXFFT prop_shifted_ntt_vs_eval            "shifted ntt vs. evalAt"
-  ]
+  ])
 
 --------------------------------------------------------------------------------
 -- * Ring properties

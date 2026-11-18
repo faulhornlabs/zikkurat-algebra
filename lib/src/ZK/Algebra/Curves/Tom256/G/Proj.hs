@@ -1,0 +1,593 @@
+
+-- | Tom256 ( Fp )  curve, projective coordinates, Montgomery field representation
+
+-- NOTE 1: This module is intented to be imported qualified
+-- NOTE 2: Generated code, do not edit!
+
+{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, PatternSynonyms #-}
+module ZK.Algebra.Curves.Tom256.G.Proj
+  ( G1(..)
+    -- * Parameters
+  , primeP , primeR , cofactor , curveA , curveB
+  , genG1 , infinity
+    -- * Curve points
+  , coords , mkPoint , mkPointMaybe , unsafeMkPoint
+    -- * Conversion to\/from affine
+  , fromAffine , toAffine
+  , batchFromAffine , batchToAffine
+  , normalize
+    -- * Predicates
+  , isEqual , isSame
+  , isOnCurve , isInfinity , isInSubgroup
+    -- * Addition and doubling
+  , neg , add , madd, dbl , sub
+    -- * Scaling
+  , sclFr , sclBig , sclSmall
+    -- * Random
+  , rndG1 , rndG1_naive
+    -- * Multi-scalar multiplication
+  , msm , msmStd , msmProj
+  , msmBinary , binaryMultiMSM , binaryMultiMSM_
+    -- * Fast-Fourier transform
+  , forwardFFT , inverseFFT
+    -- * Sage
+  , sageSetup , printSageSetup
+  )
+  where
+
+--------------------------------------------------------------------------------
+
+import Prelude hiding (div)
+-- import GHC.Real hiding (div,infinity)
+
+import Data.Bits
+import Data.Word
+
+import Foreign.C
+import Foreign.Ptr
+import Foreign.Marshal
+import Foreign.ForeignPtr
+
+import System.IO.Unsafe
+
+import ZK.Algebra.Curves.Tom256.Fp.Mont ( Fp(..) )
+import ZK.Algebra.Curves.Tom256.Fr.Mont ( Fr(..) )
+import qualified ZK.Algebra.Curves.Tom256.Fp.Mont as Fp
+import qualified ZK.Algebra.Curves.Tom256.Fp.Mont as Base
+import qualified ZK.Algebra.Curves.Tom256.Fr.Mont as Fr
+import qualified ZK.Algebra.Curves.Tom256.Fr.Std
+import qualified ZK.Algebra.BigInt.BigInt256 as BigP
+
+import {-# SOURCE #-} qualified ZK.Algebra.Curves.Tom256.G.Affine
+
+import           ZK.Algebra.Class.Flat ( FlatArray(..) )
+import qualified ZK.Algebra.Class.Flat  as L
+import qualified ZK.Algebra.Class.Field as F
+import qualified ZK.Algebra.Class.Curve as C
+import qualified ZK.Algebra.Class.Misc  as M
+import           ZK.Algebra.Class.FFT
+
+import ZK.Algebra.Helpers
+
+--------------------------------------------------------------------------------
+
+primeP, primeR, cofactor :: Integer
+primeP = Fp.prime
+primeR = Fr.prime
+cofactor = 1
+
+type Base = Fp
+pattern MkBase fptr = MkFp fptr
+
+-- | parameters A and B of the curve equation @y^2 = x^3 + A*x + B@
+curveA, curveB :: Integer
+curveA = -3
+curveB = 81531206846337786915455327229510804132577517753388365729879493166393691077718
+
+-- | generator of the r-sized subgroup G1
+genG1 :: G1
+genG1 = mkPoint (x, y, Fp.one) where
+  x = 3
+  y = 40902200210088653215032584946694356296222563095503428277299570638400093548589
+
+--------------------------------------------------------------------------------
+
+-- | An elliptic curve point, in projective coordinates
+newtype G1 = MkG1 (ForeignPtr Word64)
+
+-- | Note: this throws an exception if the point is not on the curve
+mkPoint :: (Base, Base, Base) -> G1
+mkPoint xyz = case mkPointMaybe xyz of
+  Just pt -> pt
+  Nothing -> error "mkPoint: point is not on the curve"
+
+mkPointMaybe :: (Base, Base, Base) -> Maybe G1
+mkPointMaybe xyz = let pt = unsafeMkPoint xyz in
+  case isOnCurve pt of { True -> Just pt ; False -> Nothing }
+
+-- | The point at infinity
+infinity :: G1
+infinity = unsafeMkPoint (Base.zero, Base.one, Base.zero)
+
+{-# NOINLINE unsafeMkPoint #-}
+unsafeMkPoint :: (Base, Base, Base) -> G1
+unsafeMkPoint (MkBase fptr1 , MkBase fptr2 , MkBase fptr3) = unsafePerformIO $ do
+  fptr4 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        withForeignPtr fptr4 $ \ptr4 -> do
+          copyBytes (        ptr4   ) ptr1 32
+          copyBytes (plusPtr ptr4 32) ptr2 32
+          copyBytes (plusPtr ptr4 64) ptr3 32
+  return (MkG1 fptr4)
+
+{-# NOINLINE coords #-}
+coords :: G1 -> (Base, Base, Base)
+coords (MkG1 fptr4) = unsafePerformIO $ do
+  fptr1 <- mallocForeignPtrArray 4
+  fptr2 <- mallocForeignPtrArray 4
+  fptr3 <- mallocForeignPtrArray 4
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        withForeignPtr fptr4 $ \ptr4 -> do
+          copyBytes ptr1 (        ptr4   ) 32
+          copyBytes ptr2 (plusPtr ptr4 32) 32
+          copyBytes ptr3 (plusPtr ptr4 64) 32
+  return (MkBase fptr1, MkBase fptr2, MkBase fptr3)
+
+-- | Returns a uniformly random element /in the subgroup G1/.
+-- Note: this is slow, because it uses exponentiation.
+rndG1_naive :: IO G1
+rndG1_naive = do
+  k <- Fr.rnd :: IO Fr
+  return (sclFr k genG1)
+
+-- | Returns a uniformly random element /in the subgroup G1/.
+rndG1 :: IO G1
+rndG1 = rndG1_naive
+
+--------------------------------------------------------------------------------
+
+instance C.StrictEq G1 where
+  (===) = isSame
+
+instance Eq G1 where
+  (==) = isEqual
+  -- p == q  =  coords (normalize p) == coords (normalize q)
+
+instance Show G1 where
+  show pt = case coords pt of
+     (x,y,z) -> "[ " ++ show x ++ " : " ++ show y ++ " : " ++ show z ++ " ]"
+
+instance L.Flat G1 where
+  sizeInBytes  _pxy = 96
+  sizeInQWords _pxy = 12
+  withFlat (MkG1 fptr) = withForeignPtr fptr
+  makeFlat = L.makeFlatGeneric MkG1 12
+
+instance M.Rnd G1 where
+  rndIO = rndG1
+
+instance C.Group G1 where
+  grpName _    = "Tom256 / G1 "
+  grpIsUnit    = ZK.Algebra.Curves.Tom256.G.Proj.isInfinity
+  grpUnit      = ZK.Algebra.Curves.Tom256.G.Proj.infinity
+  grpNormalize = normalize
+  grpNeg       = neg
+  grpDbl       = dbl
+  grpAdd       = add
+  grpSub       = sub
+  grpScale_    = sclSmall
+  grpScale     = sclBig
+
+instance C.Curve G1 where
+  curveNamePxy _ = "Tom256 ( Fp ) "
+  type BaseField   G1 = Base
+  type ScalarField G1 = Fr
+  isOnCurve   = ZK.Algebra.Curves.Tom256.G.Proj.isOnCurve
+  isInfinity  = ZK.Algebra.Curves.Tom256.G.Proj.isInfinity
+  infinity    = ZK.Algebra.Curves.Tom256.G.Proj.infinity
+  curveSubgroupGen = ZK.Algebra.Curves.Tom256.G.Proj.genG1
+  scalarMul   = ZK.Algebra.Curves.Tom256.G.Proj.sclFr
+  msm         = ZK.Algebra.Curves.Tom256.G.Proj.msmProj
+  curveFFT    = ZK.Algebra.Curves.Tom256.G.Proj.forwardFFT
+  curveIFFT   = ZK.Algebra.Curves.Tom256.G.Proj.inverseFFT
+
+instance C.ProjCurve G1 where
+  type AffinePoint G1 = ZK.Algebra.Curves.Tom256.G.Affine.G1
+  fromAffine = ZK.Algebra.Curves.Tom256.G.Proj.fromAffine
+  toAffine   = ZK.Algebra.Curves.Tom256.G.Proj.toAffine
+  batchFromAffine = ZK.Algebra.Curves.Tom256.G.Proj.batchFromAffine
+  batchToAffine   = ZK.Algebra.Curves.Tom256.G.Proj.batchToAffine
+  coords3    = ZK.Algebra.Curves.Tom256.G.Proj.coords
+  mkPoint3   = ZK.Algebra.Curves.Tom256.G.Proj.mkPoint
+  mixedAdd   = ZK.Algebra.Curves.Tom256.G.Proj.madd
+  affMSM     = ZK.Algebra.Curves.Tom256.G.Proj.msm
+  binaryMSM       = ZK.Algebra.Curves.Tom256.G.Proj.msmBinary
+  binaryMultiMSM  = ZK.Algebra.Curves.Tom256.G.Proj.binaryMultiMSM
+  
+--------------------------------------------------------------------------------
+
+sclSmall :: Int -> G1 -> G1
+sclSmall k pt
+  | k == 0    = infinity
+  | k < 0     = neg $ sclSmallNonNeg (negate k) pt
+  | otherwise =       sclSmallNonNeg (       k) pt
+
+sclBig :: Integer -> G1 -> G1
+sclBig k pt
+  | k == 0    = infinity
+  | k < 0     = neg $ sclBigNonNeg (fromInteger $ negate k) pt
+  | otherwise =       sclBigNonNeg (fromInteger $        k) pt
+
+--------------------------------------------------------------------------------
+
+msmProj :: FlatArray Fr -> FlatArray G1 -> G1
+msmProj cs gs = msm cs (batchToAffine gs)
+
+--------------------------------------------------------------------------------
+
+
+foreign import ccall unsafe "tom256_G_proj_MSM_std_coeff_proj_out" c_tom256_G_proj_MSM_std_coeff_proj_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
+foreign import ccall unsafe "tom256_G_proj_MSM_mont_coeff_proj_out" c_tom256_G_proj_MSM_mont_coeff_proj_out :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> CInt -> IO ()
+foreign import ccall unsafe "tom256_G_proj_MSM_binary_coeff_proj_out" c_tom256_G_proj_MSM_binary_coeff_proj_out :: CInt -> Ptr Word8  -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+foreign import ccall unsafe "tom256_G_proj_multi_MSM_binary_coeff_proj_out" c_tom256_G_proj_multi_MSM_binary_coeff_proj_out :: CInt -> CInt -> Ptr (Ptr Word8) -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "tom256_G_proj_multi_MSM_binary_coeff_affine_out" c_tom256_G_proj_multi_MSM_binary_coeff_affine_out :: CInt -> CInt -> Ptr (Ptr Word8) -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE msm #-}
+-- | Multi-Scalar Multiplication (MSM), with the coefficients in Montgomery representation,
+-- and the curve points in affine coordinates
+-- 
+-- > msm :: FlatArray Fr -> FlatArray Affine.G1 -> G1
+-- 
+msm :: FlatArray Fr -> FlatArray ZK.Algebra.Curves.Tom256.G.Affine.G1 -> G1
+msm (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "msm: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray 12
+      withForeignPtr fptr1 $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_tom256_G_proj_MSM_mont_coeff_proj_out (fromIntegral n1) ptr1 ptr2 ptr3 4
+      return (MkG1 fptr3)
+
+{-# NOINLINE msmStd #-}
+-- | Multi-Scalar Multiplication (MSM), with the coefficients in standard representation,
+-- and the curve points in affine coordinates
+-- 
+-- > msmStd :: FlatArray Std.Fr -> FlatArray Affine.G1 -> G1
+-- 
+msmStd :: FlatArray ZK.Algebra.Curves.Tom256.Fr.Std.Fr -> FlatArray ZK.Algebra.Curves.Tom256.G.Affine.G1 -> G1
+msmStd (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "msmStd: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray 12
+      withForeignPtr fptr1 $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_tom256_G_proj_MSM_std_coeff_proj_out (fromIntegral n1) ptr1 ptr2 ptr3 4
+      return (MkG1 fptr3)
+
+{-# NOINLINE msmBinary #-}
+-- | Multi-Scalar Multiplication (MSM), with binary coefficients,
+-- and the curve points in affine coordinates
+-- 
+-- > msmBinary :: FlatArray Bit -> FlatArray Affine.G1 -> G1
+-- 
+msmBinary :: FlatArray L.Bit -> FlatArray ZK.Algebra.Curves.Tom256.G.Affine.G1 -> G1
+msmBinary (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "msmBinary: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray 12
+      withForeignPtr fptr1 $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_tom256_G_proj_MSM_binary_coeff_proj_out (fromIntegral n1) (castPtr ptr1) ptr2 ptr3
+      return (MkG1 fptr3)
+
+{-# NOINLINE binaryMultiMSM #-}
+-- | Multiple binary MSM-s with binary coefficients,
+-- and the curve points in affine coordinates
+-- 
+-- > binaryMultiMSM :: [FlatArray Bit] -> FlatArray Affine.G1 -> FlatArray G1
+-- 
+-- This can be more efficient (up to 2x or more), based on the number of coefficient arrays - 
+-- the suggested minimum is 32 - than calling 'msmBinary' multiple times
+-- 
+-- Note: it is assumed that all the coefficient arrays have the same length!
+binaryMultiMSM :: [FlatArray L.Bit] -> FlatArray ZK.Algebra.Curves.Tom256.G.Affine.G1 -> FlatArray G1
+binaryMultiMSM flatarrs (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "binaryMultiMSM: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (narrs * 12)
+      L.withFlatArrays flatarrs $ \list -> do
+        let ptrs = map (castPtr . snd) list :: [Ptr Word8]
+        withArray ptrs $ \ptr_ptrs -> do
+          withForeignPtr fptr2 $ \ptr2 -> do
+            withForeignPtr fptr3 $ \ptr3 -> do
+              c_tom256_G_proj_multi_MSM_binary_coeff_proj_out (fromIntegral narrs) (fromIntegral n1) ptr_ptrs ptr2 ptr3
+      return (MkFlatArray narrs fptr3)
+  where
+    narrs = length flatarrs
+    ns    = map L.flatArrayLength flatarrs
+    n1    = case maybeAllIsEqual ns of
+      Just m  -> m
+      Nothing -> error "binaryMultiMSM: incompatible coefficient array dimensions"
+
+{-# NOINLINE binaryMultiMSM_ #-}
+-- | Multiple binary MSM-s with binary coefficients, with affine output
+-- and the curve points in affine coordinates
+-- 
+-- > binaryMultiMSM_ :: [FlatArray Bit] -> FlatArray Affine.G1 -> FlatArray Affine.G1
+-- 
+binaryMultiMSM_ :: [FlatArray L.Bit] -> FlatArray ZK.Algebra.Curves.Tom256.G.Affine.G1 -> FlatArray ZK.Algebra.Curves.Tom256.G.Affine.G1
+binaryMultiMSM_ flatarrs (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "binaryMultiMSM: incompatible array dimensions"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (narrs * 8)
+      L.withFlatArrays flatarrs $ \list -> do
+        let ptrs = map (castPtr . snd) list :: [Ptr Word8]
+        withArray ptrs $ \ptr_ptrs -> do
+          withForeignPtr fptr2 $ \ptr2 -> do
+            withForeignPtr fptr3 $ \ptr3 -> do
+              c_tom256_G_proj_multi_MSM_binary_coeff_affine_out (fromIntegral narrs) (fromIntegral n1) ptr_ptrs ptr2 ptr3
+      return (MkFlatArray narrs fptr3)
+  where
+    narrs = length flatarrs
+    ns    = map L.flatArrayLength flatarrs
+    n1    = case maybeAllIsEqual ns of
+      Just m  -> m
+      Nothing -> error "binaryMultiMSM_: incompatible coefficient array dimensions"
+
+
+
+foreign import ccall unsafe "tom256_G_proj_fft_inverse" c_tom256_G_proj_fft_inverse :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "tom256_G_proj_fft_forward" c_tom256_G_proj_fft_forward :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE forwardFFT #-}
+-- | Forward FFT for groups (converting @[L_k(tau)]@ points to @[tau^i]@ points)
+forwardFFT :: FFTSubgroup Fr -> FlatArray G1 -> FlatArray G1
+forwardFFT sg (MkFlatArray n fptr2)
+  | fftSubgroupSize sg /= n   = error "forwardNTT: subgroup size differs from the array size"
+  | otherwise                 = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (n*12)
+      L.withFlat (fftSubgroupGen sg) $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_tom256_G_proj_fft_forward (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
+      return (MkFlatArray n fptr3)
+
+{-# NOINLINE inverseFFT #-}
+-- | Inverse FFT for groups (converting @[tau^i]@ points to @[L_k(tau)]@ points)
+inverseFFT :: FFTSubgroup Fr -> FlatArray G1 -> FlatArray G1
+inverseFFT sg (MkFlatArray n fptr2)
+  | fftSubgroupSize sg /= n   = error "inverseNTT: subgroup size differs from the array size"
+  | otherwise                 = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray (n*12)
+      L.withFlat (fftSubgroupGen sg) $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_tom256_G_proj_fft_inverse (fromIntegral $ M.fromLog2 $ fftSubgroupLogSize sg) ptr1 ptr2 ptr3
+      return (MkFlatArray n fptr3)
+
+
+-- | Sage setup code to experiment with this curve
+sageSetup :: [String]
+sageSetup = 
+  [ "# Tom256 elliptic curve"
+  , "p  = 115792089210356248762697446949407573530594504085698471288169790229257723883799"
+  , "r  = 115792089210356248762697446949407573530086143415290314195533631308867097853951"
+  , "h  = 1"
+  , "Fp = GF(p)"
+  , "Fr = GF(r)"
+  , "A  = Fp(-3)"
+  , "B  = Fp(81531206846337786915455327229510804132577517753388365729879493166393691077718)"
+  , "E  = EllipticCurve(Fp,[A,B])"
+  , "gx = Fp(3)"
+  , "gy = Fp(40902200210088653215032584946694356296222563095503428277299570638400093548589)"
+  , "gen = E(gx,gy)  # subgroup generator"
+  , "print(\"scalar field check: \", gen.additive_order() == r )"
+  , "print(\"cofactor check:     \", E.cardinality() == r*h )"
+  ]
+
+-- | Prints the Sage code
+printSageSetup :: IO ()
+printSageSetup = mapM_ putStrLn sageSetup
+
+foreign import ccall unsafe "tom256_G_proj_is_on_curve" c_tom256_G_proj_is_on_curve :: Ptr Word64 -> IO Word8
+
+{-# NOINLINE isOnCurve #-}
+isOnCurve :: G1 -> Bool
+isOnCurve (MkG1 fptr) = unsafePerformIO $ do
+  cret <- withForeignPtr fptr $ \ptr -> do
+    c_tom256_G_proj_is_on_curve ptr
+  return (cret /= 0)
+
+foreign import ccall unsafe "tom256_G_proj_is_infinity" c_tom256_G_proj_is_infinity :: Ptr Word64 -> IO Word8
+
+{-# NOINLINE isInfinity #-}
+isInfinity :: G1 -> Bool
+isInfinity (MkG1 fptr) = unsafePerformIO $ do
+  cret <- withForeignPtr fptr $ \ptr -> do
+    c_tom256_G_proj_is_infinity ptr
+  return (cret /= 0)
+
+foreign import ccall unsafe "tom256_G_proj_is_in_subgroup" c_tom256_G_proj_is_in_subgroup :: Ptr Word64 -> IO Word8
+
+{-# NOINLINE isInSubgroup #-}
+isInSubgroup :: G1 -> Bool
+isInSubgroup (MkG1 fptr) = unsafePerformIO $ do
+  cret <- withForeignPtr fptr $ \ptr -> do
+    c_tom256_G_proj_is_in_subgroup ptr
+  return (cret /= 0)
+
+foreign import ccall unsafe "tom256_G_proj_is_equal" c_tom256_G_proj_is_equal :: Ptr Word64 -> Ptr Word64 -> IO Word8
+
+{-# NOINLINE isEqual #-}
+isEqual :: G1 -> G1 -> Bool
+isEqual (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
+  cret <- withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_tom256_G_proj_is_equal ptr1 ptr2
+  return (cret /= 0)
+
+foreign import ccall unsafe "tom256_G_proj_is_same" c_tom256_G_proj_is_same :: Ptr Word64 -> Ptr Word64 -> IO Word8
+
+{-# NOINLINE isSame #-}
+isSame :: G1 -> G1 -> Bool
+isSame (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
+  cret <- withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_tom256_G_proj_is_same ptr1 ptr2
+  return (cret /= 0)
+
+foreign import ccall unsafe "tom256_G_proj_normalize" c_tom256_G_proj_normalize :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE normalize #-}
+normalize :: G1 -> G1
+normalize (MkG1 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_tom256_G_proj_normalize ptr1 ptr2
+  return (MkG1 fptr2)
+
+foreign import ccall unsafe "tom256_G_proj_from_affine" c_tom256_G_proj_from_affine :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE fromAffine #-}
+fromAffine :: ZK.Algebra.Curves.Tom256.G.Affine.G1 -> ZK.Algebra.Curves.Tom256.G.Proj.G1
+fromAffine (ZK.Algebra.Curves.Tom256.G.Affine.MkG1 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_tom256_G_proj_from_affine ptr1 ptr2
+  return (MkG1 fptr2)
+
+foreign import ccall unsafe "tom256_G_proj_to_affine" c_tom256_G_proj_to_affine :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE toAffine #-}
+toAffine :: ZK.Algebra.Curves.Tom256.G.Proj.G1 -> ZK.Algebra.Curves.Tom256.G.Affine.G1
+toAffine (MkG1 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 8
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_tom256_G_proj_to_affine ptr1 ptr2
+  return (ZK.Algebra.Curves.Tom256.G.Affine.MkG1 fptr2)
+
+foreign import ccall unsafe "tom256_G_proj_batch_from_affine" c_tom256_G_proj_batch_from_affine :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE batchFromAffine #-}
+batchFromAffine :: FlatArray (ZK.Algebra.Curves.Tom256.G.Affine.G1) -> FlatArray (ZK.Algebra.Curves.Tom256.G.Proj.G1)
+batchFromAffine (MkFlatArray n fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n*12)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_tom256_G_proj_batch_from_affine (fromIntegral n) ptr1 ptr2
+  return (MkFlatArray n fptr2)
+
+foreign import ccall unsafe "tom256_G_proj_batch_to_affine" c_tom256_G_proj_batch_to_affine :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE batchToAffine #-}
+batchToAffine :: FlatArray (ZK.Algebra.Curves.Tom256.G.Proj.G1) -> FlatArray (ZK.Algebra.Curves.Tom256.G.Affine.G1)
+batchToAffine (MkFlatArray n fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n*8)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_tom256_G_proj_batch_to_affine (fromIntegral n) ptr1 ptr2
+  return (MkFlatArray n fptr2)
+
+foreign import ccall unsafe "tom256_G_proj_neg" c_tom256_G_proj_neg :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE neg #-}
+neg :: G1 -> G1
+neg (MkG1 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_tom256_G_proj_neg ptr1 ptr2
+  return (MkG1 fptr2)
+
+foreign import ccall unsafe "tom256_G_proj_dbl" c_tom256_G_proj_dbl :: Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE dbl #-}
+dbl :: G1 -> G1
+dbl (MkG1 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_tom256_G_proj_dbl ptr1 ptr2
+  return (MkG1 fptr2)
+
+foreign import ccall unsafe "tom256_G_proj_add" c_tom256_G_proj_add :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE add #-}
+add :: G1 -> G1 -> G1
+add (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_tom256_G_proj_add ptr1 ptr2 ptr3
+  return (MkG1 fptr3)
+
+foreign import ccall unsafe "tom256_G_proj_sub" c_tom256_G_proj_sub :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE sub #-}
+sub :: G1 -> G1 -> G1
+sub (MkG1 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_tom256_G_proj_sub ptr1 ptr2 ptr3
+  return (MkG1 fptr3)
+
+foreign import ccall unsafe "tom256_G_proj_madd_proj_aff" c_tom256_G_proj_madd_proj_aff :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE madd #-}
+madd :: G1 -> ZK.Algebra.Curves.Tom256.G.Affine.G1 -> G1
+madd (MkG1 fptr1) (ZK.Algebra.Curves.Tom256.G.Affine.MkG1 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_tom256_G_proj_madd_proj_aff ptr1 ptr2 ptr3
+  return (MkG1 fptr3)
+
+foreign import ccall unsafe "tom256_G_proj_scl_Fr_mont" c_tom256_G_proj_scl_Fr_mont :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE sclFr #-}
+sclFr :: Fr -> G1 -> G1
+sclFr (MkFr fptr1) (MkG1 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_tom256_G_proj_scl_Fr_mont ptr1 ptr2 ptr3
+  return (MkG1 fptr3)
+
+foreign import ccall unsafe "tom256_G_proj_scl_big" c_tom256_G_proj_scl_big :: Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE sclBigNonNeg #-}
+sclBigNonNeg :: BigP.BigInt256 -> G1 -> G1
+sclBigNonNeg (BigP.MkBigInt256 fptr1) (MkG1 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 12
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_tom256_G_proj_scl_big ptr1 ptr2 ptr3
+  return (MkG1 fptr3)
+
+foreign import ccall unsafe "tom256_G_proj_scl_small" c_tom256_G_proj_scl_small :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE sclSmallNonNeg #-}
+sclSmallNonNeg :: Int -> G1 -> G1
+sclSmallNonNeg k1 (MkG1 fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray 12
+  withForeignPtr fptr2 $ \ptr2 -> do
+    withForeignPtr fptr3 $ \ptr3 -> do
+      c_tom256_G_proj_scl_small (fromIntegral k1) ptr2 ptr3
+  return (MkG1 fptr3)

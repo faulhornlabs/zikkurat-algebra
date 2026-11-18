@@ -59,6 +59,7 @@ c_header (Params{..}) =
   , "extern void " ++ prefix ++ "sub( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "sqr( const uint64_t *src , uint64_t *tgt );"
   , "extern void " ++ prefix ++ "mul( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "scl( const uint64_t *src1, uint64_t src2, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "inv( const uint64_t *src1, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "div( const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , ""
@@ -67,6 +68,7 @@ c_header (Params{..}) =
   , "extern void " ++ prefix ++ "sub_inplace( uint64_t *tgt, const uint64_t *src2 );"
   , "extern void " ++ prefix ++ "sqr_inplace( uint64_t *tgt );"
   , "extern void " ++ prefix ++ "mul_inplace( uint64_t *tgt, const uint64_t *src2 );"
+  , "extern void " ++ prefix ++ "scl_inplace( uint64_t *tgt, uint64_t src2 );"
   , "extern void " ++ prefix ++ "inv_inplace( uint64_t *tgt );"
   , "extern void " ++ prefix ++ "div_inplace( uint64_t *tgt, const uint64_t *src2 );"
   , ""
@@ -107,7 +109,7 @@ hsBegin params@(Params{..}) =
   , "  , isValid , isZero , isOne , isEqual"
   , "    -- * Field operations"
   , "  , neg , add , sub"
-  , "  , sqr , mul"
+  , "  , sqr , mul , scl"
   , "  , inv , div , divBy2 , batchInv"
   , "    -- * Exponentiation"
   , "  , pow , pow_"
@@ -267,6 +269,7 @@ hsFFI (Params{..}) = catCode $
   , mkffi "sub"         $ cfun "sub"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
   , mkffi "sqr"         $ cfun "sqr"              (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
   , mkffi "mul"         $ cfun "mul"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
+  , mkffi "scl"         $ cfun "scl"              (CTyp [CArgInPtr , CArg64    , CArgOutPtr ] CRetVoid)
   , mkffi "inv"         $ cfun "inv"              (CTyp [CArgInPtr             , CArgOutPtr ] CRetVoid)
   , mkffi "div"         $ cfun "div"              (CTyp [CArgInPtr , CArgInPtr , CArgOutPtr ] CRetVoid)
     --
@@ -505,6 +508,21 @@ mulField Params{..} =
   , "void " ++ prefix ++ "mul_inplace( uint64_t *tgt, const uint64_t *src2 ) {"
   , "  uint64_t prod[" ++ show (2*nlimbs) ++ "];"
   , "  " ++ bigint_ ++ "mul( tgt, src2, prod );"
+  , "  " ++ prefix ++ "reduce_modp( prod, tgt );"
+  , "}"
+  , ""
+  , "// scales a field element by a word64"
+  , "void " ++ prefix ++ "scl( const uint64_t *src1, uint64_t word2, uint64_t *tgt ) {"
+  , "  uint64_t prod[" ++ show (nlimbs*2) ++ "];"
+  , "  for(int i=" ++ show (nlimbs+1) ++ "; i<" ++ show (nlimbs*2) ++ "; i++) { prod[i] = 0; }"
+  , "  " ++ bigint_ ++ "scale( word2, src1, prod );"
+  , "  " ++ prefix ++ "reduce_modp( prod, tgt );"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "scl_inplace( uint64_t *tgt, uint64_t word2 ) {"
+  , "  uint64_t prod[" ++ show (nlimbs*2) ++ "];"
+  , "  for(int i=" ++ show (nlimbs+1) ++ "; i<" ++ show (nlimbs*2) ++ "; i++) { prod[i] = 0; }"
+  , "  " ++ bigint_ ++ "scale( word2, tgt, prod );"
   , "  " ++ prefix ++ "reduce_modp( prod, tgt );"
   , "}"
   ]

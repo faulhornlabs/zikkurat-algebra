@@ -18,6 +18,7 @@ import Zikkurat.CodeGen.Misc
 import Zikkurat.CodeGen.Curve.Params
 import Zikkurat.CodeGen.Curve.CurveFFI
 import Zikkurat.CodeGen.Curve.Shared
+import Zikkurat.CodeGen.Curve.ScaleByConst
 
 --------------------------------------------------------------------------------
 
@@ -454,6 +455,16 @@ c_begin xcurve cgparams@(CodeGenParams{..}) =
     else
       []
   )
+
+--------------------------------------------------------------------------------
+
+scale_by_A :: Curve1 -> CodeGenParams -> Code
+scale_by_A curve1@(Curve1{..}) cgenparams@(CodeGenParams{..}) = 
+  scale_by_constant curve1 cgenparams "A" curveA
+
+scale_by_B :: Curve1 -> CodeGenParams -> Code
+scale_by_B curve1@(Curve1{..}) cgenparams@(CodeGenParams{..}) = 
+  scale_by_constant curve1 cgenparams "B" curveB
   
 --------------------------------------------------------------------------------
 
@@ -776,10 +787,20 @@ scaleCurve (CodeGenParams{..}) =
 --------------------------------------------------------------------------------
 
 c_code :: XCurve -> CodeGenParams -> Code
-c_code xcurve params = concat $ map ("":)
+c_code xcurve params = concat $ map ("":) $
   [ c_begin   xcurve params
-    --
-  , isOnCurve xcurve params
+  ] ++
+  --
+  (case xcurve of
+    { Left curve1 ->
+        [ scale_by_A curve1 params
+        , scale_by_B curve1 params
+        ]
+    ; Right _ -> []
+    }
+  ) ++
+  -- 
+  [ isOnCurve xcurve params
     --
   , negCurve         params
   , dblCurve  xcurve params

@@ -34,6 +34,11 @@ type BLS12_377_Fr = FF (CurveField BLS12_377 ScalarField)
 
 --------------------------------------------------------------------------------
 
+type P256_Fp = FF (CurveField P256 BaseField  )
+type P256_Fr = FF (CurveField P256 ScalarField)
+
+--------------------------------------------------------------------------------
+
 type Secp256k1_Fp = FF (CurveField Secp256k1 BaseField  )
 type Secp256k1_Fr = FF (CurveField Secp256k1 ScalarField)
 

@@ -21,6 +21,7 @@ snarkPrimes =
     --
   , bls12_381_base_p , bls12_381_scalar_r
   , bn128_base_p     , bn128_scalar_r
+  , p256_base_p      , p256_scalar_r
   ]
 
 testPrimes :: [Prime]
@@ -80,6 +81,20 @@ bls12_381_scalar_r = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff0
 
 bn128_base_p   = 21888242871839275222246405745257275088696311157297823662689037894645226208583 :: Prime
 bn128_scalar_r = 21888242871839275222246405745257275088548364400416034343698204186575808495617 :: Prime
+
+--------------------------------------------------------------------------------
+-- P256 elliptic curve
+
+-- https://std.neuromancer.sk/nist/P-256
+p256_base_p     = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff :: Prime
+p256_scalar_r   = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551 :: Prime
+
+--------------------------------------------------------------------------------
+-- Tom256 elliptic curve
+
+-- https://std.neuromancer.sk/other/Tom-256
+tom256_base_p   = 0xffffffff0000000100000000000000017e72b42b30e7317793135661b1c4b117 :: Prime
+tom256_scalar_r = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff :: Prime
 
 --------------------------------------------------------------------------------
 -- * some useful functions
