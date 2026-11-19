@@ -336,6 +336,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  curveNamePxy _ = \"" ++ full_curvename xcurve ++ "\""
   , "  type BaseField   " ++ typeName ++ " = Base"
   , "  type ScalarField " ++ typeName ++ " = Fr"
+  , "  weierstrassForm _ = " ++ hs_constants_AB_xcurve xcurve cgparams
   , "  isOnCurve   = " ++ hsModule hs_path_affine ++ ".isOnCurve"
   , "  isInfinity  = " ++ hsModule hs_path_affine ++ ".isInfinity"
   , "  infinity    = " ++ hsModule hs_path_affine ++ ".infinity"

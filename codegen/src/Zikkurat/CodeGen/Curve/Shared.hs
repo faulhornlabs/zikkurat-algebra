@@ -35,6 +35,23 @@ x_groupname xcurve= case xcurve of
 
 --------------------------------------------------------------------------------
 
+hs_constants_AB_curve1 :: Curve1 -> CodeGenParams -> String
+hs_constants_AB_curve1 (Curve1{..}) cgparams@(CodeGenParams{..}) 
+  = show (curveA,curveB)
+
+hs_constants_AB_curve2 :: Curve12 -> CodeGenParams -> String
+hs_constants_AB_curve2 (Curve12 curve1 curve2@(Curve2{..})) cgparams@(CodeGenParams{..})
+  = "( " ++ showFp2 g2_curveA ++ " , " ++ showFp2 g2_curveB ++ " )" 
+  where
+    showFp2 (a,b) = "Fp2.pack " ++ show (a,b)
+
+hs_constants_AB_xcurve :: XCurve -> CodeGenParams -> String
+hs_constants_AB_xcurve xcurve = case xcurve of
+  Left  curve1 -> hs_constants_AB_curve1 curve1
+  Right curve2 -> hs_constants_AB_curve2 curve2
+
+--------------------
+
 c_constants_AB_curve1 :: Bool -> Curve1 -> CodeGenParams -> Code
 c_constants_AB_curve1 is_proj (Curve1{..}) cgparams@(CodeGenParams{..}) =
   [ "// the constants A and B of the equation"

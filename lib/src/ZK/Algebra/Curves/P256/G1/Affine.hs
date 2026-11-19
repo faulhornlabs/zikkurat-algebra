@@ -206,6 +206,7 @@ instance C.Curve G1 where
   curveNamePxy _ = "P256 ( Fp ) "
   type BaseField   G1 = Base
   type ScalarField G1 = Fr
+  weierstrassForm _ = (-3,41058363725152142129326129780047268409114441015993725554835256314039467401291)
   isOnCurve   = ZK.Algebra.Curves.P256.G1.Affine.isOnCurve
   isInfinity  = ZK.Algebra.Curves.P256.G1.Affine.isInfinity
   infinity    = ZK.Algebra.Curves.P256.G1.Affine.infinity

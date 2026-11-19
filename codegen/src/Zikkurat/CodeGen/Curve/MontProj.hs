@@ -131,7 +131,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "-- NOTE 1: This module is intented to be imported qualified"
   , "-- NOTE 2: Generated code, do not edit!"
   , ""
-  , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, PatternSynonyms #-}"
+  , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, PatternSynonyms, TypeApplications #-}"
   , "module " ++ hsModule hs_path_proj
   , "  ( " ++ typeName ++ "(..)"
   ] ++ 
@@ -168,6 +168,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , ""
   , "import Data.Bits"
   , "import Data.Word"
+  , "import Data.Proxy"
   , ""
   , "import Foreign.C"
   , "import Foreign.Ptr"
@@ -312,6 +313,7 @@ hsBegin xcurve cgparams@(CodeGenParams{..}) =
   , "  curveNamePxy _ = \"" ++ full_curvename xcurve ++ "\""
   , "  type BaseField   " ++ typeName ++ " = Base"
   , "  type ScalarField " ++ typeName ++ " = Fr"
+  , "  weierstrassForm _ = " ++ hs_constants_AB_xcurve xcurve cgparams
   , "  isOnCurve   = " ++ hsModule hs_path_proj ++ ".isOnCurve"
   , "  isInfinity  = " ++ hsModule hs_path_proj ++ ".isInfinity"
   , "  infinity    = " ++ hsModule hs_path_proj ++ ".infinity"

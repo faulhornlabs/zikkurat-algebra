@@ -4,7 +4,7 @@
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
 
-{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, PatternSynonyms #-}
+{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, PatternSynonyms, TypeApplications #-}
 module ZK.Algebra.Curves.Tom256.G1.Proj
   ( G1(..)
     -- * Parameters
@@ -42,6 +42,7 @@ import Prelude hiding (div)
 
 import Data.Bits
 import Data.Word
+import Data.Proxy
 
 import Foreign.C
 import Foreign.Ptr
@@ -186,6 +187,7 @@ instance C.Curve G1 where
   curveNamePxy _ = "Tom256 ( Fp ) "
   type BaseField   G1 = Base
   type ScalarField G1 = Fr
+  weierstrassForm _ = (-3,81531206846337786915455327229510804132577517753388365729879493166393691077718)
   isOnCurve   = ZK.Algebra.Curves.Tom256.G1.Proj.isOnCurve
   isInfinity  = ZK.Algebra.Curves.Tom256.G1.Proj.isInfinity
   infinity    = ZK.Algebra.Curves.Tom256.G1.Proj.infinity

@@ -126,7 +126,7 @@ hsFFI (CodeGenParams{..}) = catCode $
 --------------------------------------------------------------------------------
 
 hsBegin :: Curve1 -> CodeGenParams -> Code
-hsBegin (Curve1{..}) (CodeGenParams{..}) =
+hsBegin curve1@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   [ "-- | " ++ curveName ++ " curve, Jacobian (or weighted) projective coordinates, Montgomery field representation"
   , "--"
   , "-- * NOTE 1: This module is intented to be imported qualified"
@@ -134,7 +134,7 @@ hsBegin (Curve1{..}) (CodeGenParams{..}) =
   , "-- * NOTE 2: Generated code, do not edit!"
   , "--"
   , ""
-  , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}"
+  , "{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, TypeApplications #-}"
   , "module " ++ hsModule hs_path_jac
   , "  ( " ++ typeName ++ "(..)"
   , "  , primeP , primeR , cofactor , curveA , curveB"
@@ -170,6 +170,7 @@ hsBegin (Curve1{..}) (CodeGenParams{..}) =
   , ""
   , "import Data.Bits"
   , "import Data.Word"
+  , "import Data.Proxy"
   , ""
   , "import Foreign.C"
   , "import Foreign.Ptr"
@@ -311,6 +312,7 @@ hsBegin (Curve1{..}) (CodeGenParams{..}) =
   , "  curveNamePxy _ = \"" ++ curveName ++ " ( Fp )\""
   , "  type BaseField   " ++ typeName ++ " = Fp"
   , "  type ScalarField " ++ typeName ++ " = Fr"
+  , "  weierstrassForm _ = " ++ hs_constants_AB_curve1 curve1 cgparams
   , "  isOnCurve   = " ++ hsModule hs_path_jac ++ ".isOnCurve"
   , "  isInfinity  = " ++ hsModule hs_path_jac ++ ".isInfinity"
   , "  infinity    = " ++ hsModule hs_path_jac ++ ".infinity"

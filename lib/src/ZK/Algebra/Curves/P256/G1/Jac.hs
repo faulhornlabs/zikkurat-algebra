@@ -6,7 +6,7 @@
 -- * NOTE 2: Generated code, do not edit!
 --
 
-{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies #-}
+{-# LANGUAGE BangPatterns, ForeignFunctionInterface, TypeFamilies, TypeApplications #-}
 module ZK.Algebra.Curves.P256.G1.Jac
   ( G1(..)
   , primeP , primeR , cofactor , curveA , curveB
@@ -42,6 +42,7 @@ import Prelude hiding (div)
 
 import Data.Bits
 import Data.Word
+import Data.Proxy
 
 import Foreign.C
 import Foreign.Ptr
@@ -183,6 +184,7 @@ instance C.Curve G1 where
   curveNamePxy _ = "P256 ( Fp )"
   type BaseField   G1 = Fp
   type ScalarField G1 = Fr
+  weierstrassForm _ = (-3,41058363725152142129326129780047268409114441015993725554835256314039467401291)
   isOnCurve   = ZK.Algebra.Curves.P256.G1.Jac.isOnCurve
   isInfinity  = ZK.Algebra.Curves.P256.G1.Jac.isInfinity
   infinity    = ZK.Algebra.Curves.P256.G1.Jac.infinity

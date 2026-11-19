@@ -207,6 +207,7 @@ instance C.Curve G2 where
   curveNamePxy _ = "BN128 ( Fp2 ) "
   type BaseField   G2 = Base
   type ScalarField G2 = Fr
+  weierstrassForm _ = ( Fp2.pack (0,0) , Fp2.pack (19485874751759354771024239261021720505790618469301721065564631296452457478373,266929791119991161246907387137283842545076965332900288569378510910307636690) )
   isOnCurve   = ZK.Algebra.Curves.BN128.G2.Affine.isOnCurve
   isInfinity  = ZK.Algebra.Curves.BN128.G2.Affine.isInfinity
   infinity    = ZK.Algebra.Curves.BN128.G2.Affine.infinity

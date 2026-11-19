@@ -78,6 +78,8 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   type BaseField a :: Type
   -- | scalar field
   type ScalarField a :: Type
+  -- | short Weierstrass curve coefficients A and B
+  weierstrassForm :: Proxy a -> (BaseField a, BaseField a)
   -- | check whether a point is on the curve
   isOnCurve   :: a -> Bool
   -- | check for being the point at infinity
