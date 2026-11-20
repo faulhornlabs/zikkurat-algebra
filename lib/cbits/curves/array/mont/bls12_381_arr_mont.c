@@ -18,6 +18,8 @@
 #define SRC2(i) ((src2) + (i)*ELEM_NWORDS)
 #define SRC3(i) ((src3) + (i)*ELEM_NWORDS)
 #define  TGT(i) ((tgt ) + (i)*ELEM_NWORDS)
+#define TGT1(i) ((tgt1) + (i)*ELEM_NWORDS)
+#define TGT2(i) ((tgt2) + (i)*ELEM_NWORDS)
 #define  TMP(i) ((tmp ) + (i)*ELEM_NWORDS)
 
 //------------------------------------------------------------------------------
@@ -88,6 +90,48 @@ void bls12_381_arr_mont_concat( int K , int *ns, const uint64_t **srcs, uint64_t
     int n = ns[k] * ELEM_NWORDS;
     memcpy( q , srcs[k] , 8*n );
     q += n;
+  }
+}
+
+// allocate place for `2*N` elements!
+void bls12_381_arr_mont_interleave( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {
+  for(int i=0; i<n; i++) {
+    memcpy( TGT(2*i  ) , SRC1(i) , 8*ELEM_NWORDS );
+    memcpy( TGT(2*i+1) , SRC2(i) , 8*ELEM_NWORDS );
+  }
+}
+
+// allocate place for `N/2` elements in both arrays!
+void bls12_381_arr_mont_even_odd  ( int n, const uint64_t *src , uint64_t *tgt1, uint64_t *tgt2 ) {
+  int halfN = (n >> 1);
+  for(int i=0; i<halfN; i++) {
+    memcpy( TGT1(i) , SRC(2*i  ) , 8*ELEM_NWORDS );
+    memcpy( TGT2(i) , SRC(2*i+1) , 8*ELEM_NWORDS );
+  }
+}
+
+// allocate place as you intend... for both arrays...
+void bls12_381_arr_mont_split_at  ( int n, int m, const uint64_t *src , uint64_t *tgt1, uint64_t *tgt2 ) {
+  memcpy( tgt1  , src                 , (  m)*8*ELEM_NWORDS );
+  memcpy( tgt2  , src + m*ELEM_NWORDS , (n-m)*8*ELEM_NWORDS );
+}
+
+// output has the same size as input, so allocate as much
+// we shift everything right by 1, but what outflows and comes back from left is negated
+void bls12_381_arr_mont_signed_rot_right_by_1( int n, const uint64_t *src, uint64_t *tgt ) {
+  uint64_t tmp_last[ELEM_NWORDS];
+  memcpy( tmp_last , SRC(n-1) , 8*ELEM_NWORDS );
+  for(int i=0; i<n-1; i++) {
+    memcpy( TGT(i+1) , SRC(i) , 8*ELEM_NWORDS );
+  }
+  memcpy( tgt , tmp_last , 8*ELEM_NWORDS );
+  bls12_381_Fr_mont_neg_inplace( tgt ); 
+}
+
+// allocate the same
+void bls12_381_arr_mont_map_halve( int n, const uint64_t *src, uint64_t *tgt ) {
+  for(int i=0; i<n; i++) {
+  bls12_381_Fr_mont_div_by_2( SRC(i) , TGT(i) ); 
   }
 }
 

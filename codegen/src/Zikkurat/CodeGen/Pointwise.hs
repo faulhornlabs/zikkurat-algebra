@@ -1,5 +1,5 @@
 
--- | Pointwise operations on vectors of field elements etc
+-- | Pointwise, and more generally, array operations on vectors of field elements etc
 
 {-# LANGUAGE RecordWildCards, ExistentialQuantification, Rank2Types, StandaloneDeriving, ScopedTypeVariables #-}
 module Zikkurat.CodeGen.Pointwise where
@@ -55,6 +55,11 @@ c_header (PwParams{..}) =
   , ""
   , "extern void " ++ prefix ++ "append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "concat( int K , int *ns, const uint64_t **srcs, uint64_t *tgt );"
+  , ""
+  , "extern void " ++ prefix ++ "interleave( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "even_odd  ( int n, const uint64_t *src , uint64_t *tgt1, uint64_t *tgt2 );"
+  , "extern void " ++ prefix ++ "split_at  ( int n, int m, const uint64_t *src , uint64_t *tgt1, uint64_t *tgt2 );"
+  , "extern void " ++ prefix ++ "signed_rot_right_by_1( int n, const uint64_t *src, uint64_t *tgt );"
   , ""
   , "extern void " ++ prefix ++ "neg ( int n, const uint64_t *src ,       uint64_t *tgt );"
   , "extern void " ++ prefix ++ "add ( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
@@ -114,6 +119,8 @@ c_begin params@(PwParams{..}) =
   , "#define SRC2(i) ((src2) + (i)*ELEM_NWORDS)"
   , "#define SRC3(i) ((src3) + (i)*ELEM_NWORDS)"
   , "#define  TGT(i) ((tgt ) + (i)*ELEM_NWORDS)"
+  , "#define TGT1(i) ((tgt1) + (i)*ELEM_NWORDS)"
+  , "#define TGT2(i) ((tgt2) + (i)*ELEM_NWORDS)"
   , "#define  TMP(i) ((tmp ) + (i)*ELEM_NWORDS)"
   , ""
   , "//------------------------------------------------------------------------------"
@@ -369,6 +376,60 @@ c_append params@(PwParams{..}) =
 
 --------------------------------------------------------------------------------
 
+{-
+    - interleave
+    - even_odd split
+    - split_at
+    - signed rotation (what goes out at one end comes back negated at the other end)
+-}
+
+c_fourier_helpers :: PwParams -> Code
+c_fourier_helpers params@(PwParams{..}) =
+  [ "// allocate place for `2*N` elements!"
+  , "void " ++ prefix ++ "interleave( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt ) {"
+  , "  for(int i=0; i<n; i++) {"
+  , "    memcpy( TGT(2*i  ) , SRC1(i) , 8*ELEM_NWORDS );"
+  , "    memcpy( TGT(2*i+1) , SRC2(i) , 8*ELEM_NWORDS );"
+  , "  }"
+  , "}"
+  , ""
+  , "// allocate place for `N/2` elements in both arrays!"
+  , "void " ++ prefix ++ "even_odd  ( int n, const uint64_t *src , uint64_t *tgt1, uint64_t *tgt2 ) {"
+  , "  int halfN = (n >> 1);"
+  , "  for(int i=0; i<halfN; i++) {"
+  , "    memcpy( TGT1(i) , SRC(2*i  ) , 8*ELEM_NWORDS );"
+  , "    memcpy( TGT2(i) , SRC(2*i+1) , 8*ELEM_NWORDS );"
+  , "  }"
+  , "}"
+  , ""
+  , "// allocate place as you intend... for both arrays..."
+  , "void " ++ prefix ++ "split_at  ( int n, int m, const uint64_t *src , uint64_t *tgt1, uint64_t *tgt2 ) {"
+  , "  memcpy( tgt1  , src                 , (  m)*8*ELEM_NWORDS );"
+  , "  memcpy( tgt2  , src + m*ELEM_NWORDS , (n-m)*8*ELEM_NWORDS );"
+  , "}"
+  , ""
+  , "// output has the same size as input, so allocate as much"
+  , "// we shift everything right by 1, but what outflows and comes back from left is negated"
+  , "void " ++ prefix ++ "signed_rot_right_by_1( int n, const uint64_t *src, uint64_t *tgt ) {"
+  , "  uint64_t tmp_last[ELEM_NWORDS];"
+  , "  memcpy( tmp_last , SRC(n-1) , 8*ELEM_NWORDS );"
+  , "  for(int i=0; i<n-1; i++) {"
+  , "    memcpy( TGT(i+1) , SRC(i) , 8*ELEM_NWORDS );"
+  , "  }"
+  , "  memcpy( tgt , tmp_last , 8*ELEM_NWORDS );"
+  , "  " ++ elem_prefix ++ "neg_inplace( tgt ); "
+  , "}"
+  , ""
+  , "// allocate the same"
+  , "void " ++ prefix ++ "map_halve( int n, const uint64_t *src, uint64_t *tgt ) {"
+  , "  for(int i=0; i<n; i++) {"
+  , "  " ++ elem_prefix ++ "div_by_2( SRC(i) , TGT(i) ); "
+  , "  }"
+  , "}"
+  ]
+
+--------------------------------------------------------------------------------
+
 c_scale_lincomb_etc :: PwParams -> Code
 c_scale_lincomb_etc params@(PwParams{..}) =
   [ ""
@@ -436,6 +497,10 @@ hsBegin (PwParams{..}) =
   , "    -- * Concatenation"
   , "  , cons , snoc"
   , "  , append, concat"
+  , "    -- * Fourier helpers"
+  , "  , interleave , evenOdd"
+  , "  , splitAt, signedRotateRight"
+  , "  , mapHalve"
   , "    -- * Pointwise arithmetics"
   , "  , neg , add , sub"  
   , "  , sqr , mul"  
@@ -457,12 +522,13 @@ hsBegin (PwParams{..}) =
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
-  , "import Prelude  hiding (div,quot,rem,concat)"
-  , "import GHC.Real hiding (div,quot,rem)"
+  , "import Prelude  hiding (div, quot, rem, concat, splitAt)"
+  , "import GHC.Real hiding (div, quot, rem)"
+  , "import qualified Prelude"
   , ""
   , "import Data.Bits"
   , "import Data.Word"
-  , "import Data.List hiding (concat)"
+  , "import Data.List hiding (concat, splitAt)"
   , "import Data.Array"
   , ""
   , "import Control.Monad"
@@ -563,6 +629,69 @@ hsBegin (PwParams{..}) =
   , ""
   , "snoc :: FlatArray " ++ typeNameBase ++ " -> " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
   , "snoc arr y = append arr (singletonArray y)"
+  , ""
+  , "--------------------------------------------------------------------------------"
+  , ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "interleave\" c_" ++ prefix ++ "interleave :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "even_odd\"   c_" ++ prefix ++ "even_odd   :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "split_at\"   c_" ++ prefix ++ "split_at   :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "signed_rot_right_by_1\" c_" ++ prefix ++ "signed_rot_right_by_1  :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "map_halve\"  c_" ++ prefix ++ "map_halve  :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "{-# NOINLINE interleave #-}"
+  , "interleave :: FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
+  , "interleave (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)" 
+  , "  | n1 /= n2   = error \"interleave: incompatible lengths\""
+  , "  | otherwise  = unsafePerformIO $ do"
+  , "      fptr3 <- mallocForeignPtrArray ((n1+n2) * " ++ show elemNWords ++ ")"
+  , "      withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "        withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "          withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "            c_" ++ prefix ++ "interleave (fromIntegral n1) ptr1 ptr2 ptr3"
+  , "      return (MkFlatArray (n1+n2) fptr3)"
+  , ""
+  , "{-# NOINLINE evenOdd #-}"
+  , "evenOdd :: FlatArray " ++ typeNameBase ++ " -> (FlatArray " ++ typeNameBase ++ ", FlatArray " ++ typeNameBase ++ ")"
+  , "evenOdd (MkFlatArray n1 fptr1)"
+  , "  | odd n1     = error \"evenOdd: odd length\""
+  , "  | otherwise  = unsafePerformIO $ do"
+  , "      let halfN = Prelude.div n1 2"
+  , "      fptr2 <- mallocForeignPtrArray (halfN * " ++ show elemNWords ++ ")"
+  , "      fptr3 <- mallocForeignPtrArray (halfN * " ++ show elemNWords ++ ")"
+  , "      withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "        withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "          withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "            c_" ++ prefix ++ "even_odd (fromIntegral n1) ptr1 ptr2 ptr3"
+  , "      return (MkFlatArray halfN fptr2, MkFlatArray halfN fptr3)"
+  , ""
+  , "{-# NOINLINE splitAt #-}"
+  , "splitAt :: Int -> FlatArray " ++ typeNameBase ++ " -> (FlatArray " ++ typeNameBase ++ ", FlatArray " ++ typeNameBase ++ ")"
+  , "splitAt m (MkFlatArray n1 fptr1) = unsafePerformIO $ do"
+  , "  fptr2 <- mallocForeignPtrArray (    m  * " ++ show elemNWords ++ ")"
+  , "  fptr3 <- mallocForeignPtrArray ((n1-m) * " ++ show elemNWords ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "split_at (fromIntegral n1) (fromIntegral m) ptr1 ptr2 ptr3"
+  , "  return (MkFlatArray m fptr2, MkFlatArray (n1-m) fptr3)"
+  , ""
+  , "{-# NOINLINE signedRotateRight #-}"
+  , "signedRotateRight :: FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
+  , "signedRotateRight (MkFlatArray n1 fptr1) = unsafePerformIO $ do"
+  , "  fptr2 <- mallocForeignPtrArray (n1 * " ++ show elemNWords ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      c_" ++ prefix ++ "signed_rot_right_by_1 (fromIntegral n1) ptr1 ptr2"
+  , "  return (MkFlatArray n1 fptr2)"
+  , ""
+  , "{-# NOINLINE mapHalve #-}"
+  , "mapHalve :: FlatArray " ++ typeNameBase ++ " -> FlatArray " ++ typeNameBase
+  , "mapHalve (MkFlatArray n1 fptr1) = unsafePerformIO $ do"
+  , "  fptr2 <- mallocForeignPtrArray (n1 * " ++ show elemNWords ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      c_" ++ prefix ++ "map_halve (fromIntegral n1) ptr1 ptr2"
+  , "  return (MkFlatArray n1 fptr2)"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -704,6 +833,7 @@ c_code pwparams = concat $ map ("":)
   [ c_begin                   pwparams
   , c_zero_one_etc            pwparams
   , c_append                  pwparams
+  , c_fourier_helpers         pwparams
   , c_convert                 pwparams
   , c_add_sub_mul_etc         pwparams
   , c_add_sub_mul_etc_inplace pwparams

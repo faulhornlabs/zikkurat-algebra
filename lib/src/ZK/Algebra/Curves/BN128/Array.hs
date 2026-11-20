@@ -17,6 +17,10 @@ module ZK.Algebra.Curves.BN128.Array
     -- * Concatenation
   , cons , snoc
   , append, concat
+    -- * Fourier helpers
+  , interleave , evenOdd
+  , splitAt, signedRotateRight
+  , mapHalve
     -- * Pointwise arithmetics
   , neg , add , sub
   , sqr , mul
@@ -38,12 +42,13 @@ module ZK.Algebra.Curves.BN128.Array
 
 --------------------------------------------------------------------------------
 
-import Prelude  hiding (div,quot,rem,concat)
-import GHC.Real hiding (div,quot,rem)
+import Prelude  hiding (div, quot, rem, concat, splitAt)
+import GHC.Real hiding (div, quot, rem)
+import qualified Prelude
 
 import Data.Bits
 import Data.Word
-import Data.List hiding (concat)
+import Data.List hiding (concat, splitAt)
 import Data.Array
 
 import Control.Monad
@@ -144,6 +149,69 @@ cons x arr = append (singletonArray x) arr
 
 snoc :: FlatArray Fr -> Fr -> FlatArray Fr
 snoc arr y = append arr (singletonArray y)
+
+--------------------------------------------------------------------------------
+
+foreign import ccall unsafe "bn128_arr_mont_interleave" c_bn128_arr_mont_interleave :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_arr_mont_even_odd"   c_bn128_arr_mont_even_odd   :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_arr_mont_split_at"   c_bn128_arr_mont_split_at   :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_arr_mont_signed_rot_right_by_1" c_bn128_arr_mont_signed_rot_right_by_1  :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "bn128_arr_mont_map_halve"  c_bn128_arr_mont_map_halve  :: CInt -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE interleave #-}
+interleave :: FlatArray Fr -> FlatArray Fr -> FlatArray Fr
+interleave (MkFlatArray n1 fptr1) (MkFlatArray n2 fptr2)
+  | n1 /= n2   = error "interleave: incompatible lengths"
+  | otherwise  = unsafePerformIO $ do
+      fptr3 <- mallocForeignPtrArray ((n1+n2) * 4)
+      withForeignPtr fptr1 $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_bn128_arr_mont_interleave (fromIntegral n1) ptr1 ptr2 ptr3
+      return (MkFlatArray (n1+n2) fptr3)
+
+{-# NOINLINE evenOdd #-}
+evenOdd :: FlatArray Fr -> (FlatArray Fr, FlatArray Fr)
+evenOdd (MkFlatArray n1 fptr1)
+  | odd n1     = error "evenOdd: odd length"
+  | otherwise  = unsafePerformIO $ do
+      let halfN = Prelude.div n1 2
+      fptr2 <- mallocForeignPtrArray (halfN * 4)
+      fptr3 <- mallocForeignPtrArray (halfN * 4)
+      withForeignPtr fptr1 $ \ptr1 -> do
+        withForeignPtr fptr2 $ \ptr2 -> do
+          withForeignPtr fptr3 $ \ptr3 -> do
+            c_bn128_arr_mont_even_odd (fromIntegral n1) ptr1 ptr2 ptr3
+      return (MkFlatArray halfN fptr2, MkFlatArray halfN fptr3)
+
+{-# NOINLINE splitAt #-}
+splitAt :: Int -> FlatArray Fr -> (FlatArray Fr, FlatArray Fr)
+splitAt m (MkFlatArray n1 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (    m  * 4)
+  fptr3 <- mallocForeignPtrArray ((n1-m) * 4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_bn128_arr_mont_split_at (fromIntegral n1) (fromIntegral m) ptr1 ptr2 ptr3
+  return (MkFlatArray m fptr2, MkFlatArray (n1-m) fptr3)
+
+{-# NOINLINE signedRotateRight #-}
+signedRotateRight :: FlatArray Fr -> FlatArray Fr
+signedRotateRight (MkFlatArray n1 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n1 * 4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bn128_arr_mont_signed_rot_right_by_1 (fromIntegral n1) ptr1 ptr2
+  return (MkFlatArray n1 fptr2)
+
+{-# NOINLINE mapHalve #-}
+mapHalve :: FlatArray Fr -> FlatArray Fr
+mapHalve (MkFlatArray n1 fptr1) = unsafePerformIO $ do
+  fptr2 <- mallocForeignPtrArray (n1 * 4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      c_bn128_arr_mont_map_halve (fromIntegral n1) ptr1 ptr2
+  return (MkFlatArray n1 fptr2)
 
 --------------------------------------------------------------------------------
 

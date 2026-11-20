@@ -15,6 +15,11 @@ extern void tom256_arr_mont_to_std   ( int n, const uint64_t *src , uint64_t *tg
 extern void tom256_arr_mont_append( int n1, int n2, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 extern void tom256_arr_mont_concat( int K , int *ns, const uint64_t **srcs, uint64_t *tgt );
 
+extern void tom256_arr_mont_interleave( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
+extern void tom256_arr_mont_even_odd  ( int n, const uint64_t *src , uint64_t *tgt1, uint64_t *tgt2 );
+extern void tom256_arr_mont_split_at  ( int n, int m, const uint64_t *src , uint64_t *tgt1, uint64_t *tgt2 );
+extern void tom256_arr_mont_signed_rot_right_by_1( int n, const uint64_t *src, uint64_t *tgt );
+
 extern void tom256_arr_mont_neg ( int n, const uint64_t *src ,       uint64_t *tgt );
 extern void tom256_arr_mont_add ( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 extern void tom256_arr_mont_sub ( int n, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
