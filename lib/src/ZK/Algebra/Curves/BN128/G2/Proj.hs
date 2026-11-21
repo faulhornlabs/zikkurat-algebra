@@ -1,5 +1,5 @@
 
--- | BN128 ( Fp2 )  curve, projective coordinates, Montgomery field representation
+-- | BN254 [aka. alt-bn128] ( Fp2 )  curve, projective coordinates, Montgomery field representation
 
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
@@ -173,7 +173,7 @@ instance M.Rnd G2 where
   rndIO = rndG2
 
 instance C.Group G2 where
-  grpName _    = "BN128 / G2 "
+  grpName _    = "BN254 [aka. alt-bn128] / G2 "
   grpIsUnit    = ZK.Algebra.Curves.BN128.G2.Proj.isInfinity
   grpUnit      = ZK.Algebra.Curves.BN128.G2.Proj.infinity
   grpNormalize = normalize
@@ -185,13 +185,17 @@ instance C.Group G2 where
   grpScale     = sclBig
 
 instance C.Curve G2 where
-  curveNamePxy _ = "BN128 ( Fp2 ) "
+  curveNamePxy _ = "BN254 [aka. alt-bn128] ( Fp2 ) "
   type BaseField   G2 = Base
   type ScalarField G2 = Fr
-  weierstrassForm _ = ( Fp2.pack (0,0) , Fp2.pack (19485874751759354771024239261021720505790618469301721065564631296452457478373,266929791119991161246907387137283842545076965332900288569378510910307636690) )
-  isOnCurve   = ZK.Algebra.Curves.BN128.G2.Proj.isOnCurve
-  isInfinity  = ZK.Algebra.Curves.BN128.G2.Proj.isInfinity
-  infinity    = ZK.Algebra.Curves.BN128.G2.Proj.infinity
+  weierstrassForm  _ = ( Fp2.pack (0,0) , Fp2.pack (19485874751759354771024239261021720505790618469301721065564631296452457478373,266929791119991161246907387137283842545076965332900288569378510910307636690) )
+  curveCardinality _ = 479095176016622842441988045216678740799252316531100822436447802254070093686356349204969212544220033486413271283566945264650845755880805213916963058350733
+  subgroupOrder    _ = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+  cofactor         _ = 21888242871839275222246405745257275088844257914179612981679871602714643921549
+  isInSubgroup = ZK.Algebra.Curves.BN128.G2.Proj.isInSubgroup
+  isOnCurve    = ZK.Algebra.Curves.BN128.G2.Proj.isOnCurve
+  isInfinity   = ZK.Algebra.Curves.BN128.G2.Proj.isInfinity
+  infinity     = ZK.Algebra.Curves.BN128.G2.Proj.infinity
   curveSubgroupGen = ZK.Algebra.Curves.BN128.G2.Proj.genG2
   scalarMul   = ZK.Algebra.Curves.BN128.G2.Proj.sclFr
   msm         = ZK.Algebra.Curves.BN128.G2.Proj.msmProj

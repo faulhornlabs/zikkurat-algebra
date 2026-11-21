@@ -1,5 +1,5 @@
 
--- | P256 curve, Jacobian (or weighted) projective coordinates, Montgomery field representation
+-- | P-256 curve, Jacobian (or weighted) projective coordinates, Montgomery field representation
 --
 -- * NOTE 1: This module is intented to be imported qualified
 --
@@ -169,7 +169,7 @@ instance M.Rnd G1 where
   rndIO = rndG1
 
 instance C.Group G1 where
-  grpName _    = "P256 / G1"
+  grpName _    = "P-256 / G1"
   grpIsUnit    = ZK.Algebra.Curves.P256.G1.Jac.isInfinity
   grpUnit      = ZK.Algebra.Curves.P256.G1.Jac.infinity
   grpNormalize = normalize
@@ -181,13 +181,17 @@ instance C.Group G1 where
   grpScale     = sclBig
 
 instance C.Curve G1 where
-  curveNamePxy _ = "P256 ( Fp )"
+  curveNamePxy _ = "P-256 ( Fp )"
   type BaseField   G1 = Fp
   type ScalarField G1 = Fr
-  weierstrassForm _ = (-3,41058363725152142129326129780047268409114441015993725554835256314039467401291)
-  isOnCurve   = ZK.Algebra.Curves.P256.G1.Jac.isOnCurve
-  isInfinity  = ZK.Algebra.Curves.P256.G1.Jac.isInfinity
-  infinity    = ZK.Algebra.Curves.P256.G1.Jac.infinity
+  weierstrassForm  _ = (-3,41058363725152142129326129780047268409114441015993725554835256314039467401291)
+  curveCardinality _ = 115792089210356248762697446949407573529996955224135760342422259061068512044369
+  subgroupOrder    _ = 115792089210356248762697446949407573529996955224135760342422259061068512044369
+  cofactor         _ = 1
+  isInSubgroup = ZK.Algebra.Curves.P256.G1.Jac.isInSubgroup
+  isOnCurve    = ZK.Algebra.Curves.P256.G1.Jac.isOnCurve
+  isInfinity   = ZK.Algebra.Curves.P256.G1.Jac.isInfinity
+  infinity     = ZK.Algebra.Curves.P256.G1.Jac.infinity
   curveSubgroupGen = ZK.Algebra.Curves.P256.G1.Jac.genG1
   scalarMul   = ZK.Algebra.Curves.P256.G1.Jac.sclFr
   msm         = ZK.Algebra.Curves.P256.G1.Jac.msmJac

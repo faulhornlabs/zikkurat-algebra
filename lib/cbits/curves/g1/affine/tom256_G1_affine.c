@@ -1,5 +1,5 @@
 
-// elliptic curve "Tom256 ( Fp ) " in affine coordinates, Montgomery field representation
+// elliptic curve "Tom-256 ( Fp ) " in affine coordinates, Montgomery field representation
 //
 // NOTES:
 //  - generated code, do not edit!

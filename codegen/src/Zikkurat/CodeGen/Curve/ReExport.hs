@@ -8,6 +8,7 @@ import Data.List
 import System.FilePath
 
 import Zikkurat.CodeGen.Misc
+import Zikkurat.CodeGen.Curve.Params ( Curve1(..) )
 
 --------------------------------------------------------------------------------
 
@@ -35,10 +36,11 @@ exportedModule_ suffix types = ExportedModule suffix types []
 
 data ReExportParams = ReExportParams 
   { hsPath       :: Path                  -- ^ eg. @Path ["ZK","Algebra","Curves","BN128"]@
+  , reCurve1     :: Curve1
   , moduleName   :: String                -- ^ eg. @"BLS12_381"@
   , moduleList   :: [ExportedModule]      -- re-export list
   }
-  deriving (Eq,Show)
+  deriving (Show)
 
 reexports_standardPairingCurve :: [ExportedModule]
 reexports_standardPairingCurve =
@@ -73,7 +75,13 @@ reexports_standardNonPairingCurve =
 hs_code :: ReExportParams -> Code
 hs_code params@(ReExportParams{..}) = 
   [ "-- | Convenient reexport of (monomorphic) types for " ++ moduleName 
-  , ""
+  , "-- "
+  , "-- Elliptic curve `" ++ curveName reCurve1 ++ "`"
+  , "-- "
+  , "-- see also:"
+  , "-- " ] ++
+  [ "--   - <" ++ url ++ ">" | url <- curveURLs reCurve1 ] ++
+  [ ""
   , "module " ++ hsModule hsPath++ " where"
   , ""
   , "--------------------------------------------------------------------------------"

@@ -1,5 +1,5 @@
 
-// elliptic curve "BN128 ( Fp2 ) " in projective coordinates, Montgomery field representation
+// elliptic curve "BN254 [aka. alt-bn128] ( Fp2 ) " in projective coordinates, Montgomery field representation
 //
 // NOTE: generated code, do not edit!
 

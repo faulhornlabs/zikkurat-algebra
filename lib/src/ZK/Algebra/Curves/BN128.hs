@@ -1,4 +1,11 @@
 -- | Convenient reexport of (monomorphic) types for BN128
+-- 
+-- Elliptic curve `BN254 [aka. alt-bn128]`
+-- 
+-- see also:
+-- 
+--   - <https://ecdsa.com/curves/bn254>
+--   - <https://hackmd.io/@jpw/bn254>
 
 module ZK.Algebra.Curves.BN128 where
 

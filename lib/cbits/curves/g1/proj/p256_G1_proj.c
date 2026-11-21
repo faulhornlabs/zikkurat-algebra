@@ -1,5 +1,5 @@
 
-// elliptic curve "P256 ( Fp ) " in projective coordinates, Montgomery field representation
+// elliptic curve "P-256 ( Fp ) " in projective coordinates, Montgomery field representation
 //
 // NOTE: generated code, do not edit!
 

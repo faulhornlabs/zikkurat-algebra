@@ -1,5 +1,5 @@
 
--- | Tom256 ( Fp )  curve, projective coordinates, Montgomery field representation
+-- | Tom-256 ( Fp )  curve, projective coordinates, Montgomery field representation
 
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
@@ -172,7 +172,7 @@ instance M.Rnd G1 where
   rndIO = rndG1
 
 instance C.Group G1 where
-  grpName _    = "Tom256 / G1 "
+  grpName _    = "Tom-256 / G1 "
   grpIsUnit    = ZK.Algebra.Curves.Tom256.G1.Proj.isInfinity
   grpUnit      = ZK.Algebra.Curves.Tom256.G1.Proj.infinity
   grpNormalize = normalize
@@ -184,13 +184,17 @@ instance C.Group G1 where
   grpScale     = sclBig
 
 instance C.Curve G1 where
-  curveNamePxy _ = "Tom256 ( Fp ) "
+  curveNamePxy _ = "Tom-256 ( Fp ) "
   type BaseField   G1 = Base
   type ScalarField G1 = Fr
-  weierstrassForm _ = (-3,81531206846337786915455327229510804132577517753388365729879493166393691077718)
-  isOnCurve   = ZK.Algebra.Curves.Tom256.G1.Proj.isOnCurve
-  isInfinity  = ZK.Algebra.Curves.Tom256.G1.Proj.isInfinity
-  infinity    = ZK.Algebra.Curves.Tom256.G1.Proj.infinity
+  weierstrassForm  _ = (-3,81531206846337786915455327229510804132577517753388365729879493166393691077718)
+  curveCardinality _ = 115792089210356248762697446949407573530086143415290314195533631308867097853951
+  subgroupOrder    _ = 115792089210356248762697446949407573530086143415290314195533631308867097853951
+  cofactor         _ = 1
+  isInSubgroup = ZK.Algebra.Curves.Tom256.G1.Proj.isInSubgroup
+  isOnCurve    = ZK.Algebra.Curves.Tom256.G1.Proj.isOnCurve
+  isInfinity   = ZK.Algebra.Curves.Tom256.G1.Proj.isInfinity
+  infinity     = ZK.Algebra.Curves.Tom256.G1.Proj.infinity
   curveSubgroupGen = ZK.Algebra.Curves.Tom256.G1.Proj.genG1
   scalarMul   = ZK.Algebra.Curves.Tom256.G1.Proj.sclFr
   msm         = ZK.Algebra.Curves.Tom256.G1.Proj.msmProj
@@ -379,7 +383,7 @@ inverseFFT sg (MkFlatArray n fptr2)
 -- | Sage setup code to experiment with this curve
 sageSetup :: [String]
 sageSetup = 
-  [ "# Tom256 elliptic curve"
+  [ "# Tom-256 elliptic curve"
   , "p  = 115792089210356248762697446949407573530594504085698471288169790229257723883799"
   , "r  = 115792089210356248762697446949407573530086143415290314195533631308867097853951"
   , "h  = 1"

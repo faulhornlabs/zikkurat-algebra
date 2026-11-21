@@ -1,4 +1,12 @@
 -- | Convenient reexport of (monomorphic) types for P256
+-- 
+-- Elliptic curve `P-256`
+-- 
+-- see also:
+-- 
+--   - <https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186.pdf>
+--   - <https://std.neuromancer.sk/nist/P-256>
+--   - <https://ecdsa.com/curves/p-256>
 
 module ZK.Algebra.Curves.P256 where
 

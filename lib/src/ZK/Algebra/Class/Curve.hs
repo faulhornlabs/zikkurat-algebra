@@ -1,7 +1,7 @@
 
 -- | Polymorphic interface for elliptic curves
 
-{-# LANGUAGE BangPatterns, ScopedTypeVariables, FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables, TypeApplications, FlexibleContexts, TypeFamilies #-}
 module ZK.Algebra.Class.Curve where
 
 --------------------------------------------------------------------------------
@@ -71,6 +71,8 @@ infixr 7 <***>
 --------------------------------------------------------------------------------
 -- * Elliptic curves
 
+-- TODO: the pure Haskell version has better type class hierarchy... maybe adapt?
+
 class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   -- | name of the ring
   curveNamePxy :: Proxy a -> String            
@@ -80,8 +82,16 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
   type ScalarField a :: Type
   -- | short Weierstrass curve coefficients A and B
   weierstrassForm :: Proxy a -> (BaseField a, BaseField a)
+  -- | size of the whole curve
+  curveCardinality:: Proxy a -> Integer
+  -- | size of the subgroup
+  subgroupOrder :: Proxy a -> Integer
+  -- | the cofactor
+  cofactor :: Proxy a -> Integer
   -- | check whether a point is on the curve
   isOnCurve   :: a -> Bool
+  -- | check whether a point is in the subgroup
+  isInSubgroup   :: a -> Bool
   -- | check for being the point at infinity
   isInfinity  :: a -> Bool
   -- | the infinity element
@@ -101,6 +111,9 @@ class (Group a, Field (BaseField a), Field (ScalarField a)) => Curve a where
 infixr 7 <**>
 (<**>) :: Curve a => ScalarField a -> a -> a
 (<**>) = scalarMul
+
+baseFieldSize :: forall a. Curve a => Proxy a -> Integer
+baseFieldSize pxy = fieldSize (Proxy @(BaseField a))
 
 --------------------------------------------------------------------------------
 -- * Affine curves

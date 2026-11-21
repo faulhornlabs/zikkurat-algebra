@@ -1,4 +1,13 @@
 -- | Convenient reexport of (monomorphic) types for BLS12_381
+-- 
+-- Elliptic curve `BLS12-381`
+-- 
+-- see also:
+-- 
+--   - <https://zodl.com/new-snark-curve/>
+--   - <https://std.neuromancer.sk/bls/BLS12-381>
+--   - <https://hackmd.io/@benjaminion/bls12-381>
+--   - <https://ecdsa.com/curves/bls12-381>
 
 module ZK.Algebra.Curves.BLS12_381 where
 

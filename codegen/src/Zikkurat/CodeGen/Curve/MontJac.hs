@@ -1,5 +1,8 @@
 
 -- | Jacobian (or weighted) projective coordinates, Montgomery field representation
+--
+-- NOTE: this is not implemented for G2, so it's kind of bitrotten compared to Affine/Proj
+--
 
 {-# LANGUAGE StrictData, RecordWildCards #-}
 module Zikkurat.CodeGen.Curve.MontJac where
@@ -203,7 +206,7 @@ hsBegin curve1@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   , "primeP, primeR, cofactor :: Integer"
   , "primeP = Fp.prime"
   , "primeR = Fr.prime"
-  , "cofactor = " ++ show cofactor
+  , "cofactor = " ++ show (cofactor curve1)
   , ""
   , "-- | parameters A and B of the curve equation @y^2 = x^3 + A*x + B@"
   , "curveA, curveB :: Fp"  -- Integer
@@ -312,10 +315,14 @@ hsBegin curve1@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   , "  curveNamePxy _ = \"" ++ curveName ++ " ( Fp )\""
   , "  type BaseField   " ++ typeName ++ " = Fp"
   , "  type ScalarField " ++ typeName ++ " = Fr"
-  , "  weierstrassForm _ = " ++ hs_constants_AB_curve1 curve1 cgparams
-  , "  isOnCurve   = " ++ hsModule hs_path_jac ++ ".isOnCurve"
-  , "  isInfinity  = " ++ hsModule hs_path_jac ++ ".isInfinity"
-  , "  infinity    = " ++ hsModule hs_path_jac ++ ".infinity"
+  , "  weierstrassForm  _ = " ++ hs_constants_AB_curve1 curve1 cgparams
+  , "  curveCardinality _ = " ++ show cardinality              -- (xcurveCardinality   xcurve)
+  , "  subgroupOrder    _ = " ++ show (subgroupOrder curve1)   -- (xcurveSubgroupOrder xcurve)
+  , "  cofactor         _ = " ++ show (cofactor      curve1)   -- (xcurveCofactor      xcurve)
+  , "  isInSubgroup = " ++ hsModule hs_path_jac ++ ".isInSubgroup"
+  , "  isOnCurve    = " ++ hsModule hs_path_jac ++ ".isOnCurve"
+  , "  isInfinity   = " ++ hsModule hs_path_jac ++ ".isInfinity"
+  , "  infinity     = " ++ hsModule hs_path_jac ++ ".infinity"
   , "  curveSubgroupGen = " ++ hsModule hs_path_jac ++ ".genG1"
   , "  scalarMul   = " ++ hsModule hs_path_jac ++ ".sclFr"
   , "  msm         = " ++ hsModule hs_path_jac ++ ".msmJac"
@@ -361,7 +368,7 @@ hsBegin curve1@(Curve1{..}) cgparams@(CodeGenParams{..}) =
 --------------------------------------------------------------------------------
 
 c_begin :: Curve1 -> CodeGenParams -> Code
-c_begin curve@(Curve1{..}) cgparams@(CodeGenParams{..}) =
+c_begin curve1@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   [ "// elliptic curve " ++ show curveName ++ " in projective coordinates, Montgomery field representation"
   , "//"
   , "// NOTE: generated code, do not edit!"
@@ -393,7 +400,7 @@ c_begin curve@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   , "#define Z3 (tgt + " ++ show (2*nlimbs_p) ++ ")"
   , ""
   ] ++
-  (case {- xcurve -} (Left curve) of 
+  (case {- xcurve -} (Left curve1) of 
     Left  curve1  -> c_constants_AB_curve1 False curve1  cgparams
     Right curve12 -> c_constants_AB_curve2 False curve12 cgparams
   ) ++
@@ -401,8 +408,8 @@ c_begin curve@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   , "// the generator of the subgroup G1"
   , mkConstArr nlimbs_p (prefix ++ "gen_G1") (map toMontgomery [ fst subgroupGen, snd subgroupGen , 1 ])
   , ""
-  , "// the cofactor of the curve subgroup = " ++ show cofactor
-  , mkConst nlimbs_p (prefix ++ "cofactor") cofactor
+  , "// the cofactor of the curve subgroup = " ++ show (cofactor curve1)
+  , mkConst nlimbs_p (prefix ++ "cofactor")            (cofactor curve1)
   , ""
   , "//------------------------------------------------------------------------------"
   ] 

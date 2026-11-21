@@ -1,5 +1,5 @@
 
--- | BN128 curve, Jacobian (or weighted) projective coordinates, Montgomery field representation
+-- | BN254 [aka. alt-bn128] curve, Jacobian (or weighted) projective coordinates, Montgomery field representation
 --
 -- * NOTE 1: This module is intented to be imported qualified
 --
@@ -169,7 +169,7 @@ instance M.Rnd G1 where
   rndIO = rndG1
 
 instance C.Group G1 where
-  grpName _    = "BN128 / G1"
+  grpName _    = "BN254 [aka. alt-bn128] / G1"
   grpIsUnit    = ZK.Algebra.Curves.BN128.G1.Jac.isInfinity
   grpUnit      = ZK.Algebra.Curves.BN128.G1.Jac.infinity
   grpNormalize = normalize
@@ -181,13 +181,17 @@ instance C.Group G1 where
   grpScale     = sclBig
 
 instance C.Curve G1 where
-  curveNamePxy _ = "BN128 ( Fp )"
+  curveNamePxy _ = "BN254 [aka. alt-bn128] ( Fp )"
   type BaseField   G1 = Fp
   type ScalarField G1 = Fr
-  weierstrassForm _ = (0,3)
-  isOnCurve   = ZK.Algebra.Curves.BN128.G1.Jac.isOnCurve
-  isInfinity  = ZK.Algebra.Curves.BN128.G1.Jac.isInfinity
-  infinity    = ZK.Algebra.Curves.BN128.G1.Jac.infinity
+  weierstrassForm  _ = (0,3)
+  curveCardinality _ = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+  subgroupOrder    _ = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+  cofactor         _ = 1
+  isInSubgroup = ZK.Algebra.Curves.BN128.G1.Jac.isInSubgroup
+  isOnCurve    = ZK.Algebra.Curves.BN128.G1.Jac.isOnCurve
+  isInfinity   = ZK.Algebra.Curves.BN128.G1.Jac.isInfinity
+  infinity     = ZK.Algebra.Curves.BN128.G1.Jac.infinity
   curveSubgroupGen = ZK.Algebra.Curves.BN128.G1.Jac.genG1
   scalarMul   = ZK.Algebra.Curves.BN128.G1.Jac.sclFr
   msm         = ZK.Algebra.Curves.BN128.G1.Jac.msmJac

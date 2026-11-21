@@ -76,12 +76,12 @@ c_constants_AB_curve2 is_proj (Curve12 curve1 curve2@(Curve2{..})) cgparams@(Cod
 ----------------------------------------
 
 c_begin_curve1 :: Bool -> Curve1 -> CodeGenParams -> Code
-c_begin_curve1 is_proj (Curve1{..}) cgparams@(CodeGenParams{..}) =
+c_begin_curve1 is_proj curve1@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   [ "// the generator of the subgroup G1"
   , mkConstArr nlimbs_p (prefix ++ "gen_G1") (map toMontgomery coords)
   , ""
-  , "// the cofactor of the curve subgroup = " ++ show cofactor
-  , mkConst nlimbs_p (prefix ++ "cofactor") cofactor
+  , "// the cofactor of the curve subgroup = " ++ show (cofactor curve1)
+  , mkConst nlimbs_p (prefix ++ "cofactor")            (cofactor curve1)
   , ""
   , "// the constants A and B of the equation"
   , mkConst nlimbs_p (prefix ++ "const_A" ) (toMontgomery curveA)
@@ -98,8 +98,8 @@ c_begin_curve2 is_proj (Curve12 curve1 curve2@(Curve2{..})) cgparams@(CodeGenPar
   [ "// the generator of the subgroup G2"
   , mkConstArrFp2 nlimbs_p (prefix ++ "gen_G2") (map toMontgomeryFp2 coords)
   , ""
-  , "// the cofactor of the curve subgroup = " ++ show g2_cofactor
-  , mkConst nlimbs_p (prefix ++ "cofactor") g2_cofactor
+  , "// the cofactor of the curve subgroup = " ++ show (g2_cofactor curve2)
+  , mkConst nlimbs_p (prefix ++ "cofactor")            (g2_cofactor curve2)
   , ""
   , "// the constants A and B of the equation"
   , mkConstFp2 nlimbs_p (prefix ++ "const_A")  (toMontgomeryFp2 g2_curveA)
@@ -123,11 +123,11 @@ hsBegin_xcurve is_proj xcurve cgparams = case xcurve of
   Right c12 -> hsBegin_curve2 is_proj c12 cgparams
 
 hsBegin_curve1 :: Bool -> Curve1 -> CodeGenParams -> Code
-hsBegin_curve1 is_proj (Curve1{..}) (CodeGenParams{..}) =
+hsBegin_curve1 is_proj curve1@(Curve1{..}) (CodeGenParams{..}) =
   [ "primeP, primeR, cofactor :: Integer"
   , "primeP = Fp.prime"
   , "primeR = Fr.prime"
-  , "cofactor = " ++ show cofactor
+  , "cofactor = " ++ show (cofactor curve1) 
   , ""
   , "type Base = Fp"
   , "pattern MkBase fptr = MkFp fptr"
@@ -145,10 +145,10 @@ hsBegin_curve1 is_proj (Curve1{..}) (CodeGenParams{..}) =
   ]
 
 hsBegin_curve2 :: Bool -> Curve12 -> CodeGenParams -> Code
-hsBegin_curve2 is_proj (Curve12 (Curve1{..}) (Curve2{..})) (CodeGenParams{..}) =
+hsBegin_curve2 is_proj (Curve12 curve1@(Curve1{..}) curve2@(Curve2{..})) (CodeGenParams{..}) =
   [ "primeR, cofactor :: Integer"
   , "primeR = Fr.prime"
-  , "cofactor = " ++ show g2_cofactor
+  , "cofactor = " ++ show (g2_cofactor curve2)
   , ""
   , "type Base = Fp2"
   , "pattern MkBase fptr = MkFp2 fptr"

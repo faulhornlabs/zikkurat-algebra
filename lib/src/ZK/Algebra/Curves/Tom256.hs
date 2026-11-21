@@ -1,4 +1,11 @@
 -- | Convenient reexport of (monomorphic) types for Tom256
+-- 
+-- Elliptic curve `Tom-256`
+-- 
+-- see also:
+-- 
+--   - <https://eprint.iacr.org/2021/1183>
+--   - <https://std.neuromancer.sk/other/Tom-256>
 
 module ZK.Algebra.Curves.Tom256 where
 

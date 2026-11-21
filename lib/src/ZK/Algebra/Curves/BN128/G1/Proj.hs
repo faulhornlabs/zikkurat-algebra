@@ -1,5 +1,5 @@
 
--- | BN128 ( Fp )  curve, projective coordinates, Montgomery field representation
+-- | BN254 [aka. alt-bn128] ( Fp )  curve, projective coordinates, Montgomery field representation
 
 -- NOTE 1: This module is intented to be imported qualified
 -- NOTE 2: Generated code, do not edit!
@@ -172,7 +172,7 @@ instance M.Rnd G1 where
   rndIO = rndG1
 
 instance C.Group G1 where
-  grpName _    = "BN128 / G1 "
+  grpName _    = "BN254 [aka. alt-bn128] / G1 "
   grpIsUnit    = ZK.Algebra.Curves.BN128.G1.Proj.isInfinity
   grpUnit      = ZK.Algebra.Curves.BN128.G1.Proj.infinity
   grpNormalize = normalize
@@ -184,13 +184,17 @@ instance C.Group G1 where
   grpScale     = sclBig
 
 instance C.Curve G1 where
-  curveNamePxy _ = "BN128 ( Fp ) "
+  curveNamePxy _ = "BN254 [aka. alt-bn128] ( Fp ) "
   type BaseField   G1 = Base
   type ScalarField G1 = Fr
-  weierstrassForm _ = (0,3)
-  isOnCurve   = ZK.Algebra.Curves.BN128.G1.Proj.isOnCurve
-  isInfinity  = ZK.Algebra.Curves.BN128.G1.Proj.isInfinity
-  infinity    = ZK.Algebra.Curves.BN128.G1.Proj.infinity
+  weierstrassForm  _ = (0,3)
+  curveCardinality _ = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+  subgroupOrder    _ = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+  cofactor         _ = 1
+  isInSubgroup = ZK.Algebra.Curves.BN128.G1.Proj.isInSubgroup
+  isOnCurve    = ZK.Algebra.Curves.BN128.G1.Proj.isOnCurve
+  isInfinity   = ZK.Algebra.Curves.BN128.G1.Proj.isInfinity
+  infinity     = ZK.Algebra.Curves.BN128.G1.Proj.infinity
   curveSubgroupGen = ZK.Algebra.Curves.BN128.G1.Proj.genG1
   scalarMul   = ZK.Algebra.Curves.BN128.G1.Proj.sclFr
   msm         = ZK.Algebra.Curves.BN128.G1.Proj.msmProj
@@ -379,7 +383,7 @@ inverseFFT sg (MkFlatArray n fptr2)
 -- | Sage setup code to experiment with this curve
 sageSetup :: [String]
 sageSetup = 
-  [ "# BN128 elliptic curve"
+  [ "# BN254 [aka. alt-bn128] elliptic curve"
   , "p  = 21888242871839275222246405745257275088696311157297823662689037894645226208583"
   , "r  = 21888242871839275222246405745257275088548364400416034343698204186575808495617"
   , "h  = 1"

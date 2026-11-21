@@ -1,5 +1,5 @@
 
-// elliptic curve "BN128 ( Fp ) " in affine coordinates, Montgomery field representation
+// elliptic curve "BN254 [aka. alt-bn128] ( Fp ) " in affine coordinates, Montgomery field representation
 //
 // NOTES:
 //  - generated code, do not edit!

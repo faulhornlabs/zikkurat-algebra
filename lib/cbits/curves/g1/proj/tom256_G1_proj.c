@@ -1,5 +1,5 @@
 
-// elliptic curve "Tom256 ( Fp ) " in projective coordinates, Montgomery field representation
+// elliptic curve "Tom-256 ( Fp ) " in projective coordinates, Montgomery field representation
 //
 // NOTE: generated code, do not edit!
 

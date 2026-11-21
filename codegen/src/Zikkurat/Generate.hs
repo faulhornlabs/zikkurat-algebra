@@ -312,6 +312,7 @@ bn128_pwParams = PW.PwParams
 bn128_reexport :: RE.ReExportParams
 bn128_reexport = RE.ReExportParams 
   { RE.hsPath       = Path ["ZK","Algebra","Curves","BN128"]
+  , RE.reCurve1     = bn128_curve1
   , RE.moduleName   = "BN128"
   , RE.moduleList   = RE.reexports_standardPairingCurve
   }
@@ -409,6 +410,7 @@ bls12_381_pwParams = PW.PwParams
 bls12_381_reexport :: RE.ReExportParams
 bls12_381_reexport = RE.ReExportParams 
   { RE.hsPath       = Path ["ZK","Algebra","Curves","BLS12_381"]
+  , RE.reCurve1     = bls12_381_curve1
   , RE.moduleName   = "BLS12_381"
   , RE.moduleList   = RE.reexports_standardPairingCurve
   }
@@ -477,6 +479,7 @@ p256_pwParams = PW.PwParams
 p256_reexport :: RE.ReExportParams
 p256_reexport = RE.ReExportParams 
   { RE.hsPath       = Path ["ZK","Algebra","Curves","P256"]
+  , RE.reCurve1     = p256_curve1
   , RE.moduleName   = "P256"
   , RE.moduleList   = RE.reexports_standardNonPairingCurve
   }
@@ -545,6 +548,7 @@ tom256_pwParams = PW.PwParams
 tom256_reexport :: RE.ReExportParams
 tom256_reexport = RE.ReExportParams 
   { RE.hsPath       = Path ["ZK","Algebra","Curves","Tom256"]
+  , RE.reCurve1     = tom256_curve1
   , RE.moduleName   = "Tom256"
   , RE.moduleList   = RE.reexports_standardNonPairingCurve
   }
