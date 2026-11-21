@@ -411,6 +411,9 @@ c_begin curve1@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   , "// the cofactor of the curve subgroup = " ++ show (cofactor curve1)
   , mkConst nlimbs_p (prefix ++ "cofactor")            (cofactor curve1)
   , ""
+  , "// the size of the subgroup = " ++      show (subgroupOrder curve1)
+  , mkConst nlimbs_p (prefix ++ "subgroup_order") (subgroupOrder curve1)
+  , ""
   , "//------------------------------------------------------------------------------"
   ] 
   where
@@ -752,7 +755,7 @@ isOnCurve (Curve1{..}) (CodeGenParams{..}) =
   , "    return 0;"
   , "  }"
   , "  else {"
-  , "    " ++ prefix ++ "scl_Fr_std( " ++ prefix ++ "cofactor , src1 , tmp );"
+  , "    " ++ prefix ++ "scl_big( " ++ prefix ++ "subgroup_order , src1 , tmp );"
   , "    return " ++ prefix ++ "is_infinity( tmp );"
   , "  }"
   , "}"

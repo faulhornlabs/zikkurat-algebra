@@ -39,6 +39,9 @@ const uint64_t bls12_381_G1_jac_gen_G1[18] = { 0x5cb38790fd530c16, 0x7817fc67997
 // the cofactor of the curve subgroup = 76329603384216526031706109802092473003
 const uint64_t bls12_381_G1_jac_cofactor[6] = { 0x8c00aaab0000aaab, 0x396c8c005555e156, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
 
+// the size of the subgroup = 52435875175126190479447740508185965837690552500527637822603658699938581184513
+const uint64_t bls12_381_G1_jac_subgroup_order[6] = { 0xffffffff00000001, 0x53bda402fffe5bfe, 0x3339d80809a1d805, 0x73eda753299d7d48, 0x0000000000000000, 0x0000000000000000 };
+
 //------------------------------------------------------------------------------
 
 // scale a field element by A = 0
@@ -218,7 +221,7 @@ uint8_t bls12_381_G1_jac_is_in_subgroup ( const uint64_t *src1 ) {
     return 0;
   }
   else {
-    bls12_381_G1_jac_scl_Fr_std( bls12_381_G1_jac_cofactor , src1 , tmp );
+    bls12_381_G1_jac_scl_big( bls12_381_G1_jac_subgroup_order , src1 , tmp );
     return bls12_381_G1_jac_is_infinity( tmp );
   }
 }

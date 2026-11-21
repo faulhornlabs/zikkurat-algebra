@@ -83,6 +83,9 @@ c_begin_curve1 is_proj curve1@(Curve1{..}) cgparams@(CodeGenParams{..}) =
   , "// the cofactor of the curve subgroup = " ++ show (cofactor curve1)
   , mkConst nlimbs_p (prefix ++ "cofactor")            (cofactor curve1)
   , ""
+  , "// the size of the subgroup = " ++      show (subgroupOrder curve1)
+  , mkConst nlimbs_p (prefix ++ "subgroup_order") (subgroupOrder curve1)
+  , ""
   , "// the constants A and B of the equation"
   , mkConst nlimbs_p (prefix ++ "const_A" ) (toMontgomery curveA)
   , mkConst nlimbs_p (prefix ++ "const_B" ) (toMontgomery curveB)
@@ -100,6 +103,9 @@ c_begin_curve2 is_proj (Curve12 curve1 curve2@(Curve2{..})) cgparams@(CodeGenPar
   , ""
   , "// the cofactor of the curve subgroup = " ++ show (g2_cofactor curve2)
   , mkConst nlimbs_p (prefix ++ "cofactor")            (g2_cofactor curve2)
+  , ""
+  , "// the size of the subgroup = " ++      show g2_subgroupOrder
+  , mkConst nlimbs_p (prefix ++ "subgroup_order") g2_subgroupOrder
   , ""
   , "// the constants A and B of the equation"
   , mkConstFp2 nlimbs_p (prefix ++ "const_A")  (toMontgomeryFp2 g2_curveA)

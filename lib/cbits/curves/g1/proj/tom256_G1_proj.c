@@ -35,6 +35,9 @@ const uint64_t tom256_G1_proj_gen_G1[12] = { 0x46c5fcdaeab1ecbb, 0x84a7e37e6d4a6
 // the cofactor of the curve subgroup = 1
 const uint64_t tom256_G1_proj_cofactor[4] = { 0x0000000000000001, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
 
+// the size of the subgroup = 115792089210356248762697446949407573530086143415290314195533631308867097853951
+const uint64_t tom256_G1_proj_subgroup_order[4] = { 0xffffffffffffffff, 0x00000000ffffffff, 0x0000000000000000, 0xffffffff00000001 };
+
 // the constants A and B of the equation
 const uint64_t tom256_G1_proj_const_A[4] = { 0x4c4d5986c712c45c, 0xf9cad0acc39cc5de, 0x0000000000000005, 0xfffffffc00000004 };
 const uint64_t tom256_G1_proj_const_B[4] = { 0x798a7f2bb5224b1e, 0xa097a4c934c25d3d, 0x491c46ec3d75190c, 0xef50f2831b4853ff };
@@ -203,7 +206,7 @@ uint8_t tom256_G1_proj_is_in_subgroup ( const uint64_t *src1 ) {
     return 0;
   }
   else {
-    tom256_G1_proj_scl_Fr_std( tom256_G1_proj_cofactor , src1 , tmp );
+    tom256_G1_proj_scl_big( tom256_G1_proj_subgroup_order , src1 , tmp );
     return tom256_G1_proj_is_infinity( tmp );
   }
 }

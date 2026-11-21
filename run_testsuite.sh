@@ -6,4 +6,4 @@ EXE="./test/dist/build/zikkurat-algebra-tests/zikkurat-algebra-tests"
 ls -la $EXE
 echo ""
 
-$EXE
+$EXE $@

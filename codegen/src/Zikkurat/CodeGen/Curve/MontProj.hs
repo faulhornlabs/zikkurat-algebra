@@ -814,7 +814,7 @@ isOnCurve xcurve (CodeGenParams{..}) =
   , "    return 0;"
   , "  }"
   , "  else {"
-  , "    " ++ prefix ++ "scl_Fr_std( " ++ prefix ++ "cofactor , src1 , tmp );"
+  , "    " ++ prefix ++ "scl_big( " ++ prefix ++ "subgroup_order , src1 , tmp );"
   , "    return " ++ prefix ++ "is_infinity( tmp );"
   , "  }"
   , "}"

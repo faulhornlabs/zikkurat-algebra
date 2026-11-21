@@ -35,6 +35,9 @@ const uint64_t bn128_G1_affine_gen_G1[8] = { 0xd35d438dc58f0d9d, 0x0a78eb28f5c70
 // the cofactor of the curve subgroup = 1
 const uint64_t bn128_G1_affine_cofactor[4] = { 0x0000000000000001, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
 
+// the size of the subgroup = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+const uint64_t bn128_G1_affine_subgroup_order[4] = { 0x43e1f593f0000001, 0x2833e84879b97091, 0xb85045b68181585d, 0x30644e72e131a029 };
+
 // the constants A and B of the equation
 const uint64_t bn128_G1_affine_const_A[4] = { 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
 const uint64_t bn128_G1_affine_const_B[4] = { 0x7a17caa950ad28d7, 0x1f6ac17ae15521b9, 0x334bea4e696bd284, 0x2a1f6744ce179d8e };
@@ -119,7 +122,7 @@ uint8_t bn128_G1_affine_is_in_subgroup ( const uint64_t *src1 ) {
       uint64_t proj[12];
       uint64_t tmp [12];
       bn128_G1_proj_from_affine( src1, proj );
-      bn128_G1_proj_scl_Fr_std( bn128_G1_affine_cofactor , proj , tmp );
+      bn128_G1_proj_scl_big( bn128_G1_affine_subgroup_order , proj , tmp );
       return bn128_G1_proj_is_infinity( tmp );
     }
   }

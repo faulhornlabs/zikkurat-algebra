@@ -575,7 +575,7 @@ isOnCurve xcurve (CodeGenParams{..}) =
   , "      uint64_t proj[" ++ show (3*nlimbs_p) ++ "];"
   , "      uint64_t tmp [" ++ show (3*nlimbs_p) ++ "];"
   , "      " ++ prefix_proj ++ "from_affine( src1, proj );"
-  , "      " ++ prefix_proj ++ "scl_Fr_std( " ++ prefix ++ "cofactor , proj , tmp );"
+  , "      " ++ prefix_proj ++ "scl_big( " ++ prefix ++ "subgroup_order , proj , tmp );"
   , "      return " ++ prefix_proj ++ "is_infinity( tmp );"
   , "    }"
   , "  }"

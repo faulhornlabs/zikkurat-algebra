@@ -91,6 +91,10 @@ runCurveOnlyTests n pxy = do
       z <- rndIO @a
       return (test x y z) 
 
+    CurvePropI test name -> doTests n name $ do
+      k <- randomRIO (-10000,10000)
+      return (test pxy k) 
+
     CurvePropI1 test name -> doTests n name $ do
       k <- randomRIO (-1000,1000)
       x <- rndIO @a
@@ -163,6 +167,7 @@ data CurveProp
   = CurveProp1    (forall a. Curve a  => a -> Bool          ) String
   | CurveProp2    (forall a. Curve a  => a -> a -> Bool     ) String
   | CurveProp3    (forall a. Curve a  => a -> a -> a -> Bool) String
+  | CurvePropI    (forall a. Curve a  => Proxy a -> Int -> Bool) String
   | CurvePropI1   (forall a. Curve a  => Int -> a -> Bool   ) String
 
 data ProjCurveProp
@@ -387,6 +392,7 @@ curveOnlyProps =
   , CurveProp2  prop_is_on_curve_sub           "sub on curve"
   , CurvePropI1 prop_is_on_curve_scale         "scale on curve"
   , CurveProp1  prop_normalize_on_curve        "normalize on curve"
+  , CurvePropI  prop_gen_is_in_subgroup        "insubgroup(k*gen)"  
   ]
 
 prop_is_on_curve :: Curve a => a -> Bool
@@ -409,6 +415,9 @@ prop_is_on_curve_sub x y = isOnCurve (grpSub x y)
 
 prop_is_on_curve_scale :: Curve a => Int -> a -> Bool
 prop_is_on_curve_scale k x = isOnCurve (grpScale_ k x)
+
+prop_gen_is_in_subgroup :: forall a. Curve a => Proxy a -> Int -> Bool
+prop_gen_is_in_subgroup _pxy k = isInSubgroup (grpScale_ k (curveSubgroupGen @a))
 
 --------------------------------------------------------------------------------
 -- * projective properties

@@ -39,6 +39,9 @@ const uint64_t p256_G1_jac_gen_G1[12] = { 0x79e730d418a9143c, 0x75ba95fc5fedb601
 // the cofactor of the curve subgroup = 1
 const uint64_t p256_G1_jac_cofactor[4] = { 0x0000000000000001, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000 };
 
+// the size of the subgroup = 115792089210356248762697446949407573529996955224135760342422259061068512044369
+const uint64_t p256_G1_jac_subgroup_order[4] = { 0xf3b9cac2fc632551, 0xbce6faada7179e84, 0xffffffffffffffff, 0xffffffff00000000 };
+
 //------------------------------------------------------------------------------
 
 // scale a field element by A = -3
@@ -223,7 +226,7 @@ uint8_t p256_G1_jac_is_in_subgroup ( const uint64_t *src1 ) {
     return 0;
   }
   else {
-    p256_G1_jac_scl_Fr_std( p256_G1_jac_cofactor , src1 , tmp );
+    p256_G1_jac_scl_big( p256_G1_jac_subgroup_order , src1 , tmp );
     return p256_G1_jac_is_infinity( tmp );
   }
 }
