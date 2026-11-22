@@ -749,3 +749,171 @@ void bls12_381_poly_mont_ntt_forward_radix4(int m, const uint64_t *gen, const ui
   free(buf);
   free(gpows);
 }
+
+
+/*
+void bls12_381_poly_mont_signed_rotation_to_right( int N, const uint64_t *src, uint64_t *tgt) {
+  memcpy( tgt + NLIMBS , src , (N-1)*NLIMBS*8 );
+  bls12_381_Fr_mont_neg( src + (N-1)*NLIMBS , tgt );
+}
+*/
+
+// assumes the inputs has size power of two (and you need to supply the logarithm)
+// only efficient for relatively small inputs (eg. 256 is still good)
+//
+// Product in @R-_m = R[z]/(z^m + 1)@ (the negacylic ring).
+// Uses  @R-_{2m} = R-_m[z]/(z^2 - u)@ and Karatsuba:
+//
+//   (A0 + z*A1) * (B0 + z*B1)  ==  (A0*B0 + u*A1*B1) + z*(A0*B1 + A1*B0)
+//
+// Remark: This would works over any commutative ring
+//
+void bls12_381_poly_mont_negacyclic_conv_Karatsuba_CRT( int logN, int logStrideIn, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt) {
+  if (logN==0) {
+    bls12_381_Fr_mont_mul( src1 , src2 , tgt );
+  }
+  else {
+    int N         = (1<<logN);
+    int strideIn  = (1<<logStrideIn);
+    int halfN     = (N>>1);
+    int step      = strideIn * NLIMBS;
+    
+    uint64_t *p0     = (uint64_t*) malloc( halfN * NLIMBS * 8 );
+    uint64_t *p1     = (uint64_t*) malloc( halfN * NLIMBS * 8 );
+    uint64_t *p2     = (uint64_t*) malloc( halfN * NLIMBS * 8 );
+    uint64_t *tmp1   = (uint64_t*) malloc( halfN * NLIMBS * 8 );
+    uint64_t *tmp2   = (uint64_t*) malloc( halfN * NLIMBS * 8 );
+    
+    assert( p0   != 0 );
+    assert( p1   != 0 );
+    assert( p2   != 0 );
+    assert( tmp1 != 0 );
+    assert( tmp2 != 0 );
+    
+    bls12_381_poly_mont_negacyclic_conv_Karatsuba_CRT( logN-1 , logStrideIn+1 , src1        , src2        , p0 );  // evens
+    bls12_381_poly_mont_negacyclic_conv_Karatsuba_CRT( logN-1 , logStrideIn+1 , src1 + step , src2 + step , p1 );  // odds 
+    
+    for(int i=0; i<halfN; i++) {
+      bls12_381_Fr_mont_add( src1 + (2*i)*step , src1 + (2*i+1)*step , tmp1 + i*NLIMBS );   // f_even + f_odd
+      bls12_381_Fr_mont_add( src2 + (2*i)*step , src2 + (2*i+1)*step , tmp2 + i*NLIMBS );   // g_even + g_odd
+    }
+    bls12_381_poly_mont_negacyclic_conv_Karatsuba_CRT( logN-1 , 0 , tmp1 , tmp2 , p2 );  // mixed
+    
+    // out_evens := p0 + signedRotRight(p1)
+    bls12_381_Fr_mont_sub( p0 , p1 + (halfN-1)*NLIMBS , tgt );
+    for(int i=1; i<halfN; i++) {
+      bls12_381_Fr_mont_add( p0 + i*NLIMBS , p1 + (i-1)*NLIMBS , tgt + (2*i)*NLIMBS );
+    }
+    // out_odds := p2 - p0 - p1
+    for(int i=0; i<halfN; i++) {
+      uint64_t p0_plus_p1[NLIMBS];
+      bls12_381_Fr_mont_add( p0 + i*NLIMBS , p1 + i*NLIMBS , p0_plus_p1 );
+      bls12_381_Fr_mont_sub( p2 + i*NLIMBS , p0_plus_p1 , tgt + (2*i+1)*NLIMBS );
+    }
+    
+    free(tmp2);
+    free(tmp1);
+    free(p2);
+    free(p1);
+    free(p0);
+  }
+}
+
+// assumes the inputs has size power of two (and you need to supply the logarithm)
+// only efficient for relatively small inputs (eg. 256 is still good)
+//
+void bls12_381_poly_mont_cyclic_conv_Karatsuba_CRT(int logN, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt) {
+  if (logN==0) {
+    bls12_381_Fr_mont_mul( src1 , src2 , tgt );
+  }
+  else {
+    int N      = (1<<logN);
+    int halfN  = (N>>1);
+    
+    uint64_t *tmp1  = (uint64_t*) malloc( halfN * NLIMBS * 8 );
+    uint64_t *tmp2  = (uint64_t*) malloc( halfN * NLIMBS * 8 );
+    uint64_t *posi  = (uint64_t*) malloc( halfN * NLIMBS * 8 );
+    uint64_t *nega  = (uint64_t*) malloc( halfN * NLIMBS * 8 );
+    
+    assert( tmp1 != 0 );
+    assert( tmp2 != 0 );
+    assert( posi != 0 );
+    assert( nega != 0 );
+    
+    for(int i=0; i<halfN; i++) {
+      bls12_381_Fr_mont_add( src1 + i*NLIMBS , src1 + (i+halfN)*NLIMBS , tmp1 + i*NLIMBS );   // (flo .+. fhi)
+      bls12_381_Fr_mont_add( src2 + i*NLIMBS , src2 + (i+halfN)*NLIMBS , tmp2 + i*NLIMBS );   // (glo .+. ghi)
+    }
+    bls12_381_poly_mont_cyclic_conv_Karatsuba_CRT( logN-1 , tmp1 , tmp2 , posi );
+    
+    for(int i=0; i<halfN; i++) {
+      bls12_381_Fr_mont_sub( src1 + i*NLIMBS , src1 + (i+halfN)*NLIMBS , tmp1 + i*NLIMBS );   // (flo .-. fhi)
+      bls12_381_Fr_mont_sub( src2 + i*NLIMBS , src2 + (i+halfN)*NLIMBS , tmp2 + i*NLIMBS );   // (glo .-. ghi)
+    }
+    bls12_381_poly_mont_negacyclic_conv_Karatsuba_CRT( logN-1 , 0 , tmp1 , tmp2 , nega );
+    
+    for(int i=0; i<halfN; i++) {
+      bls12_381_Fr_mont_add( posi + i*NLIMBS , nega + i*NLIMBS , tgt +  i       *NLIMBS );
+      bls12_381_Fr_mont_sub( posi + i*NLIMBS , nega + i*NLIMBS , tgt + (i+halfN)*NLIMBS );
+      bls12_381_Fr_mont_div_by_2_inplace( tgt +  i       *NLIMBS );
+      bls12_381_Fr_mont_div_by_2_inplace( tgt + (i+halfN)*NLIMBS );
+    }
+    
+    free(nega);
+    free(posi);
+    free(tmp2);
+    free(tmp1);
+  }
+}
+
+
+
+// create the permutation for Rader's NTT
+// the length N should be a prime
+// and `mgen` should be a multiplicative generator of the finite field of size N
+// the output will have length `N-1`, and it's supposed to be a permutation of [1..N-1]
+void bls12_381_poly_mont_make_Rader_perm( int N , int64_t mgen , int64_t *tgt ) {
+  int64_t a = 1;
+  for(int i=0; i<N-1; i++) {
+    tgt[i] = a;
+    a = ((a * mgen) % N);
+  }
+}
+
+void bls12_381_poly_mont_prepare_for_Rader( int N, const int64_t *perm, const uint64_t *omega, const uint64_t *src, uint64_t *tgt_Y0, uint64_t *tgt_XS, uint64_t *tgt_HS ) {
+
+  uint64_t *omegaPows = (uint64_t*) malloc( 8 * N * NLIMBS );
+  assert( omegaPows != 0);
+
+  uint64_t acc[NLIMBS];
+  bls12_381_Fr_mont_set_one( acc );
+  for(int i=0; i<N; i++) {
+    bls12_381_Fr_mont_copy( acc , omegaPows + i*NLIMBS );
+    bls12_381_Fr_mont_mul_inplace( acc , omega );
+  }
+  
+  for(int i=1; i<N; i++) {
+     int64_t j = perm[i-1];
+     bls12_381_Fr_mont_copy( omegaPows + j*NLIMBS , tgt_HS + (i-1)*NLIMBS );
+     int64_t k;
+     if (i==1) { k=1; } else { k=perm[N-i]; }
+     bls12_381_Fr_mont_copy( src + k*NLIMBS , tgt_XS + (i-1)*NLIMBS );
+  }
+  
+  // y0 = (a0 + sum xs)
+  bls12_381_Fr_mont_copy( src , tgt_Y0 );
+  for(int i=1; i<N; i++) {
+  bls12_381_Fr_mont_add_inplace( tgt_Y0 , tgt_XS + (i-1)*NLIMBS );
+  }
+  
+  free(omegaPows);
+}
+
+void bls12_381_poly_mont_postprocess_Rader( int N, const int64_t *perm, const uint64_t *Y0, const uint64_t *src, uint64_t *YS, uint64_t *tgt) {
+  for(int i=1; i<N; i++) {
+    int64_t j = perm[i-1];
+    bls12_381_Fr_mont_copy( YS + (i-1)*NLIMBS , tgt + j*NLIMBS );  // scatter
+    bls12_381_Fr_mont_add_inplace( tgt + j*NLIMBS , src );         // += a0
+  }
+  bls12_381_Fr_mont_copy( Y0 , tgt );
+}

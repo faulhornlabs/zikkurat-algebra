@@ -39,6 +39,9 @@ module ZK.Algebra.Curves.Tom256.Poly
     -- * Polynomial division
   , longDiv , quot , rem
   , divByVanishing, quotByVanishing
+    -- * Rader's NTT algo
+  , genericRaderNTT , genericRaderINTT
+  , cyclicConvKaratsubaCRT , negacyclicKaratsubaCRT
     -- * Random
   , rndPoly , rnd
   )
@@ -51,6 +54,7 @@ import GHC.Real hiding (div,quot,rem)
 
 import Data.Bits
 import Data.Word
+import Data.Int
 import Data.List
 import Data.Array
 
@@ -66,12 +70,14 @@ import System.IO.Unsafe
 
 import ZK.Algebra.Curves.Tom256.Fr.Mont ( Fr(..) )
 import qualified ZK.Algebra.Curves.Tom256.Fr.Mont
+import qualified ZK.Algebra.Curves.Tom256.Array
 
-import           ZK.Algebra.Class.Flat  as L
-import           ZK.Algebra.Class.FFT   as T
-import qualified ZK.Algebra.Class.Field as F
-import qualified ZK.Algebra.Class.Poly  as P
-import qualified ZK.Algebra.Class.Misc  as M
+import           ZK.Algebra.Class.Flat   as L
+import           ZK.Algebra.Class.FFT    as T
+import qualified ZK.Algebra.Class.Field  as F
+import qualified ZK.Algebra.Class.Poly   as P
+import qualified ZK.Algebra.Class.Vector as V
+import qualified ZK.Algebra.Class.Misc   as M
 
 import ZK.Algebra.Class.Poly
   ( polyIsOne
@@ -390,3 +396,83 @@ quotByVanishing poly1@(XPoly n1 fptr1) (expo_n, MkFr fptr2) = unsafePerformIO $ 
   return $ if (cret /= 0)
     then Just (XPoly nq fptr3)
     else Nothing
+
+
+foreign import ccall unsafe "tom256_poly_mont_cyclic_conv_Karatsuba_CRT"     c_tom256_poly_mont_cyclic_conv_Karatsuba_CRT     :: CInt ->         Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "tom256_poly_mont_negacyclic_conv_Karatsuba_CRT" c_tom256_poly_mont_negacyclic_conv_Karatsuba_CRT :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+{-# NOINLINE cyclicConvKaratsubaCRT #-}
+-- | cyclic convolution algorithm for power of two sizes
+-- Requires no roots of unity. Still quite fast for N=256, but asymptotically not optimal.
+--
+cyclicConvKaratsubaCRT :: L.FlatArray Fr -> L.FlatArray Fr -> L.FlatArray Fr
+cyclicConvKaratsubaCRT (L.MkFlatArray n1 fptr1) (L.MkFlatArray n2 fptr2) = unsafePerformIO $ do
+  let n3 = if n1 == n2 then n1 else error "cyclicConvKaratsubaCRT: input size do not match"
+  let log2n = case M.exactLog2_ n1 of { Just e -> M.fromLog2 e ; Nothing -> error "cyclicConvKaratsubaCRT: input size is not a power of two" }
+  fptr3 <- mallocForeignPtrArray (n3*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_tom256_poly_mont_cyclic_conv_Karatsuba_CRT (fromIntegral log2n) ptr1 ptr2 ptr3
+  return (L.MkFlatArray n3 fptr3)
+
+{-# NOINLINE negacyclicKaratsubaCRT #-}
+-- | negacyclic "convolution" (product of polys in the negacyclic ring) for power of two sizes
+--
+negacyclicKaratsubaCRT :: L.FlatArray Fr -> L.FlatArray Fr -> L.FlatArray Fr
+negacyclicKaratsubaCRT (L.MkFlatArray n1 fptr1) (L.MkFlatArray n2 fptr2) = unsafePerformIO $ do
+  let n3 = if n1 == n2 then n1 else error "negacyclicKaratsubaCRT: input size do not match"
+  let log2n = case M.exactLog2_ n1 of { Just e -> M.fromLog2 e ; Nothing -> error "negacyclicKaratsubaCRT: input size is not a power of two" }
+  fptr3 <- mallocForeignPtrArray (n3*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_tom256_poly_mont_negacyclic_conv_Karatsuba_CRT (fromIntegral log2n) 0 ptr1 ptr2 ptr3
+  return (L.MkFlatArray n3 fptr3)
+
+
+
+
+-- | Rader's prime order NTT algorithm
+--
+-- First argument should be a cyclic convolution algorithm
+--
+-- Second argument is a multiplicative generator of @Z/nZ@
+--
+-- Third argument is a root of unity of order @n@
+--
+{-# NOINLINE genericRaderNTT #-}
+genericRaderNTT :: (L.FlatArray Fr -> L.FlatArray Fr -> L.FlatArray Fr) -> Int -> Fr -> L.FlatArray Fr -> L.FlatArray Fr
+genericRaderNTT cyclicConv mgen omega@(MkFr fptrOmega) (L.MkFlatArray n fptrSrc) = unsafePerformIO $ do
+  fptrTgt <- mallocForeignPtrArray ( n   *4)
+  fptrXS  <- mallocForeignPtrArray ((n-1)*4)
+  fptrHS  <- mallocForeignPtrArray ((n-1)*4)
+  allocaArray 4 $ \ptrY0 ->
+    allocaArray ((n-1)*4) $ \ptrPerm ->
+      withForeignPtr fptrXS $ \ptrXS -> do
+        withForeignPtr fptrHS  $ \ptrHS -> do
+          withForeignPtr fptrOmega $ \ptrOmega -> do
+            withForeignPtr fptrSrc   $ \ptrSrc   -> do
+              withForeignPtr fptrTgt   $ \ptrTgt   -> do
+                c_tom256_poly_mont_make_Rader_perm   (fromIntegral n) (fromIntegral mgen) ptrPerm
+                c_tom256_poly_mont_prepare_for_Rader (fromIntegral n) ptrPerm ptrOmega ptrSrc ptrY0 ptrXS ptrHS
+                let flatXS = L.MkFlatArray (n-1) fptrXS
+                let flatHS = L.MkFlatArray (n-1) fptrHS
+                let (MkFlatArray _ fptrYS) = cyclicConv flatXS flatHS
+                withForeignPtr fptrYS $ \ptrYS -> do
+                  c_tom256_poly_mont_postprocess_Rader (fromIntegral n) ptrPerm ptrY0 ptrSrc ptrYS ptrTgt
+  finalizeForeignPtr fptrXS
+  finalizeForeignPtr fptrHS
+  return (MkFlatArray n fptrTgt)
+
+genericRaderINTT :: (L.FlatArray Fr -> L.FlatArray Fr -> L.FlatArray Fr) -> Int -> Fr -> L.FlatArray Fr -> L.FlatArray Fr
+genericRaderINTT cyclicConv mgen omega input = output where
+  output   = V.vecScale invSize $ genericRaderNTT cyclicConv mgen invOmega input
+  invOmega = F.inverse omega
+  size     = flatArrayLength input
+  invSize  = F.inverse (fromIntegral size) :: Fr
+
+foreign import ccall unsafe "tom256_poly_mont_make_Rader_perm"   c_tom256_poly_mont_make_Rader_perm   :: CInt -> Int64 -> Ptr Int64 -> IO ()
+foreign import ccall unsafe "tom256_poly_mont_prepare_for_Rader" c_tom256_poly_mont_prepare_for_Rader     :: CInt -> Ptr Int64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "tom256_poly_mont_postprocess_Rader" c_tom256_poly_mont_postprocess_Rader :: CInt -> Ptr Int64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+

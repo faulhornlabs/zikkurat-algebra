@@ -282,17 +282,18 @@ bn128_cgParams_G2 = CodeGenParams
 
 bn128_polyParams :: PolyParams
 bn128_polyParams = Poly.PolyParams 
-  { Poly.prefix     = "bn128_poly_mont_"   
-  , Poly.prefix_r   = "bn128_Fr_mont_"
-  , Poly.nlimbs     = 4 
-  , Poly.c_path     = Path ["curves","poly"  , "mont", "bn128_poly_mont" ]
-  , Poly.c_path_r   = Path ["curves","fields", "mont", "bn128_Fr_mont" ]
-  , Poly.hs_path    = Path ["ZK","Algebra","Curves","BN128","Poly"]
-  , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","BN128","Fr","Mont"] 
-  , Poly.typeName   = "Poly" 
-  , Poly.typeName_r = "Fr"
-  , Poly.prime_r    = bn128_scalar_r   
-  , Poly.has_fft    = True
+  { Poly.prefix      = "bn128_poly_mont_"   
+  , Poly.prefix_r    = "bn128_Fr_mont_"
+  , Poly.nlimbs      = 4 
+  , Poly.c_path      = Path ["curves","poly"  , "mont", "bn128_poly_mont" ]
+  , Poly.c_path_r    = Path ["curves","fields", "mont", "bn128_Fr_mont" ]
+  , Poly.hs_path     = Path ["ZK","Algebra","Curves","BN128","Poly"]
+  , Poly.hs_path_arr = Path ["ZK","Algebra","Curves","BN128","Array"]
+  , Poly.hs_path_r   = Path ["ZK","Algebra","Curves","BN128","Fr","Mont"] 
+  , Poly.typeName    = "Poly" 
+  , Poly.typeName_r  = "Fr"
+  , Poly.prime_r     = bn128_scalar_r   
+  , Poly.has_fft     = True
   }
 
 bn128_pwParams :: PwParams 
@@ -380,17 +381,18 @@ bls12_381_cgParams_G2 = CodeGenParams
 
 bls12_381_polyParams :: PolyParams
 bls12_381_polyParams = Poly.PolyParams 
-  { Poly.prefix     = "bls12_381_poly_mont_"   
-  , Poly.prefix_r   = "bls12_381_Fr_mont_"
-  , Poly.nlimbs     = 4 
-  , Poly.c_path     = Path ["curves","poly"  , "mont", "bls12_381_poly_mont" ]
-  , Poly.c_path_r   = Path ["curves","fields", "mont", "bls12_381_Fr_mont" ]
-  , Poly.hs_path    = Path ["ZK","Algebra","Curves","BLS12_381","Poly"]
-  , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","BLS12_381","Fr","Mont"] 
-  , Poly.typeName   = "Poly" 
-  , Poly.typeName_r = "Fr"
-  , Poly.prime_r    = bls12_381_scalar_r
-  , Poly.has_fft    = True
+  { Poly.prefix      = "bls12_381_poly_mont_"   
+  , Poly.prefix_r    = "bls12_381_Fr_mont_"
+  , Poly.nlimbs      = 4 
+  , Poly.c_path      = Path ["curves","poly"  , "mont", "bls12_381_poly_mont" ]
+  , Poly.c_path_r    = Path ["curves","fields", "mont", "bls12_381_Fr_mont" ]
+  , Poly.hs_path     = Path ["ZK","Algebra","Curves","BLS12_381","Poly"]
+  , Poly.hs_path_arr = Path ["ZK","Algebra","Curves","BLS12_381","Array"] 
+  , Poly.hs_path_r   = Path ["ZK","Algebra","Curves","BLS12_381","Fr","Mont"] 
+  , Poly.typeName    = "Poly" 
+  , Poly.typeName_r  = "Fr"
+  , Poly.prime_r     = bls12_381_scalar_r
+  , Poly.has_fft     = True
   }
 
 bls12_381_pwParams :: PwParams 
@@ -449,17 +451,18 @@ p256_cgParams_G = CodeGenParams
 
 p256_polyParams :: PolyParams
 p256_polyParams = Poly.PolyParams 
-  { Poly.prefix     = "p256_poly_mont_"   
-  , Poly.prefix_r   = "p256_Fr_mont_"
-  , Poly.nlimbs     = 4 
-  , Poly.c_path     = Path ["curves","poly"  , "mont", "p256_poly_mont" ]
-  , Poly.c_path_r   = Path ["curves","fields", "mont", "p256_Fr_mont" ]
-  , Poly.hs_path    = Path ["ZK","Algebra","Curves","P256","Poly"]
-  , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","P256","Fr","Mont"] 
-  , Poly.typeName   = "Poly" 
-  , Poly.typeName_r = "Fr"
-  , Poly.prime_r    = p256_scalar_r   
-  , Poly.has_fft    = False
+  { Poly.prefix      = "p256_poly_mont_"   
+  , Poly.prefix_r    = "p256_Fr_mont_"
+  , Poly.nlimbs      = 4 
+  , Poly.c_path      = Path ["curves","poly"  , "mont", "p256_poly_mont" ]
+  , Poly.c_path_r    = Path ["curves","fields", "mont", "p256_Fr_mont" ]
+  , Poly.hs_path     = Path ["ZK","Algebra","Curves","P256","Poly"]
+  , Poly.hs_path_arr = Path ["ZK","Algebra","Curves","P256","Array"]
+  , Poly.hs_path_r   = Path ["ZK","Algebra","Curves","P256","Fr","Mont"] 
+  , Poly.typeName    = "Poly" 
+  , Poly.typeName_r  = "Fr"
+  , Poly.prime_r     = p256_scalar_r   
+  , Poly.has_fft     = False
   }
 
 p256_pwParams :: PwParams 
@@ -518,17 +521,18 @@ tom256_cgParams_G = CodeGenParams
 
 tom256_polyParams :: PolyParams
 tom256_polyParams = Poly.PolyParams 
-  { Poly.prefix     = "tom256_poly_mont_"   
-  , Poly.prefix_r   = "tom256_Fr_mont_"
-  , Poly.nlimbs     = 4 
-  , Poly.c_path     = Path ["curves","poly"  , "mont", "tom256_poly_mont" ]
-  , Poly.c_path_r   = Path ["curves","fields", "mont", "tom256_Fr_mont" ]
-  , Poly.hs_path    = Path ["ZK","Algebra","Curves","Tom256","Poly"]
-  , Poly.hs_path_r  = Path ["ZK","Algebra","Curves","Tom256","Fr","Mont"] 
-  , Poly.typeName   = "Poly" 
-  , Poly.typeName_r = "Fr"
-  , Poly.prime_r    = tom256_scalar_r   
-  , Poly.has_fft    = False
+  { Poly.prefix      = "tom256_poly_mont_"   
+  , Poly.prefix_r    = "tom256_Fr_mont_"
+  , Poly.nlimbs      = 4 
+  , Poly.c_path      = Path ["curves","poly"  , "mont", "tom256_poly_mont" ]
+  , Poly.c_path_r    = Path ["curves","fields", "mont", "tom256_Fr_mont" ]
+  , Poly.hs_path     = Path ["ZK","Algebra","Curves","Tom256","Poly"]
+  , Poly.hs_path_arr = Path ["ZK","Algebra","Curves","Tom256","Array"]
+  , Poly.hs_path_r   = Path ["ZK","Algebra","Curves","Tom256","Fr","Mont"] 
+  , Poly.typeName    = "Poly" 
+  , Poly.typeName_r  = "Fr"
+  , Poly.prime_r     = tom256_scalar_r   
+  , Poly.has_fft     = False
   }
 
 tom256_pwParams :: PwParams 

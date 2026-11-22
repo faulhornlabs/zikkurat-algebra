@@ -25,6 +25,7 @@ data PolyParams = PolyParams
   , c_path      :: Path         -- ^ path of the C module (without extension)
   , c_path_r    :: Path         -- ^ path of the C module for the field (without extension)
   , hs_path     :: Path         -- ^ path of the Haskell module (without extension) 
+  , hs_path_arr :: Path         -- ^ path of the Haskell module for the array
   , hs_path_r   :: Path         -- ^ path of the Haskell module for the field (without extension)
   , typeName    :: String       -- ^ name of the polynomial type
   , typeName_r  :: String       -- ^ name of the field type 
@@ -73,7 +74,12 @@ c_header (PolyParams{..}) =
   , ""
   , "extern void " ++ prefix ++ "ntt_forward_asymmetric(int m_src, int m_tgt, const uint64_t *gen_src, const uint64_t *gen_tgt, const uint64_t *src, uint64_t *tgt);"
   ]
-  else [])
+  else []) ++
+  [ ""
+  , "extern void " ++ prefix ++ "cyclic_conv_Karatsuba_CRT     (int logN,                const uint64_t *src1, const uint64_t *src2, uint64_t *tgt);"
+  , "extern void " ++ prefix ++ "negacyclic_conv_Karatsuba_CRT (int logN, int logStride, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt);"
+  , ""
+  ]
 
 --------------------------------------------------------------------------------
 
@@ -154,6 +160,10 @@ hsBegin (PolyParams{..}) =
   , "  , forwardNTT_radix4"
   ] 
   else []) ++
+  [ "    -- * Rader's NTT algo"
+  , "  , genericRaderNTT , genericRaderINTT"
+  , "  , cyclicConvKaratsubaCRT , negacyclicKaratsubaCRT"
+  ] ++ 
   [ "    -- * Random"
   , "  , rndPoly , rnd"
   , "  )"  
@@ -166,6 +176,7 @@ hsBegin (PolyParams{..}) =
   , ""
   , "import Data.Bits"
   , "import Data.Word"
+  , "import Data.Int"
   , "import Data.List"
   , "import Data.Array"
   , ""
@@ -181,12 +192,14 @@ hsBegin (PolyParams{..}) =
   , ""
   , "import " ++ hsModule hs_path_r ++ " ( " ++ typeName_r ++ "(..) )"
   , "import qualified " ++ hsModule hs_path_r
+  , "import qualified " ++ hsModule hs_path_arr
   , ""
-  , "import           ZK.Algebra.Class.Flat  as L"
-  , "import           ZK.Algebra.Class.FFT   as T"
-  , "import qualified ZK.Algebra.Class.Field as F"
-  , "import qualified ZK.Algebra.Class.Poly  as P"
-  , "import qualified ZK.Algebra.Class.Misc  as M"
+  , "import           ZK.Algebra.Class.Flat   as L"
+  , "import           ZK.Algebra.Class.FFT    as T"
+  , "import qualified ZK.Algebra.Class.Field  as F"
+  , "import qualified ZK.Algebra.Class.Poly   as P"
+  , "import qualified ZK.Algebra.Class.Vector as V"
+  , "import qualified ZK.Algebra.Class.Misc   as M"
   , ""
   , "import ZK.Algebra.Class.Poly"
   , "  ( polyIsOne"
@@ -1412,6 +1425,355 @@ hsNTT (PolyParams{..}) =
   ]
 
 --------------------------------------------------------------------------------
+-- * Rader's NTT
+
+hsRaderNTT :: PolyParams -> Code 
+hsRaderNTT (PolyParams{..}) = 
+  [ ""
+  , ""
+  , "-- | Rader's prime order NTT algorithm"
+  , "--" 
+  , "-- First argument should be a cyclic convolution algorithm"
+  , "--"
+  , "-- Second argument is a multiplicative generator of @Z/nZ@"
+  , "--"
+  , "-- Third argument is a root of unity of order @n@"
+  , "--"
+  , "{-# NOINLINE genericRaderNTT #-}"
+  , "genericRaderNTT :: (" ++ flatArrTypeName ++ " -> " ++ flatArrTypeName ++ " -> " ++ flatArrTypeName ++ ") -> Int -> " ++ typeName_r ++ " -> " ++ flatArrTypeName ++ " -> " ++ flatArrTypeName 
+  , "genericRaderNTT cyclicConv mgen omega@(Mk" ++ typeName_r ++ " fptrOmega) (L.MkFlatArray n fptrSrc) = unsafePerformIO $ do"
+  , "  fptrTgt <- mallocForeignPtrArray ( n   *" ++ show nlimbs ++ ")"
+  , "  fptrXS  <- mallocForeignPtrArray ((n-1)*" ++ show nlimbs ++ ")"
+  , "  fptrHS  <- mallocForeignPtrArray ((n-1)*" ++ show nlimbs ++ ")"
+  , "  allocaArray " ++ show nlimbs ++ " $ \\ptrY0 ->"
+  , "    allocaArray ((n-1)*" ++ show nlimbs ++ ") $ \\ptrPerm ->"
+  , "      withForeignPtr fptrXS $ \\ptrXS -> do"
+  , "        withForeignPtr fptrHS  $ \\ptrHS -> do"
+  , "          withForeignPtr fptrOmega $ \\ptrOmega -> do"
+  , "            withForeignPtr fptrSrc   $ \\ptrSrc   -> do"
+  , "              withForeignPtr fptrTgt   $ \\ptrTgt   -> do"
+  , "                c_" ++ prefix ++ "make_Rader_perm   (fromIntegral n) (fromIntegral mgen) ptrPerm"
+  , "                c_" ++ prefix ++ "prepare_for_Rader (fromIntegral n) ptrPerm ptrOmega ptrSrc ptrY0 ptrXS ptrHS"
+  , "                let flatXS = L.MkFlatArray (n-1) fptrXS"
+  , "                let flatHS = L.MkFlatArray (n-1) fptrHS"
+  , "                let (MkFlatArray _ fptrYS) = cyclicConv flatXS flatHS"
+  , "                withForeignPtr fptrYS $ \\ptrYS -> do"
+  , "                  c_" ++ prefix ++ "postprocess_Rader (fromIntegral n) ptrPerm ptrY0 ptrSrc ptrYS ptrTgt"
+  , "  finalizeForeignPtr fptrXS"
+  , "  finalizeForeignPtr fptrHS"
+  , "  return (MkFlatArray n fptrTgt)"
+  , ""
+  , "genericRaderINTT :: (" ++ flatArrTypeName ++ " -> " ++ flatArrTypeName ++ " -> " ++ flatArrTypeName ++ ") -> Int -> " ++ typeName_r ++ " -> " ++ flatArrTypeName ++ " -> " ++ flatArrTypeName 
+  , "genericRaderINTT cyclicConv mgen omega input = output where"
+  , "  output   = V.vecScale invSize $ genericRaderNTT cyclicConv mgen invOmega input"
+  , "  invOmega = F.inverse omega"
+  , "  size     = flatArrayLength input"
+  , "  invSize  = F.inverse (fromIntegral size) :: " ++ typeName_r 
+  , ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "make_Rader_perm\"   c_" ++ prefix ++ "make_Rader_perm   :: CInt -> Int64 -> Ptr Int64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "prepare_for_Rader\" c_" ++ prefix ++ "prepare_for_Rader     :: CInt -> Ptr Int64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "postprocess_Rader\" c_" ++ prefix ++ "postprocess_Rader :: CInt -> Ptr Int64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  ]
+  where 
+    flatArrTypeName = "L.FlatArray " ++ typeName_r 
+
+cRaderNTT :: PolyParams -> Code
+cRaderNTT (PolyParams{..}) = 
+  [ ""
+  , "// create the permutation for Rader's NTT"
+  , "// the length N should be a prime"
+  , "// and `mgen` should be a multiplicative generator of the finite field of size N"
+  , "// the output will have length `N-1`, and it's supposed to be a permutation of [1..N-1]"
+  , "void " ++ prefix ++ "make_Rader_perm( int N , int64_t mgen , int64_t *tgt ) {"
+  , "  int64_t a = 1;"
+  , "  for(int i=0; i<N-1; i++) {"
+  , "    tgt[i] = a;"
+  , "    a = ((a * mgen) % N);"
+  , "  }"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "prepare_for_Rader( int N, const int64_t *perm, const uint64_t *omega, const uint64_t *src, uint64_t *tgt_Y0, uint64_t *tgt_XS, uint64_t *tgt_HS ) {"
+  , ""
+  , "  uint64_t *omegaPows = (uint64_t*) malloc( 8 * N * NLIMBS );"
+  , "  assert( omegaPows != 0);"
+  , ""
+  , "  uint64_t acc[NLIMBS];"
+  , "  " ++ prefix_r ++ "set_one( acc );"
+  , "  for(int i=0; i<N; i++) {"
+  , "    " ++ prefix_r ++ "copy( acc , omegaPows + i*NLIMBS );"
+  , "    " ++ prefix_r ++ "mul_inplace( acc , omega );"
+  , "  }"
+  , "  "
+  , "  for(int i=1; i<N; i++) {"
+  , "     int64_t j = perm[i-1];"
+  , "     " ++ prefix_r ++ "copy( omegaPows + j*NLIMBS , tgt_HS + (i-1)*NLIMBS );"
+  , "     int64_t k;"
+  , "     if (i==1) { k=1; } else { k=perm[N-i]; }"
+  , "     " ++ prefix_r ++ "copy( src + k*NLIMBS , tgt_XS + (i-1)*NLIMBS );"
+  , "  }"
+  , "  "
+  , "  // y0 = (a0 + sum xs)"
+  , "  " ++ prefix_r ++ "copy( src , tgt_Y0 );"
+  , "  for(int i=1; i<N; i++) {"
+  , "  " ++ prefix_r ++ "add_inplace( tgt_Y0 , tgt_XS + (i-1)*NLIMBS );"
+  , "  }"
+  , "  "
+  , "  free(omegaPows);"
+  , "}"
+  , ""
+  , "void " ++ prefix ++ "postprocess_Rader( int N, const int64_t *perm, const uint64_t *Y0, const uint64_t *src, uint64_t *YS, uint64_t *tgt) {"
+  , "  for(int i=1; i<N; i++) {"
+  , "    int64_t j = perm[i-1];"
+  , "    " ++ prefix_r ++ "copy( YS + (i-1)*NLIMBS , tgt + j*NLIMBS );  // scatter"
+  , "    " ++ prefix_r ++ "add_inplace( tgt + j*NLIMBS , src );         // += a0"
+  , "  }"
+  , "  " ++ prefix_r ++ "copy( Y0 , tgt );"
+  , "}"
+  ]
+
+{- Haskell reference
+
+-- | Forward DFT:  ahat_k = sum_j a_j * omega^(j*k),  for k = 0 .. N-1.
+--
+-- Preconditions: the length N of the input is a Fermat prime (3, 5, 17, 257, 65537),
+-- and @omega@ has multiplicative order N.
+genericListRaderNTT :: ([Fr] -> [Fr] -> [Fr]) -> Fr -> [Fr] -> [Fr]
+genericListRaderNTT cyclicConv omega as@(a0 : _) = (a0 + sum xs) : scatter gs (map (a0 +) ys) where
+
+  size, l, g :: Int
+  size = length as                                     -- N
+
+  l    = size - 1                                      -- L = 2^n
+  g    = fermatGenerator size
+
+  gs, gInvs :: [Int]
+  gs    = take l (iterate (\e -> e * g `mod` size) 1)  -- g^u    for u = 0 .. L-1
+  gInvs = 1 : reverse (drop 1 gs)                      -- g^(-u) for u = 0 .. L-1
+
+  hs, xs, ys :: [Fr]
+  hs = map (omega ^) gs                                -- h_w = omega^(g^w)
+  xs = map (as !!) gInvs                               -- x_u = a_(g^(-u))
+  ys = cyclicConv hs xs                                -- y_v = ahat_(g^v) - a_0 
+
+-}
+
+--------------------------------------------------------------------------------
+-- Cyclic convolution of size power of two (no root of unity required!)
+
+hsCyclicConvKaratsubaCRT :: PolyParams -> Code 
+hsCyclicConvKaratsubaCRT (PolyParams{..}) = 
+  [ ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "cyclic_conv_Karatsuba_CRT\"     c_" ++ prefix ++ "cyclic_conv_Karatsuba_CRT     :: CInt ->         Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "negacyclic_conv_Karatsuba_CRT\" c_" ++ prefix ++ "negacyclic_conv_Karatsuba_CRT :: CInt -> CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "{-# NOINLINE cyclicConvKaratsubaCRT #-}"
+  , "-- | cyclic convolution algorithm for power of two sizes"
+  , "-- Requires no roots of unity. Still quite fast for N=256, but asymptotically not optimal."
+  , "--"
+  , "cyclicConvKaratsubaCRT :: " ++ flatArrTypeName ++ " -> " ++ flatArrTypeName ++ " -> " ++ flatArrTypeName
+  , "cyclicConvKaratsubaCRT (L.MkFlatArray n1 fptr1) (L.MkFlatArray n2 fptr2) = unsafePerformIO $ do"
+  , "  let n3 = if n1 == n2 then n1 else error \"cyclicConvKaratsubaCRT: input size do not match\""
+  , "  let log2n = case M.exactLog2_ n1 of { Just e -> M.fromLog2 e ; Nothing -> error \"cyclicConvKaratsubaCRT: input size is not a power of two\" }"
+  , "  fptr3 <- mallocForeignPtrArray (n3*" ++ show nlimbs ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "cyclic_conv_Karatsuba_CRT (fromIntegral log2n) ptr1 ptr2 ptr3"
+  , "  return (L.MkFlatArray n3 fptr3)"
+  , ""  
+  , "{-# NOINLINE negacyclicKaratsubaCRT #-}"
+  , "-- | negacyclic \"convolution\" (product of polys in the negacyclic ring) for power of two sizes"
+  , "--"
+  , "negacyclicKaratsubaCRT :: " ++ flatArrTypeName ++ " -> " ++ flatArrTypeName ++ " -> " ++ flatArrTypeName
+  , "negacyclicKaratsubaCRT (L.MkFlatArray n1 fptr1) (L.MkFlatArray n2 fptr2) = unsafePerformIO $ do"
+  , "  let n3 = if n1 == n2 then n1 else error \"negacyclicKaratsubaCRT: input size do not match\""
+  , "  let log2n = case M.exactLog2_ n1 of { Just e -> M.fromLog2 e ; Nothing -> error \"negacyclicKaratsubaCRT: input size is not a power of two\" }"
+  , "  fptr3 <- mallocForeignPtrArray (n3*" ++ show nlimbs ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "negacyclic_conv_Karatsuba_CRT (fromIntegral log2n) 0 ptr1 ptr2 ptr3"
+  , "  return (L.MkFlatArray n3 fptr3)"
+  , ""  
+  ]
+  where 
+    flatArrTypeName = "L.FlatArray " ++ typeName_r 
+
+cCyclicConvKaratsubaCRT :: PolyParams -> Code
+cCyclicConvKaratsubaCRT (PolyParams{..}) = 
+  [ ""
+  , "/*"
+  , "void " ++ prefix ++ "signed_rotation_to_right( int N, const uint64_t *src, uint64_t *tgt) {"
+  , "  memcpy( tgt + NLIMBS , src , (N-1)*NLIMBS*8 );"
+  , "  " ++ prefix_r ++ "neg( src + (N-1)*NLIMBS , tgt );"
+  , "}"
+  , "*/"
+  , ""
+  , "// assumes the inputs has size power of two (and you need to supply the logarithm)"
+  , "// only efficient for relatively small inputs (eg. 256 is still good)"
+  , "//"
+  , "// Product in @R-_m = R[z]/(z^m + 1)@ (the negacylic ring)."
+  , "// Uses  @R-_{2m} = R-_m[z]/(z^2 - u)@ and Karatsuba:"
+  , "//"
+  , "//   (A0 + z*A1) * (B0 + z*B1)  ==  (A0*B0 + u*A1*B1) + z*(A0*B1 + A1*B0)"
+  , "//"
+  , "// Remark: This would works over any commutative ring"
+  , "//"
+  , "void " ++ prefix ++ "negacyclic_conv_Karatsuba_CRT( int logN, int logStrideIn, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt) {"
+  , "  if (logN==0) {"
+  , "    " ++ prefix_r ++ "mul( src1 , src2 , tgt );"
+  , "  }" 
+  , "  else {"
+  , "    int N         = (1<<logN);"
+  , "    int strideIn  = (1<<logStrideIn);"
+  , "    int halfN     = (N>>1);"
+  , "    int step      = strideIn * NLIMBS;"
+  , "    "
+  , "    uint64_t *p0     = (uint64_t*) malloc( halfN * NLIMBS * 8 );"
+  , "    uint64_t *p1     = (uint64_t*) malloc( halfN * NLIMBS * 8 );"
+  , "    uint64_t *p2     = (uint64_t*) malloc( halfN * NLIMBS * 8 );"
+  , "    uint64_t *tmp1   = (uint64_t*) malloc( halfN * NLIMBS * 8 );"
+  , "    uint64_t *tmp2   = (uint64_t*) malloc( halfN * NLIMBS * 8 );"
+  , "    "
+  , "    assert( p0   != 0 );"
+  , "    assert( p1   != 0 );"
+  , "    assert( p2   != 0 );"
+  , "    assert( tmp1 != 0 );"
+  , "    assert( tmp2 != 0 );"
+  , "    "
+  , "    " ++ prefix ++ "negacyclic_conv_Karatsuba_CRT( logN-1 , logStrideIn+1 , src1        , src2        , p0 );  // evens"
+  , "    " ++ prefix ++ "negacyclic_conv_Karatsuba_CRT( logN-1 , logStrideIn+1 , src1 + step , src2 + step , p1 );  // odds "
+  , "    "
+  , "    for(int i=0; i<halfN; i++) {"
+  , "      " ++ prefix_r ++ "add( src1 + (2*i)*step , src1 + (2*i+1)*step , tmp1 + i*NLIMBS );   // f_even + f_odd"
+  , "      " ++ prefix_r ++ "add( src2 + (2*i)*step , src2 + (2*i+1)*step , tmp2 + i*NLIMBS );   // g_even + g_odd"
+  , "    }" 
+  , "    " ++ prefix ++ "negacyclic_conv_Karatsuba_CRT( logN-1 , 0 , tmp1 , tmp2 , p2 );  // mixed"
+  , "    "
+  , "    // out_evens := p0 + signedRotRight(p1)"
+  , "    " ++ prefix_r ++ "sub( p0 , p1 + (halfN-1)*NLIMBS , tgt );"
+  , "    for(int i=1; i<halfN; i++) {"
+  , "      " ++ prefix_r ++ "add( p0 + i*NLIMBS , p1 + (i-1)*NLIMBS , tgt + (2*i)*NLIMBS );"
+  , "    }" 
+  , "    // out_odds := p2 - p0 - p1"
+  , "    for(int i=0; i<halfN; i++) {"
+  , "      uint64_t p0_plus_p1[NLIMBS];"
+  , "      " ++ prefix_r ++ "add( p0 + i*NLIMBS , p1 + i*NLIMBS , p0_plus_p1 );"
+  , "      " ++ prefix_r ++ "sub( p2 + i*NLIMBS , p0_plus_p1 , tgt + (2*i+1)*NLIMBS );"
+  , "    }" 
+  , "    "
+  , "    free(tmp2);" 
+  , "    free(tmp1);" 
+  , "    free(p2);" 
+  , "    free(p1);" 
+  , "    free(p0);" 
+  , "  }" 
+  , "}"
+  , ""
+  , "// assumes the inputs has size power of two (and you need to supply the logarithm)"
+  , "// only efficient for relatively small inputs (eg. 256 is still good)"
+  , "//"
+  , "void " ++ prefix ++ "cyclic_conv_Karatsuba_CRT(int logN, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt) {"
+  , "  if (logN==0) {"
+  , "    " ++ prefix_r ++ "mul( src1 , src2 , tgt );"
+  , "  }" 
+  , "  else {"
+  , "    int N      = (1<<logN);"
+  , "    int halfN  = (N>>1);"
+  , "    "
+  , "    uint64_t *tmp1  = (uint64_t*) malloc( halfN * NLIMBS * 8 );"
+  , "    uint64_t *tmp2  = (uint64_t*) malloc( halfN * NLIMBS * 8 );"
+  , "    uint64_t *posi  = (uint64_t*) malloc( halfN * NLIMBS * 8 );"
+  , "    uint64_t *nega  = (uint64_t*) malloc( halfN * NLIMBS * 8 );"
+  , "    "
+  , "    assert( tmp1 != 0 );"
+  , "    assert( tmp2 != 0 );"
+  , "    assert( posi != 0 );"
+  , "    assert( nega != 0 );"
+  , "    "
+  , "    for(int i=0; i<halfN; i++) {"
+  , "      " ++ prefix_r ++ "add( src1 + i*NLIMBS , src1 + (i+halfN)*NLIMBS , tmp1 + i*NLIMBS );   // (flo .+. fhi)"
+  , "      " ++ prefix_r ++ "add( src2 + i*NLIMBS , src2 + (i+halfN)*NLIMBS , tmp2 + i*NLIMBS );   // (glo .+. ghi)"
+  , "    }" 
+  , "    " ++ prefix ++ "cyclic_conv_Karatsuba_CRT( logN-1 , tmp1 , tmp2 , posi );"
+  , "    "
+  , "    for(int i=0; i<halfN; i++) {"
+  , "      " ++ prefix_r ++ "sub( src1 + i*NLIMBS , src1 + (i+halfN)*NLIMBS , tmp1 + i*NLIMBS );   // (flo .-. fhi)"
+  , "      " ++ prefix_r ++ "sub( src2 + i*NLIMBS , src2 + (i+halfN)*NLIMBS , tmp2 + i*NLIMBS );   // (glo .-. ghi)"
+  , "    }" 
+  , "    " ++ prefix ++ "negacyclic_conv_Karatsuba_CRT( logN-1 , 0 , tmp1 , tmp2 , nega );"
+  , "    "
+  , "    for(int i=0; i<halfN; i++) {"
+  , "      " ++ prefix_r ++ "add( posi + i*NLIMBS , nega + i*NLIMBS , tgt +  i       *NLIMBS );"
+  , "      " ++ prefix_r ++ "sub( posi + i*NLIMBS , nega + i*NLIMBS , tgt + (i+halfN)*NLIMBS );"
+  , "      " ++ prefix_r ++ "div_by_2_inplace( tgt +  i       *NLIMBS );"
+  , "      " ++ prefix_r ++ "div_by_2_inplace( tgt + (i+halfN)*NLIMBS );"
+  , "    }" 
+  , "    "
+  , "    free(nega);"
+  , "    free(posi);"
+  , "    free(tmp2);"
+  , "    free(tmp1);"
+  , "  }" 
+  , "}"
+  , ""
+  ]
+
+{- Haskell code for reference:
+
+-- | Multiplication by u in R-_m = F[u]/(u^m + 1): a signed rotation.
+shift :: [Fr] -> [Fr]
+shift f = negate (last f) : init f 
+
+-- | @A  ~>  (A0, A1)@ where @A(z) = A0(z^2) + z * A1(z^2)@.
+evenOdd :: [Fr] -> ([Fr], [Fr])
+evenOdd (x:y:rest) = (x:evens, y:odds)  where (evens,odds) = evenOdd rest
+evenOdd _          = ([], [])
+
+-- | Inverse of 'evenOdd'.
+interleave :: [Fr] -> [Fr] -> [Fr]
+interleave (x:xs) (y:ys) = x : y : interleave xs ys
+interleave _      _      = []
+
+(.+.), (.-.) :: [Fr] -> [Fr] -> [Fr]
+(.+.) = zipWith (+)
+(.-.) = zipWith (-)
+
+-- | Product in @R-_m@. Uses  @R-_{2m} = R-_m[z]/(z^2 - u)@ and Karatsuba:
+--
+-- > (A0 + z*A1) * (B0 + z*B1) = (A0*B0 + u*A1*B1) + z*(A0*B1 + A1*B0)
+--
+-- Remark: This works over any commutative ring
+--
+negacyclic :: [Fr] -> [Fr] -> [Fr]
+negacyclic [x] [y] = [x * y]
+negacyclic f   g   = interleave (p0 .+. shift p1) (p2 .-. p0 .-. p1) where
+  f0, f1, g0, g1, p0, p1, p2 :: [Fr]      -- all in R-_{m/2}
+  (f0, f1) = evenOdd f
+  (g0, g1) = evenOdd g
+  p0 = negacyclic f0 g0
+  p1 = negacyclic f1 g1
+  p2 = negacyclic (f0 .+. f1) (g0 .+. g1)
+
+-- | Product in @R+_L@. Uses the CRT for @R+_{2m} = R+_m x R-_m@:
+--
+-- > A = A_lo + z^m A_hi   ~>   (A_lo + A_hi , A_lo - A_hi)
+--
+cyclic :: [Fr] -> [Fr] -> [Fr]
+cyclic [x] [y] = [x * y]
+cyclic f   g   = map halve (cp .+. cm) ++ map halve (cp .-. cm) where
+  m :: Int
+  m = length f `div` 2
+  flo, fhi, glo, ghi, cp, cm :: [Fr]
+  (flo, fhi) = splitAt m f
+  (glo, ghi) = splitAt m g
+  cp = cyclic     (flo .+. fhi) (glo .+. ghi)       -- in R+_m
+  cm = negacyclic (flo .-. fhi) (glo .-. ghi)       -- in R-_m
+
+-}
+
+--------------------------------------------------------------------------------
 
 c_code :: PolyParams -> Code
 c_code params@(PolyParams{..}) = concat $ map ("":) $ 
@@ -1425,7 +1787,10 @@ c_code params@(PolyParams{..}) = concat $ map ("":) $
   , cInverseNTT   params
   , cForwardNTT_radix4  params
   ]
-  else [])
+  else []) ++ 
+  [ cCyclicConvKaratsubaCRT params
+  , cRaderNTT               params
+  ]
 
 hs_code :: PolyParams -> Code
 hs_code params@(PolyParams{..}) = concat $ map ("":) $
@@ -1436,8 +1801,11 @@ hs_code params@(PolyParams{..}) = concat $ map ("":) $
   ] ++
   (if has_fft then
   [ hsNTT          params
+  ] 
+  else []) ++
+  [ hsCyclicConvKaratsubaCRT params
+  , hsRaderNTT               params
   ]
-  else [])
 
 --------------------------------------------------------------------------------
 

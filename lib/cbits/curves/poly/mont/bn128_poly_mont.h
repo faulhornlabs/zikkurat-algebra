@@ -31,3 +31,7 @@ extern void bn128_poly_mont_ntt_forward_shifted( const uint64_t *eta, int m, con
 extern void bn128_poly_mont_ntt_inverse_shifted( const uint64_t *eta, int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);
 
 extern void bn128_poly_mont_ntt_forward_asymmetric(int m_src, int m_tgt, const uint64_t *gen_src, const uint64_t *gen_tgt, const uint64_t *src, uint64_t *tgt);
+
+extern void bn128_poly_mont_cyclic_conv_Karatsuba_CRT     (int logN,                const uint64_t *src1, const uint64_t *src2, uint64_t *tgt);
+extern void bn128_poly_mont_negacyclic_conv_Karatsuba_CRT (int logN, int logStride, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt);
+
