@@ -26,7 +26,7 @@ cd ${ROOT}/test
 echo "======================"
 echo "building the testsuite"
 echo "======================"
-cabal ${VX}clean
+# cabal ${VX}clean
 cabal ${VX}configure
 cabal ${VX}build || error_exit "building the test failed"
 echo "building the testsuit OK!"

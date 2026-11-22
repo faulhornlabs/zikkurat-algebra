@@ -502,6 +502,13 @@ void bn128_poly_mont_ntt_forward(int m, const uint64_t *gen, const uint64_t *src
   int N     = (1<<m);
   int halfN = (N>>1);
   
+  if (m == 0) {
+    // gpows allocation can crash? because halfN = 0...
+    bn128_Fr_mont_copy( src, tgt );
+    return;
+  }
+  else {
+  
   // precalculate [1,g,g^2,g^3...]
   uint64_t *gpows = malloc( 8*NLIMBS * halfN );
   assert( gpows != 0 );
@@ -519,6 +526,7 @@ void bn128_poly_mont_ntt_forward(int m, const uint64_t *gen, const uint64_t *src
   bn128_poly_mont_ntt_forward_noalloc( m, 1, gpows, src, buf, tgt);
   free(buf);
   free(gpows);
+  }
 }
 
 // it's like `ntt_forward` but we pre-multiply the coefficients with `eta^k`
@@ -546,7 +554,7 @@ void bn128_poly_mont_ntt_forward_asymmetric(int m_src, int m_tgt, const uint64_t
   int K = (1 << (m_tgt - m_src));
   
   // precalculate [1,g,g^2,g^3...]
-  uint64_t *gpows = malloc( 8*NLIMBS * halfN_src );
+  uint64_t *gpows = malloc( 8*NLIMBS * MAX(1,halfN_src) );   // TMP hack not to allocate 0 length
   assert( gpows != 0 );
   uint64_t x[NLIMBS];
   bn128_Fr_mont_set_one( gpows );
@@ -601,8 +609,8 @@ void bn128_poly_mont_ntt_forward_asymmetric(int m_src, int m_tgt, const uint64_t
   
   free(tgt_small);
   free(buf);
-  free(gpows);
   free(shifted);
+  free(gpows);
 }
 
 
@@ -651,6 +659,13 @@ void bn128_poly_mont_ntt_inverse(int m, const uint64_t *gen, const uint64_t *src
   int N = (1<<m);
   int halfN = (N>>1);
   
+  if (m == 0) {
+    // gpows allocation can crash? because halfN == 0...
+    bn128_Fr_mont_copy( src, tgt );
+    return;
+  }
+  else {
+  
   // precalculate [1/2,g^{-1}/2,g^{-2}/2,g^{-3}/2...]
   uint64_t *gpows = malloc( 8*NLIMBS * halfN );
   assert( gpows != 0 );
@@ -668,6 +683,7 @@ void bn128_poly_mont_ntt_inverse(int m, const uint64_t *gen, const uint64_t *src
   bn128_poly_mont_ntt_inverse_noalloc( m, 1, gpows, src, buf, tgt );
   free(buf);
   free(gpows);
+  }
 }
 
 // it's like `ntt_inverse` but we post-multiply the resulting coefficients with `eta^k`
