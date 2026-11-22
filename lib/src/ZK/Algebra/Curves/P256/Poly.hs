@@ -172,6 +172,8 @@ instance P.Univariate Poly where
   polyRem         = ZK.Algebra.Curves.P256.Poly.rem
   divByVanishing  = ZK.Algebra.Curves.P256.Poly.divByVanishing
   quotByVanishing = ZK.Algebra.Curves.P256.Poly.quotByVanishing
+  shiftPolyMul    = ZK.Algebra.Curves.P256.Poly.shiftPolyMul
+  shiftPolyAdd    = ZK.Algebra.Curves.P256.Poly.shiftPolyAdd
 
 --------------------------------------------------------------------------------
 
@@ -368,6 +370,7 @@ foreign import ccall unsafe "p256_poly_mont_quot_by_vanishing" c_p256_poly_mont_
 
 -- | Divide by the coset vanishing polynomial @(x^n - eta)@.
 -- Returns quotient and remainder.
+{-# NOINLINE divByVanishing #-}
 divByVanishing :: Poly -> (Int, Fr) -> (Poly, Poly)
 divByVanishing poly1@(XPoly n1 fptr1) (expo_n, MkFr fptr2) = unsafePerformIO $ do
   let d2 = expo_n
@@ -384,6 +387,7 @@ divByVanishing poly1@(XPoly n1 fptr1) (expo_n, MkFr fptr2) = unsafePerformIO $ d
 
 -- | Quotient by the coset vanishing polynomial @(x^n - eta)@.
 -- Returns @Nothing@ if the remainder is nonzero.
+{-# NOINLINE quotByVanishing #-}
 quotByVanishing :: Poly -> (Int, Fr) -> Maybe Poly
 quotByVanishing poly1@(XPoly n1 fptr1) (expo_n, MkFr fptr2) = unsafePerformIO $ do
   let d2 = expo_n
@@ -396,6 +400,32 @@ quotByVanishing poly1@(XPoly n1 fptr1) (expo_n, MkFr fptr2) = unsafePerformIO $ 
   return $ if (cret /= 0)
     then Just (XPoly nq fptr3)
     else Nothing
+
+foreign import ccall unsafe "p256_poly_mont_shift_poly_mul" c_p256_poly_mont_shift_poly_mul :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+foreign import ccall unsafe "p256_poly_mont_shift_poly_add" c_p256_poly_mont_shift_poly_add :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()
+
+-- | Substitutes @x -> x*eta@ into the polynomial
+{-# NOINLINE shiftPolyMul #-}
+shiftPolyMul :: Fr -> Poly -> Poly
+shiftPolyMul (MkFr fptr1) (XPoly n fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray (n*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_p256_poly_mont_shift_poly_mul (fromIntegral n) ptr1 ptr2 ptr3
+  return (XPoly n fptr3)
+
+-- | Substitutes @x -> x+eta@ into the polynomial
+{-# NOINLINE shiftPolyAdd #-}
+shiftPolyAdd :: Fr -> Poly -> Poly
+shiftPolyAdd (MkFr fptr1) (XPoly n fptr2) = unsafePerformIO $ do
+  fptr3 <- mallocForeignPtrArray (n*4)
+  withForeignPtr fptr1 $ \ptr1 -> do
+    withForeignPtr fptr2 $ \ptr2 -> do
+      withForeignPtr fptr3 $ \ptr3 -> do
+        c_p256_poly_mont_shift_poly_add (fromIntegral n) ptr1 ptr2 ptr3
+  return (XPoly n fptr3)
+
 
 
 foreign import ccall unsafe "p256_poly_mont_cyclic_conv_Karatsuba_CRT"     c_p256_poly_mont_cyclic_conv_Karatsuba_CRT     :: CInt ->         Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()

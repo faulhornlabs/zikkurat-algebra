@@ -64,6 +64,9 @@ c_header (PolyParams{..}) =
   , "extern void    " ++ prefix ++ "div_by_vanishing ( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot, int nrem, uint64_t *rem );"
   , "extern uint8_t " ++ prefix ++ "quot_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot );"
   , ""
+  , "extern void " ++ prefix ++ "shift_poly_mul( int n, const uint64_t *eta, const uint64_t *src, uint64_t *tgt );"
+  , "extern void " ++ prefix ++ "shift_poly_add( int n, const uint64_t *eta, const uint64_t *src, uint64_t *tgt );"
+  , ""
   ] ++
   (if has_fft then
   [ "extern void " ++ prefix ++ "ntt_forward( int m, const uint64_t *gen, const uint64_t *src, uint64_t *tgt);"
@@ -294,6 +297,8 @@ hsBegin (PolyParams{..}) =
   , "  polyRem         = " ++ hsModule hs_path ++ ".rem"
   , "  divByVanishing  = " ++ hsModule hs_path ++ ".divByVanishing"
   , "  quotByVanishing = " ++ hsModule hs_path ++ ".quotByVanishing"
+  , "  shiftPolyMul    = " ++ hsModule hs_path ++ ".shiftPolyMul"
+  , "  shiftPolyAdd    = " ++ hsModule hs_path ++ ".shiftPolyAdd"
   , ""
   , "--------------------------------------------------------------------------------"
   , ""
@@ -761,6 +766,7 @@ hsDivVanishing (PolyParams{..}) =
   , ""
   , "-- | Divide by the coset vanishing polynomial @(x^n - eta)@."
   , "-- Returns quotient and remainder."
+  , "{-# NOINLINE divByVanishing #-}"
   , "divByVanishing :: " ++ typeName ++ " -> (Int, " ++ typeName_r ++ ") -> (" ++ typeName ++ ", " ++ typeName ++ ")"
   , "divByVanishing poly1@(XPoly n1 fptr1) (expo_n, Mk" ++ typeName_r ++ " fptr2) = unsafePerformIO $ do"
   , "  let d2 = expo_n"
@@ -777,6 +783,7 @@ hsDivVanishing (PolyParams{..}) =
   , ""
   , "-- | Quotient by the coset vanishing polynomial @(x^n - eta)@."
   , "-- Returns @Nothing@ if the remainder is nonzero."
+  , "{-# NOINLINE quotByVanishing #-}"
   , "quotByVanishing :: " ++ typeName ++ " -> (Int, " ++ typeName_r ++ ") -> Maybe " ++ typeName 
   , "quotByVanishing poly1@(XPoly n1 fptr1) (expo_n, Mk" ++ typeName_r ++ " fptr2) = unsafePerformIO $ do"
   , "  let d2 = expo_n"
@@ -790,6 +797,103 @@ hsDivVanishing (PolyParams{..}) =
   , "    then Just (XPoly nq fptr3)"
   , "    else Nothing"
   ]
+
+--------------------------------------------------------------------------------
+
+hsShift :: PolyParams -> Code
+hsShift (PolyParams{..}) = 
+  [ "foreign import ccall unsafe \"" ++ prefix ++ "shift_poly_mul\" c_" ++ prefix ++ "shift_poly_mul :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , "foreign import ccall unsafe \"" ++ prefix ++ "shift_poly_add\" c_" ++ prefix ++ "shift_poly_add :: CInt -> Ptr Word64 -> Ptr Word64 -> Ptr Word64 -> IO ()"
+  , ""
+  , "-- | Substitutes @x -> x*eta@ into the polynomial"
+  , "{-# NOINLINE shiftPolyMul #-}"
+  , "shiftPolyMul :: " ++ typeName_r ++ " -> " ++ typeName ++ " -> " ++ typeName 
+  , "shiftPolyMul (Mk" ++ typeName_r ++ " fptr1) (XPoly n fptr2) = unsafePerformIO $ do"
+  , "  fptr3 <- mallocForeignPtrArray (n*" ++ show nlimbs ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "shift_poly_mul (fromIntegral n) ptr1 ptr2 ptr3"
+  , "  return (XPoly n fptr3)"
+  , ""
+  , "-- | Substitutes @x -> x+eta@ into the polynomial"
+  , "{-# NOINLINE shiftPolyAdd #-}"
+  , "shiftPolyAdd :: " ++ typeName_r ++ " -> " ++ typeName ++ " -> " ++ typeName 
+  , "shiftPolyAdd (Mk" ++ typeName_r ++ " fptr1) (XPoly n fptr2) = unsafePerformIO $ do"
+  , "  fptr3 <- mallocForeignPtrArray (n*" ++ show nlimbs ++ ")"
+  , "  withForeignPtr fptr1 $ \\ptr1 -> do"
+  , "    withForeignPtr fptr2 $ \\ptr2 -> do"
+  , "      withForeignPtr fptr3 $ \\ptr3 -> do"
+  , "        c_" ++ prefix ++ "shift_poly_add (fromIntegral n) ptr1 ptr2 ptr3"
+  , "  return (XPoly n fptr3)"
+  , ""
+  ]
+
+cShift :: PolyParams -> Code
+cShift (PolyParams{..}) = 
+  [ ""
+  , "// substitutes `x -> x*eta` into the polynomial"
+  , "void " ++ prefix ++ "shift_poly_mul( int n, const uint64_t *eta, const uint64_t *src1, uint64_t *tgt ) {"
+  , "  uint64_t acc[NLIMBS];"
+  , "  " ++ prefix_r ++ "set_one(acc);"
+  , "  for(int i=0; i<n; i++) {"
+  , "    " ++ prefix_r ++ "mul        ( SRC1(i) , acc , TGT(i) );"
+  , "    " ++ prefix_r ++ "mul_inplace( acc, eta );"
+  , "  }"
+  , "}"
+  , ""
+  , "// substitutes `x -> x+eta` into the polynomial"
+  , "void " ++ prefix ++ "shift_poly_add( int n, const uint64_t *eta, const uint64_t *src1, uint64_t *tgt ) {"
+  , "  uint64_t *etaPows  = (uint64_t *) malloc( 8 * NLIMBS * n);"
+  , "  uint64_t *binomial = (uint64_t *) malloc( 8 * NLIMBS * n);"
+  , "  "
+  , "  uint64_t acc[NLIMBS];"
+  , "  " ++ prefix_r ++ "set_one( acc );"
+  , "  for(int i=0; i<n; i++) {"
+  , "    " ++ prefix_r ++ "set_one(    binomial + i*NLIMBS );"
+  , "    " ++ prefix_r ++ "copy( acc , etaPows  + i*NLIMBS );"
+  , "    " ++ prefix_r ++ "mul_inplace( acc, eta );"
+  , "  }"
+  , "  "
+  , "  for(int j=0; j<n; j++) {"
+  , "    uint64_t tmp[NLIMBS];"
+  , "    "
+  , "    // calculate `acc := sum_k c_k * binom(k,j) * eta^(k-j)"
+  , "    " ++ prefix_r ++ "set_zero( acc );"
+  , "    for(int k=j; k<n; k++) {"
+  , "      " ++ prefix_r ++ "mul        ( SRC1(k) , etaPows  + (k-j)*NLIMBS , tmp );"
+  , "      " ++ prefix_r ++ "mul_inplace( tmp     , binomial + (k-j)*NLIMBS );"
+  , "      " ++ prefix_r ++ "add_inplace( acc     , tmp);"
+  , "    }"
+  , "    " ++ prefix_r ++ "copy( acc , TGT(j) );"
+  , "    "
+  , "    // update binomials"
+  , "    " ++ prefix_r ++ "set_zero( tmp );"
+  , "    for(int i=0; i<n-j-1; i++) {"
+  , "      " ++ prefix_r ++ "add_inplace( tmp , binomial + i*NLIMBS );"
+  , "      " ++ prefix_r ++ "copy       ( tmp , binomial + i*NLIMBS );"
+  , "    }"
+  , "  }"
+  , "  "
+  , "  free(binomial);"
+  , "  free(etaPows);"
+  , "}"
+  , ""
+  ]
+
+{- additive shifting sanity check in Mathematica:
+
+nn = 10
+poly = Sum[RandomInteger[ { -20, 20 } ]*x^i, {i, 0, 10}]
+one = poly /. {x -> x + \[Eta]}
+two = Sum[
+  x^j*Sum[Coefficient[poly, x, k]*Binomial[k, j]*\[Eta]^(k - j), {k, 
+     j, nn}], {j, 0, nn}]
+Expand[one - two]
+
+Table[Table[Binomial[k, j], {k, j, nn}], {j, 0, nn}]
+
+-}
 
 --------------------------------------------------------------------------------
 
@@ -1781,6 +1885,7 @@ c_code params@(PolyParams{..}) = concat $ map ("":) $
   , cPolyBasics   params
   , cPolyDiv      params
   , cDivVanishing params
+  , cShift        params
   ] ++
   (if has_fft then
   [ cForwardNTT   params
@@ -1798,6 +1903,7 @@ hs_code params@(PolyParams{..}) = concat $ map ("":) $
   , hsPolyBasics   params
   , hsPolyDiv      params
   , hsDivVanishing params
+  , hsShift        params
   ] ++
   (if has_fft then
   [ hsNTT          params

@@ -50,6 +50,10 @@ class (Ring p, Field (Coeff p), WrappedArray p, Element p ~ Coeff p) => Univaria
   divByVanishing :: p -> (Int, Coeff p) -> (p,p)
   -- | Quotient by the coset vanishing polynomial @(x^n - eta)@
   quotByVanishing :: p -> (Int, Coeff p) -> Maybe p
+  -- | Subsitutes @x -> x*eta@ into the polynomial
+  shiftPolyMul :: Coeff p -> p -> p
+  -- | Subsitutes @x -> x+eta@ into the polynomial
+  shiftPolyAdd :: Coeff p -> p -> p
 
 -- | Polynomials which over an FFT-friend field support NTT operations
 class (Univariate p, FFTField (Coeff p)) => UnivariateFFT p where

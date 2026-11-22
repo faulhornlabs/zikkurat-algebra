@@ -58,6 +58,12 @@ runPolyTestsNoFFT n pxy = do
       y <- rndIO @(Coeff a)
       return (test (Proxy @a) x y) 
 
+    PolyPropFF1 test name -> doTests n name $ do
+      c <- rndIO @(Coeff a)
+      d <- rndIO @(Coeff a)
+      p <- rndIO @a
+      return (test c d p) 
+
 --------------------
 
 -- includes the FFT tests
@@ -90,6 +96,12 @@ runPolyTests n pxy = do
       x <- rndIO @(Coeff a)
       y <- rndIO @(Coeff a)
       return (test (Proxy @a) x y) 
+
+    PolyPropFF1 test name -> doTests n name $ do
+      c <- rndIO @(Coeff a)
+      d <- rndIO @(Coeff a)
+      p <- rndIO @a
+      return (test c d p) 
 
     PolyPropFFT test name -> doTests n name $ do
       xs <- replicateM 7 $ rndIO @(Coeff a)
@@ -126,6 +138,7 @@ data PolyProp
   | PolyProp3    (forall a. Univariate    a  => a -> a -> a -> Bool       ) String
   | PolyPropF1   (forall a. Univariate    a  => Coeff a -> a -> Bool      ) String
   | PolyPropFF   (forall a. Univariate    a  => Proxy a -> Coeff a -> Coeff a -> Bool) String
+  | PolyPropFF1  (forall a. Univariate    a  => Coeff a -> Coeff a -> a -> Bool      ) String
   | PolyPropFFT  (forall a. UnivariateFFT a  => Proxy a ->            [Coeff a] -> Bool) String
   | PolyPropXFFT (forall a. UnivariateFFT a  => Proxy a -> Coeff a -> [Coeff a] -> Bool) String
 
@@ -160,25 +173,27 @@ genericRingProps =
 
 specificPolyProps :: Bool -> [PolyProp]
 specificPolyProps hasFFT = 
-  [ PolyProp1  prop_degree_vs_ref       "degree vs. reference"
-  , PolyProp1  prop_neg_vs_ref          "neg vs. reference" 
-  , PolyProp2  prop_add_vs_ref          "add vs. reference" 
-  , PolyProp2  prop_sub_vs_ref          "sub vs. reference" 
-  , PolyPropF1 prop_scale_vs_ref        "scale vs. reference" 
-  , PolyPropF1 prop_scale_by_zero       "scale by 0" 
-  , PolyPropF1 prop_scale_by_one        "scale by 1" 
-  , PolyPropF1 prop_scale_by_minus_one  "scale by -1" 
-  , PolyProp2  prop_mul_vs_ref          "mul vs. reference" 
-  , PolyPropF1 prop_eval_vs_ref         "evalAt vs. reference"
-  , PolyProp1  prop_const_term          "constTerm"
-  , PolyPropFF prop_mbConst             "mbConst"
-  , PolyProp1  prop_kthCoeff            "kthCoeff"
-  , PolyProp2  prop_longdiv             "long division"
-  , PolyProp2  prop_longdiv_quot_rem    "long_div vs. quot/rem"
-  , PolyProp1  prop_longdiv_itself      "p `div` p"
-  , PolyPropF1 prop_longdiv_kp_plus_13  "(k*p+13) `div` p"
-  , PolyPropF1 prop_divByVanishing      "divByVanishing"
-  , PolyPropF1 prop_quotByVanishing     "quotByVanishing"
+  [ PolyProp1   prop_degree_vs_ref       "degree vs. reference"
+  , PolyProp1   prop_neg_vs_ref          "neg vs. reference" 
+  , PolyProp2   prop_add_vs_ref          "add vs. reference" 
+  , PolyProp2   prop_sub_vs_ref          "sub vs. reference" 
+  , PolyPropF1  prop_scale_vs_ref        "scale vs. reference" 
+  , PolyPropF1  prop_scale_by_zero       "scale by 0" 
+  , PolyPropF1  prop_scale_by_one        "scale by 1" 
+  , PolyPropF1  prop_scale_by_minus_one  "scale by -1" 
+  , PolyProp2   prop_mul_vs_ref          "mul vs. reference" 
+  , PolyPropF1  prop_eval_vs_ref         "evalAt vs. reference"
+  , PolyProp1   prop_const_term          "constTerm"
+  , PolyPropFF  prop_mbConst             "mbConst"
+  , PolyProp1   prop_kthCoeff            "kthCoeff"
+  , PolyProp2   prop_longdiv             "long division"
+  , PolyProp2   prop_longdiv_quot_rem    "long_div vs. quot/rem"
+  , PolyProp1   prop_longdiv_itself      "p `div` p"
+  , PolyPropF1  prop_longdiv_kp_plus_13  "(k*p+13) `div` p"
+  , PolyPropF1  prop_divByVanishing      "divByVanishing"
+  , PolyPropF1  prop_quotByVanishing     "quotByVanishing"
+  , PolyPropFF1 prop_shiftPolyMul        "shiftPolyMul"
+  , PolyPropFF1 prop_shiftPolyAdd        "shiftPolyAdd"
   ]
   ++ (if not hasFFT then [] else 
   [ PolyPropFFT prop_ntt_then_intt      "intt . ntt == id"
@@ -405,6 +420,14 @@ prop_quotByVanishing eta p0 =
   let binom = (4,eta) 
   in  (quotByVanishing (p0 * myVanishingPoly binom    ) binom == Just p0) &&
       (quotByVanishing (p0 * myVanishingPoly binom + 1) binom == Nothing)
+
+prop_shiftPolyMul :: Univariate p => Coeff p -> Coeff p -> p -> Bool
+prop_shiftPolyMul eta x0 p0 = evalAt (x0 * eta) p0 == evalAt x0 p1 where
+  p1 = shiftPolyMul eta p0
+
+prop_shiftPolyAdd :: Univariate p => Coeff p -> Coeff p -> p -> Bool
+prop_shiftPolyAdd eta x0 p0 = evalAt (x0 + eta) p0 == evalAt x0 p1 where
+  p1 = shiftPolyAdd eta p0
 
 --------------------------------------------------------------------------------
 

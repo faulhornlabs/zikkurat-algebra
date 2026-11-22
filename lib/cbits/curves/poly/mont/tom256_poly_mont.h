@@ -24,6 +24,9 @@ extern void tom256_poly_mont_rem     ( int n1, const uint64_t *src1, int n2, con
 extern void    tom256_poly_mont_div_by_vanishing ( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot, int nrem, uint64_t *rem );
 extern uint8_t tom256_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int expo_n, const uint64_t *eta, int nquot, uint64_t *quot );
 
+extern void tom256_poly_mont_shift_poly_mul( int n, const uint64_t *eta, const uint64_t *src, uint64_t *tgt );
+extern void tom256_poly_mont_shift_poly_add( int n, const uint64_t *eta, const uint64_t *src, uint64_t *tgt );
+
 
 extern void tom256_poly_mont_cyclic_conv_Karatsuba_CRT     (int logN,                const uint64_t *src1, const uint64_t *src2, uint64_t *tgt);
 extern void tom256_poly_mont_negacyclic_conv_Karatsuba_CRT (int logN, int logStride, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt);

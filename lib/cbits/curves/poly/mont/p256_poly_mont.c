@@ -413,6 +413,55 @@ uint8_t p256_poly_mont_quot_by_vanishing( int n1, const uint64_t *src1, int expo
 }
 
 
+// substitutes `x -> x*eta` into the polynomial
+void p256_poly_mont_shift_poly_mul( int n, const uint64_t *eta, const uint64_t *src1, uint64_t *tgt ) {
+  uint64_t acc[NLIMBS];
+  p256_Fr_mont_set_one(acc);
+  for(int i=0; i<n; i++) {
+    p256_Fr_mont_mul        ( SRC1(i) , acc , TGT(i) );
+    p256_Fr_mont_mul_inplace( acc, eta );
+  }
+}
+
+// substitutes `x -> x+eta` into the polynomial
+void p256_poly_mont_shift_poly_add( int n, const uint64_t *eta, const uint64_t *src1, uint64_t *tgt ) {
+  uint64_t *etaPows  = (uint64_t *) malloc( 8 * NLIMBS * n);
+  uint64_t *binomial = (uint64_t *) malloc( 8 * NLIMBS * n);
+  
+  uint64_t acc[NLIMBS];
+  p256_Fr_mont_set_one( acc );
+  for(int i=0; i<n; i++) {
+    p256_Fr_mont_set_one(    binomial + i*NLIMBS );
+    p256_Fr_mont_copy( acc , etaPows  + i*NLIMBS );
+    p256_Fr_mont_mul_inplace( acc, eta );
+  }
+  
+  for(int j=0; j<n; j++) {
+    uint64_t tmp[NLIMBS];
+    
+    // calculate `acc := sum_k c_k * binom(k,j) * eta^(k-j)
+    p256_Fr_mont_set_zero( acc );
+    for(int k=j; k<n; k++) {
+      p256_Fr_mont_mul        ( SRC1(k) , etaPows  + (k-j)*NLIMBS , tmp );
+      p256_Fr_mont_mul_inplace( tmp     , binomial + (k-j)*NLIMBS );
+      p256_Fr_mont_add_inplace( acc     , tmp);
+    }
+    p256_Fr_mont_copy( acc , TGT(j) );
+    
+    // update binomials
+    p256_Fr_mont_set_zero( tmp );
+    for(int i=0; i<n-j-1; i++) {
+      p256_Fr_mont_add_inplace( tmp , binomial + i*NLIMBS );
+      p256_Fr_mont_copy       ( tmp , binomial + i*NLIMBS );
+    }
+  }
+  
+  free(binomial);
+  free(etaPows);
+}
+
+
+
 /*
 void p256_poly_mont_signed_rotation_to_right( int N, const uint64_t *src, uint64_t *tgt) {
   memcpy( tgt + NLIMBS , src , (N-1)*NLIMBS*8 );
