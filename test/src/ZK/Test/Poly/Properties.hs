@@ -27,7 +27,7 @@ allRingProps hasFFT = genericRingProps ++ specificPolyProps hasFFT
 
 --------------------
 
--- excludes the FFT tests
+-- excludes the FFT tests (TODO: refactor to remove code duplication)
 runPolyTestsNoFFT :: forall a. Univariate a => Int -> Proxy a -> IO ()
 runPolyTestsNoFFT n pxy = do
 
@@ -63,6 +63,13 @@ runPolyTestsNoFFT n pxy = do
       d <- rndIO @(Coeff a)
       p <- rndIO @a
       return (test c d p) 
+
+    PolyPropFF2 test name -> doTests n name $ do
+      c <- rndIO @(Coeff a)
+      d <- rndIO @(Coeff a)
+      p <- rndIO @a
+      q <- rndIO @a
+      return (test c d p q) 
 
 --------------------
 
@@ -103,6 +110,13 @@ runPolyTests n pxy = do
       p <- rndIO @a
       return (test c d p) 
 
+    PolyPropFF2 test name -> doTests n name $ do
+      c <- rndIO @(Coeff a)
+      d <- rndIO @(Coeff a)
+      p <- rndIO @a
+      q <- rndIO @a
+      return (test c d p q) 
+
     PolyPropFFT test name -> doTests n name $ do
       xs <- replicateM 7 $ rndIO @(Coeff a)
       return (test (Proxy @a) xs) 
@@ -138,7 +152,9 @@ data PolyProp
   | PolyProp3    (forall a. Univariate    a  => a -> a -> a -> Bool       ) String
   | PolyPropF1   (forall a. Univariate    a  => Coeff a -> a -> Bool      ) String
   | PolyPropFF   (forall a. Univariate    a  => Proxy a -> Coeff a -> Coeff a -> Bool) String
-  | PolyPropFF1  (forall a. Univariate    a  => Coeff a -> Coeff a -> a -> Bool      ) String
+  | PolyPropFF1  (forall a. Univariate    a  => Coeff a -> Coeff a -> a      -> Bool   ) String
+  | PolyPropFF2  (forall a. Univariate    a  => Coeff a -> Coeff a -> a -> a -> Bool   ) String
+    --
   | PolyPropFFT  (forall a. UnivariateFFT a  => Proxy a ->            [Coeff a] -> Bool) String
   | PolyPropXFFT (forall a. UnivariateFFT a  => Proxy a -> Coeff a -> [Coeff a] -> Bool) String
 
@@ -194,6 +210,8 @@ specificPolyProps hasFFT =
   , PolyPropF1  prop_quotByVanishing     "quotByVanishing"
   , PolyPropFF1 prop_shiftPolyMul        "shiftPolyMul"
   , PolyPropFF1 prop_shiftPolyAdd        "shiftPolyAdd"
+  , PolyPropFF2 prop_lincomb_v1          "lincomb v1"
+  , PolyPropFF2 prop_lincomb_v2          "lincomb v2"
   ]
   ++ (if not hasFFT then [] else 
   [ PolyPropFFT prop_ntt_then_intt      "intt . ntt == id"
@@ -428,6 +446,21 @@ prop_shiftPolyMul eta x0 p0 = evalAt (x0 * eta) p0 == evalAt x0 p1 where
 prop_shiftPolyAdd :: Univariate p => Coeff p -> Coeff p -> p -> Bool
 prop_shiftPolyAdd eta x0 p0 = evalAt (x0 + eta) p0 == evalAt x0 p1 where
   p1 = shiftPolyAdd eta p0
+
+prop_lincomb_v1 :: Univariate p => Coeff p -> Coeff p -> p -> p -> Bool
+prop_lincomb_v1 a b p q = (lhs == rhs) where
+  lhs = scale a p + scale b q' 
+  rhs = linCombPolys [(a,p),(b,q')] 
+  q' = (idPoly^3 + 7) * q
+
+prop_lincomb_v2 :: Univariate p => Coeff p -> Coeff p -> p -> p -> Bool
+prop_lincomb_v2 a b p q = (lhs == rhs) where
+  lhs = scale a p' + scale b q + scale c r'
+  rhs = linCombPolys [(a,p'),(b,q),(c,r')] 
+  p' = (idPoly^3 + 7  )*p 
+  r  = (idPoly^2 - 5  )*q + p 
+  r' = (idPoly^5 - 113)*r
+  c  = a*a + b*b + 1
 
 --------------------------------------------------------------------------------
 
