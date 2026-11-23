@@ -28,8 +28,6 @@ class (Ring p, Field (Coeff p), WrappedArray p, Element p ~ Coeff p) => Univaria
   kthCoeff :: Int -> p -> Coeff p
   -- | Evaluation
   evalAt :: Coeff p -> p -> Coeff p
-  -- | Scaling
-  scale :: Coeff p -> p -> p
   -- | Create a polynomial from coefficiens
   mkPoly :: [Coeff p] -> p
   -- | Create a polynomial from a flat array of coefficiens
@@ -40,6 +38,10 @@ class (Ring p, Field (Coeff p), WrappedArray p, Element p ~ Coeff p) => Univaria
   coeffsArr :: p -> Array Int (Coeff p)
   -- | Coefficients as a FlatArray
   coeffsFlatArr :: p -> FlatArray (Coeff p)
+  -- | Scaling
+  scale :: Coeff p -> p -> p
+  -- | Linear combination
+  linCombPolys :: [(Coeff p, p)] -> p
   -- | Polynomial long division
   polyLongDiv :: p -> p -> (p,p)
   -- | Polynomial quotient

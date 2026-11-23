@@ -36,6 +36,7 @@ module ZK.Algebra.Curves.BLS12_381.Poly
   , sqr
     -- * Linear combinations
   , scale
+  , linCombMany
     -- * Polynomial division
   , longDiv , quot , rem
   , divByVanishing, quotByVanishing
@@ -167,6 +168,7 @@ instance P.Univariate Poly where
   kthCoeff        = ZK.Algebra.Curves.BLS12_381.Poly.kthCoeff
   evalAt          = ZK.Algebra.Curves.BLS12_381.Poly.evalAt
   scale           = ZK.Algebra.Curves.BLS12_381.Poly.scale
+  linCombPolys    = ZK.Algebra.Curves.BLS12_381.Poly.linCombMany
   mkPoly          = ZK.Algebra.Curves.BLS12_381.Poly.mkPoly
   mkPolyFlat      = ZK.Algebra.Curves.BLS12_381.Poly.mkPolyFlatArr
   coeffs          = ZK.Algebra.Curves.BLS12_381.Poly.coeffs
@@ -311,6 +313,11 @@ scale (MkFr fptr1) (XPoly n2 fptr2) = unsafePerformIO $ do
       withForeignPtr fptr3 $ \ptr3 -> do
         c_bls12_381_poly_mont_scale ptr1 (fromIntegral n2) ptr2 ptr3
   return (XPoly n3 fptr3)
+
+-- | Linear combination of several polynomials
+linCombMany :: [(Fr, Poly)] -> Poly
+linCombMany list = MkPoly $ ZK.Algebra.Curves.BLS12_381.Array.linCombMany
+  [ (c,arr) | (c,MkPoly arr) <- list ]
 
 {-# NOINLINE mulNaive #-}
 -- | Multiplication of polynomials, naive algorithm

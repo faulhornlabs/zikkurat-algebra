@@ -164,35 +164,6 @@ void tom256_poly_mont_scale
   }
 }
 
-// Linear combination of K polynomials. 
-// Requires a target buffer of size max{ n_k | k=0..K-1 }
-void tom256_poly_mont_lincomb
-  ( int  K                           // number of polynomials
-  , const int *ns                    // sizes of the polynomials
-  , const uint64_t **coeffs          // pointers to the combination coefficients
-  , const uint64_t **polys           // pointers to the polynomials
-  ,       uint64_t *tgt              // target buffer 
-  ) {
-
-  int N = 0;
-  for(int k=0; k<K; k++) { 
-    if (ns[k] > N) { N = ns[k]; }
-  }
-
-  for(int i=0; i<N; i++) {
-    uint64_t acc[NLIMBS];
-    tom256_Fr_mont_set_zero(acc);
-    for(int k=0; k<K; k++) {
-      int n = ns[k];
-      if (i < n) {
-        uint64_t tmp[NLIMBS];
-        tom256_Fr_mont_mul( coeffs[k] , polys[k]+i*NLIMBS , tmp );
-        tom256_Fr_mont_add_inplace( acc , tmp );
-      }
-    }
-    tom256_Fr_mont_copy( acc, tgt+i*NLIMBS );
-  }
-}
 
 // Multiply two polynomials, naive algorithm. 
 // Requires a target buffer of size `(n1+n2-1)` (!)

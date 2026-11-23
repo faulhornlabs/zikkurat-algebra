@@ -150,7 +150,7 @@ hsBegin (PolyParams{..}) =
   , "  , sqr"
   , "    -- * Linear combinations"
   , "  , scale"
---  , "  , linComb"
+  , "  , linCombMany"
   , "    -- * Polynomial division"
   , "  , longDiv , quot , rem"
   , "  , divByVanishing, quotByVanishing"
@@ -287,6 +287,7 @@ hsBegin (PolyParams{..}) =
   , "  kthCoeff        = " ++ hsModule hs_path ++ ".kthCoeff"
   , "  evalAt          = " ++ hsModule hs_path ++ ".evalAt"
   , "  scale           = " ++ hsModule hs_path ++ ".scale"
+  , "  linCombPolys    = " ++ hsModule hs_path ++ ".linCombMany"
   , "  mkPoly          = " ++ hsModule hs_path ++ ".mkPoly"
   , "  mkPolyFlat      = " ++ hsModule hs_path ++ ".mkPolyFlatArr"
   , "  coeffs          = " ++ hsModule hs_path ++ ".coeffs"
@@ -469,6 +470,11 @@ hsPolyBasics (PolyParams{..}) =
   , "        c_" ++ prefix ++ "scale ptr1 (fromIntegral n2) ptr2 ptr3"
   , "  return (XPoly n3 fptr3)"
   , ""
+  , "-- | Linear combination of several polynomials"
+  , "linCombMany :: [(" ++ typeName_r ++ ", " ++ typeName ++ ")] -> " ++ typeName
+  , "linCombMany list = Mk" ++ typeName ++ " $ " ++ hsModule hs_path_arr ++ ".linCombMany"
+  , "  [ (c,arr) | (c,Mk" ++ typeName ++ " arr) <- list ]"
+  , ""
   , "{-# NOINLINE mulNaive #-}"
   , "-- | Multiplication of polynomials, naive algorithm"
   , "mulNaive :: " ++ typeName ++ " -> " ++ typeName ++ " -> " ++ typeName
@@ -629,6 +635,7 @@ cPolyBasics (PolyParams{..}) =
   , "  }"
   , "}"
   , ""
+{-
   , "// Linear combination of K polynomials. "
   , "// Requires a target buffer of size max{ n_k | k=0..K-1 }"
   , "void " ++ prefix ++ "lincomb"
@@ -658,6 +665,7 @@ cPolyBasics (PolyParams{..}) =
   , "    " ++ prefix_r ++ "copy( acc, tgt+i*NLIMBS );"
   , "  }"
   , "}"
+-}
   , ""
   , "// Multiply two polynomials, naive algorithm. "
   , "// Requires a target buffer of size `(n1+n2-1)` (!)"

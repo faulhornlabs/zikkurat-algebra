@@ -99,6 +99,8 @@ class (Vector v, Field (Element v), PointwiseField v) => VectorSpace v where
   linComb1 :: (Element v, v) -> v -> v
   -- | Linear combination @a*x + b*y@
   linComb2 :: (Element v, v) -> (Element v, v) -> v
+  -- | General linear combination
+  linCombVecs :: [(Element v, v)] -> v
   -- | Sparse matrix multiplication
   sparseMatrixMul :: SparseMatrix (Element v) -> v -> v
 

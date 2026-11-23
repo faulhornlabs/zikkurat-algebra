@@ -35,6 +35,7 @@ module ZK.Algebra.Curves.BLS12_381.Array
     -- * Linear combination
   , linComb1
   , linComb2
+  , linCombMany
     -- * Matrix multiplication
   , sparseMatrixMul
   )
@@ -113,6 +114,7 @@ instance V.VectorSpace (FlatArray Fr) where
   mulByPowers = ZK.Algebra.Curves.BLS12_381.Array.mulByPowers
   linComb1    = ZK.Algebra.Curves.BLS12_381.Array.linComb1
   linComb2    = ZK.Algebra.Curves.BLS12_381.Array.linComb2
+  linCombVecs     = ZK.Algebra.Curves.BLS12_381.Array.linCombMany
   sparseMatrixMul = ZK.Algebra.Curves.BLS12_381.Array.sparseMatrixMul
 
 --------------------------------------------------------------------------------
@@ -247,6 +249,24 @@ linComb2 (MkFr fptr_a, MkFlatArray n1 fptr_x) (MkFr fptr_b, MkFlatArray n2 fptr_
               withForeignPtr fptr_o $ \ptr_o -> do
                 c_bls12_381_arr_mont_Ax_plus_By (fromIntegral n1) ptr_a ptr_b ptr_x ptr_y ptr_o
       return (MkFlatArray n1 fptr_o)
+
+foreign import ccall unsafe "bls12_381_arr_mont_lincomb_many"  c_bls12_381_arr_mont_lincomb_many  :: CInt -> Ptr CInt -> Ptr Word64 -> Ptr (Ptr Word64) -> Ptr Word64 -> IO ()
+
+{-# NOINLINE linCombMany #-}
+linCombMany :: [(Fr, FlatArray Fr)] -> FlatArray Fr
+linCombMany []   = error "linCombMany: empty list"
+linCombMany list = unsafePerformIO $ do
+  let (coeffs,arrays) = unzip list
+  withFlatArray (packFlatArrayFromList coeffs) $ \m ptrCoeffs -> do
+    withFlatArrays arrays $ \sizesAndPtrs -> do
+      let (sizes,ptrs) = unzip sizesAndPtrs
+      let tgtSize = maximum sizes
+      fptrTgt <- mallocForeignPtrArray (tgtSize*4)
+      withForeignPtr fptrTgt $ \ptrTgt -> do
+        withArray (map fromIntegral sizes :: [CInt]) $ \ptrSizes -> do
+          withArray (ptrs :: [Ptr Word64]) $ \ptrVecs -> do
+            c_bls12_381_arr_mont_lincomb_many (fromIntegral m) ptrSizes ptrCoeffs ptrVecs ptrTgt
+      return (MkFlatArray tgtSize fptrTgt)
 
 --------------------------------------------------------------------------------
 

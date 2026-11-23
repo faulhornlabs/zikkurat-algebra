@@ -94,6 +94,8 @@ c_header (PwParams{..}) =
   , "extern void " ++ prefix ++ "Ax_plus_By         ( int n, const uint64_t *coeffA, const uint64_t *coeffB, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );"
   , "extern void " ++ prefix ++ "Ax_plus_By_inplace ( int n, const uint64_t *coeffA, const uint64_t *coeffB,       uint64_t *tgt , const uint64_t *src2 );"
   , ""
+  , "extern void " ++ prefix ++ "lincomb_many ( int m, int *ns, const uint64_t *coeffs, const uint64_t **srcs, uint64_t *tgt );"
+  , ""
   ]
 
 --------------------------------------------------------------------------------
@@ -473,6 +475,27 @@ c_scale_lincomb_etc params@(PwParams{..}) =
   , "    " ++ elem_prefix ++ "add_inplace( TGT(i) , tmp );"
   , "  }"
   , "}"
+  , ""
+  , "// linearly combine many vectors with possible different sizes,"
+  , "// extending them with zeros if necessary"
+  , "// allocate enough space for the maximum length"
+  , "void " ++ prefix ++ "lincomb_many( int m, int *ns, const uint64_t *coeffs, const uint64_t **srcs, uint64_t *tgt ) {"
+  , "  int N = 0;"
+  , "  for(int i=0; i<m; i++) {"
+  , "    if (ns[i] >= N) { N = ns[i]; }"
+  , "  }"
+  , "  "
+  , "  for(int j=0; j<N; j++) { " ++ elem_prefix ++ "set_zero( tgt + j*ELEM_NWORDS ); }"
+  , "  "
+  , "  for(int i=0; i<m; i++) {"
+  , "    for(int j=0; j<ns[i]; j++) {"
+  , "      uint64_t tmp[ELEM_NWORDS];"
+  , "      " ++ elem_prefix ++ "mul( TGT(j) , srcs[i] + j*ELEM_NWORDS , tmp );"
+  , "      " ++ elem_prefix ++ "add_inplace( TGT(j) , tmp );"
+  , "    }"
+  , "  }"
+  , "}"
+  , ""
   ]
 
 --------------------------------------------------------------------------------
@@ -515,6 +538,7 @@ hsBegin (PwParams{..}) =
   , "    -- * Linear combination"
   , "  , linComb1"
   , "  , linComb2"
+  , "  , linCombMany"
   , "    -- * Matrix multiplication"
   , "  , sparseMatrixMul"
   , "  )"  
@@ -593,6 +617,7 @@ hsBegin (PwParams{..}) =
   , "  mulByPowers = " ++ hsModule hs_path ++ ".mulByPowers"
   , "  linComb1    = " ++ hsModule hs_path ++ ".linComb1"
   , "  linComb2    = " ++ hsModule hs_path ++ ".linComb2"
+  , "  linCombVecs     = " ++ hsModule hs_path ++ ".linCombMany"
   , "  sparseMatrixMul = " ++ hsModule hs_path ++ ".sparseMatrixMul"
   , ""
   , "--------------------------------------------------------------------------------"
@@ -728,6 +753,24 @@ hsBegin (PwParams{..}) =
   , "                c_" ++ prefix ++ "Ax_plus_By (fromIntegral n1) ptr_a ptr_b ptr_x ptr_y ptr_o"
   , "      return (MkFlatArray n1 fptr_o)"
   , ""
+  , "foreign import ccall unsafe \"" ++ prefix ++ "lincomb_many\"  c_" ++ prefix ++ "lincomb_many  :: CInt -> Ptr CInt -> Ptr Word64 -> Ptr (Ptr Word64) -> Ptr Word64 -> IO ()"
+  , ""
+  , "{-# NOINLINE linCombMany #-}"
+  , "linCombMany :: [(" ++ typeNameBase ++ ", FlatArray " ++ typeNameBase ++ ")] -> FlatArray " ++ typeNameBase
+  , "linCombMany []   = error \"linCombMany: empty list\""
+  , "linCombMany list = unsafePerformIO $ do"
+  , "  let (coeffs,arrays) = unzip list"
+  , "  withFlatArray (packFlatArrayFromList coeffs) $ \\m ptrCoeffs -> do"
+  , "    withFlatArrays arrays $ \\sizesAndPtrs -> do"
+  , "      let (sizes,ptrs) = unzip sizesAndPtrs"
+  , "      let tgtSize = maximum sizes"
+  , "      fptrTgt <- mallocForeignPtrArray (tgtSize*" ++ show elemNWords ++ ")" 
+  , "      withForeignPtr fptrTgt $ \\ptrTgt -> do"
+  , "        withArray (map fromIntegral sizes :: [CInt]) $ \\ptrSizes -> do"
+  , "          withArray (ptrs :: [Ptr Word64]) $ \\ptrVecs -> do"
+  , "            c_" ++ prefix ++ "lincomb_many (fromIntegral m) ptrSizes ptrCoeffs ptrVecs ptrTgt" 
+  , "      return (MkFlatArray tgtSize fptrTgt)"
+  , ""
   , "--------------------------------------------------------------------------------"
   , ""
   , "-- void " ++ prefix ++ "sparse_matrix_mul( int N, int K, const uint64_t *row_idxs, const uint64_t *col_idxs, const uint64_t *coeffs, const uint64_t *src, uint64_t *tgt ) {"
@@ -844,9 +887,9 @@ c_code pwparams = concat $ map ("":)
 
 hs_code :: PwParams -> Code
 hs_code pwparams@(PwParams{..}) = concat $ map ("":)
-  [ hsBegin      pwparams
-  , hsConvert    pwparams
-  , hsFFI        pwparams
+  [ hsBegin       pwparams
+  , hsConvert     pwparams
+  , hsFFI         pwparams
   ]
 
 --------------------------------------------------------------------------------

@@ -469,7 +469,9 @@ prop_ntt_vs_eval :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
 prop_ntt_vs_eval = prop_ntt_vs_eval' 5
 
 prop_ntt_vs_eval_allsizes :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
-prop_ntt_vs_eval_allsizes _pxy input = and [ prop_ntt_vs_eval' m _pxy input | m<-[0..5] ] 
+prop_ntt_vs_eval_allsizes _pxy input = strictAnd [ prop_ntt_vs_eval' m _pxy input | m<-[0..5] ] where
+  strictAnd []      = True
+  strictAnd (!b:bs) = if b then strictAnd bs else False
 
 prop_asymm_ntt_vs_eval :: forall p. UnivariateFFT p => Proxy p -> [Coeff p] -> Bool
 prop_asymm_ntt_vs_eval _pxy input = (us == vs) where

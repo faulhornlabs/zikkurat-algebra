@@ -53,3 +53,5 @@ extern void tom256_arr_mont_Ax_plus_y_inplace ( int n, const uint64_t *coeffA,  
 extern void tom256_arr_mont_Ax_plus_By         ( int n, const uint64_t *coeffA, const uint64_t *coeffB, const uint64_t *src1, const uint64_t *src2, uint64_t *tgt );
 extern void tom256_arr_mont_Ax_plus_By_inplace ( int n, const uint64_t *coeffA, const uint64_t *coeffB,       uint64_t *tgt , const uint64_t *src2 );
 
+extern void tom256_arr_mont_lincomb_many ( int m, int *ns, const uint64_t *coeffs, const uint64_t **srcs, uint64_t *tgt );
+

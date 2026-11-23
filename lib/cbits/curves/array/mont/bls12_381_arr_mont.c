@@ -320,3 +320,24 @@ void bls12_381_arr_mont_Ax_plus_By_inplace ( int n, const uint64_t *coeffA, cons
     bls12_381_Fr_mont_add_inplace( TGT(i) , tmp );
   }
 }
+
+// linearly combine many vectors with possible different sizes,
+// extending them with zeros if necessary
+// allocate enough space for the maximum length
+void bls12_381_arr_mont_lincomb_many( int m, int *ns, const uint64_t *coeffs, const uint64_t **srcs, uint64_t *tgt ) {
+  int N = 0;
+  for(int i=0; i<m; i++) {
+    if (ns[i] >= N) { N = ns[i]; }
+  }
+  
+  for(int j=0; j<N; j++) { bls12_381_Fr_mont_set_zero( tgt + j*ELEM_NWORDS ); }
+  
+  for(int i=0; i<m; i++) {
+    for(int j=0; j<ns[i]; j++) {
+      uint64_t tmp[ELEM_NWORDS];
+      bls12_381_Fr_mont_mul( TGT(j) , srcs[i] + j*ELEM_NWORDS , tmp );
+      bls12_381_Fr_mont_add_inplace( TGT(j) , tmp );
+    }
+  }
+}
+

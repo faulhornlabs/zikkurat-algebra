@@ -138,6 +138,7 @@ flatArrayLength (MkFlatArray n _) = n
 flatArraySizeInBytes :: forall a. Flat a => FlatArray a -> Int
 flatArraySizeInBytes (MkFlatArray n _) = n * sizeInBytes (Proxy @a)
 
+-- | The @Int@ argument of the callback is the number of objects in the array!
 withFlatArray :: FlatArray a -> (Int -> Ptr Word64 -> IO b) -> IO b
 withFlatArray (MkFlatArray n fptr) action = do
   withForeignPtr fptr $ \ptr -> action n ptr
